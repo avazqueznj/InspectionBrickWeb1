@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -13,21 +13,29 @@ export const companies = pgTable("companies", {
 
 // Users table
 export const users = pgTable("users", {
-  userId: text("user_id").primaryKey(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
   password: text("password").notNull(),
   userFullName: text("user_full_name").notNull(),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }),
-});
+}, (table) => ({
+  // Unique constraint: same userId can exist across companies, but not within same company
+  uniqueUserPerCompany: unique().on(table.companyId, table.userId),
+}));
 
 // Assets table
 export const assets = pgTable("assets", {
-  assetId: text("asset_id").primaryKey(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assetId: text("asset_id").notNull(),
   assetConfig: text("asset_config").notNull(),
   assetName: text("asset_name").notNull(),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-});
+}, (table) => ({
+  // Unique constraint: same assetId can exist across companies, but not within same company
+  uniqueAssetPerCompany: unique().on(table.companyId, table.assetId),
+}));
 
 // Inspections table
 export const inspections = pgTable("inspections", {
@@ -56,11 +64,15 @@ export const defects = pgTable("defects", {
 
 // Inspection Types table
 export const inspectionTypes = pgTable("inspection_types", {
-  inspectionTypeId: text("inspection_type_id").primaryKey(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  inspectionTypeId: text("inspection_type_id").notNull(),
   inspectionLayout: text("inspection_layout").notNull(),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-});
+}, (table) => ({
+  // Unique constraint: same inspectionTypeId can exist across companies, but not within same company
+  uniqueInspectionTypePerCompany: unique().on(table.companyId, table.inspectionTypeId),
+}));
 
 // Inspection Type Form Fields table
 export const inspectionTypeFormFields = pgTable("inspection_type_form_fields", {
@@ -68,7 +80,7 @@ export const inspectionTypeFormFields = pgTable("inspection_type_form_fields", {
   formFieldName: text("form_field_name").notNull(),
   formFieldType: text("form_field_type").notNull().$type<"TEXT" | "NUM">(),
   formFieldLength: integer("form_field_length").notNull(),
-  inspectionTypeId: text("inspection_type_id").notNull().references(() => inspectionTypes.inspectionTypeId, { onDelete: "cascade" }),
+  inspectionTypeId: varchar("inspection_type_id").notNull().references(() => inspectionTypes.id, { onDelete: "cascade" }),
 });
 
 // Define relations
@@ -119,18 +131,22 @@ export const inspectionTypesRelations = relations(inspectionTypes, ({ one, many 
 export const inspectionTypeFormFieldsRelations = relations(inspectionTypeFormFields, ({ one }) => ({
   inspectionType: one(inspectionTypes, {
     fields: [inspectionTypeFormFields.inspectionTypeId],
-    references: [inspectionTypes.inspectionTypeId],
+    references: [inspectionTypes.id],
   }),
 }));
 
 // Insert schemas
 export const insertCompanySchema = createInsertSchema(companies);
 
-export const insertUserSchema = createInsertSchema(users).extend({
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+}).extend({
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
 });
 
-export const insertAssetSchema = createInsertSchema(assets).extend({
+export const insertAssetSchema = createInsertSchema(assets).omit({
+  id: true,
+}).extend({
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
 });
 
@@ -145,7 +161,9 @@ export const insertDefectSchema = createInsertSchema(defects).omit({
   severity: z.number().min(0).max(100),
 });
 
-export const insertInspectionTypeSchema = createInsertSchema(inspectionTypes).extend({
+export const insertInspectionTypeSchema = createInsertSchema(inspectionTypes).omit({
+  id: true,
+}).extend({
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
 });
 

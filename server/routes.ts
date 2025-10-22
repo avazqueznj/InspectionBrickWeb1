@@ -513,14 +513,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeId} - User: ${req.session.userId}`);
     
     try {
-      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId);
+      // Pass companyId to ensure we get the right inspection type when business IDs are shared across companies
+      const companyId = req.session.companyId || undefined;
+      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
       
       if (!inspectionType) {
         console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
         return res.status(404).json({ error: "Inspection type not found" });
       }
       
-      // Enforce company scoping
+      // Enforce company scoping (already filtered by getInspectionTypeById, but double-check for superusers)
       if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot access inspection type from another company`);
         return res.status(403).json({ error: "Cannot access inspection types from other companies" });
@@ -574,15 +576,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updateData = insertInspectionTypeSchema.partial().parse(req.body);
       
-      // Get the existing inspection type to check authorization
-      const existingInspectionType = await storage.getInspectionTypeById(inspectionTypeId);
+      // Get the existing inspection type to check authorization (use companyId for proper scoping)
+      const companyId = req.session.companyId || undefined;
+      const existingInspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
       
       if (!existingInspectionType) {
         console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
         return res.status(404).json({ error: "Inspection type not found" });
       }
       
-      // Enforce company scoping
+      // Enforce company scoping (already filtered by getInspectionTypeById, but double-check for superusers)
       if (req.session.companyId && existingInspectionType.companyId !== req.session.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot update inspection type from another company`);
         return res.status(403).json({ error: "Cannot update inspection types from other companies" });
@@ -610,14 +613,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeId}/form-fields - Fetching form fields`);
     
     try {
-      // Verify the inspection type exists and user has access
-      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId);
+      // Verify the inspection type exists and user has access (use companyId for proper scoping)
+      const companyId = req.session.companyId || undefined;
+      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
       if (!inspectionType) {
         console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
         return res.status(404).json({ error: "Inspection type not found" });
       }
       
-      // Enforce company scoping
+      // Enforce company scoping (already filtered by getInspectionTypeById, but double-check for superusers)
       if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot access form fields from another company`);
         return res.status(403).json({ error: "Cannot access inspection types from other companies" });
@@ -638,8 +642,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`➕ [Routes] POST /api/inspection-types/${inspectionTypeId}/form-fields - Creating form field`);
     
     try {
-      // Verify the inspection type exists and user has access
-      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId);
+      // Verify the inspection type exists and user has access (use companyId for proper scoping)
+      const companyId = req.session.companyId || undefined;
+      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
       if (!inspectionType) {
         console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
         return res.status(404).json({ error: "Inspection type not found" });
@@ -653,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const formFieldData = insertInspectionTypeFormFieldSchema.parse({
         ...req.body,
-        inspectionTypeId,
+        inspectionTypeId: inspectionType.id, // Use UUID id, not business inspectionTypeId
       });
       
       const formField = await storage.createInspectionTypeFormField(formFieldData);
@@ -685,8 +690,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Form field not found" });
       }
       
-      // Get the inspection type to enforce company scoping
-      const inspectionType = await storage.getInspectionTypeById(existingFormField.inspectionTypeId);
+      // Get the inspection type to enforce company scoping (use UUID method since form field stores UUID FK)
+      const inspectionType = await storage.getInspectionTypeByUUID(existingFormField.inspectionTypeId);
       if (!inspectionType) {
         console.log(`❌ [Routes] Inspection type not found for form field`);
         return res.status(404).json({ error: "Inspection type not found" });
@@ -727,8 +732,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Form field not found" });
       }
       
-      // Get the inspection type to enforce company scoping
-      const inspectionType = await storage.getInspectionTypeById(existingFormField.inspectionTypeId);
+      // Get the inspection type to enforce company scoping (use UUID method since form field stores UUID FK)
+      const inspectionType = await storage.getInspectionTypeByUUID(existingFormField.inspectionTypeId);
       if (!inspectionType) {
         console.log(`❌ [Routes] Inspection type not found for form field`);
         return res.status(404).json({ error: "Inspection type not found" });

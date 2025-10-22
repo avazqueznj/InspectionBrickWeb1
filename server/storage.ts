@@ -99,7 +99,8 @@ export interface IStorage {
   
   // Inspection Types
   getInspectionTypes(params?: InspectionTypeQueryParams): Promise<PaginatedResult<InspectionTypeWithFormFields>>;
-  getInspectionTypeById(inspectionTypeId: string): Promise<InspectionTypeWithFormFields | undefined>;
+  getInspectionTypeById(inspectionTypeId: string, companyId?: string): Promise<InspectionTypeWithFormFields | undefined>;
+  getInspectionTypeByUUID(id: string): Promise<InspectionTypeWithFormFields | undefined>;
   createInspectionType(inspectionType: InsertInspectionType): Promise<InspectionType>;
   updateInspectionType(inspectionTypeId: string, inspectionType: Partial<InsertInspectionType>): Promise<InspectionType | undefined>;
   getInspectionTypeFilterValues(companyId?: string): Promise<InspectionTypeFilterValues>;
@@ -237,6 +238,7 @@ export class DatabaseStorage implements IStorage {
     const offset = (page - 1) * limit;
     const data = await db
       .select({
+        id: users.id,
         userId: users.userId,
         userFullName: users.userFullName,
         status: users.status,
@@ -494,10 +496,29 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getInspectionTypeById(inspectionTypeId: string): Promise<InspectionTypeWithFormFields | undefined> {
-    console.log(`🔍 [Storage] getInspectionTypeById - id: ${inspectionTypeId}`);
+  async getInspectionTypeById(inspectionTypeId: string, companyId?: string): Promise<InspectionTypeWithFormFields | undefined> {
+    console.log(`🔍 [Storage] getInspectionTypeById - id: ${inspectionTypeId}, companyId: ${companyId || 'ANY'}`);
+    
+    // Build where condition: match business ID and optionally company ID
+    const conditions = [eq(inspectionTypes.inspectionTypeId, inspectionTypeId)];
+    if (companyId) {
+      conditions.push(eq(inspectionTypes.companyId, companyId));
+    }
+    
     const result = await db.query.inspectionTypes.findFirst({
-      where: eq(inspectionTypes.inspectionTypeId, inspectionTypeId),
+      where: and(...conditions),
+      with: {
+        formFields: true,
+      },
+    });
+    console.log(`${result ? '✅' : '❌'} [Storage] Inspection type ${result ? 'found' : 'not found'}`);
+    return result as InspectionTypeWithFormFields | undefined;
+  }
+
+  async getInspectionTypeByUUID(id: string): Promise<InspectionTypeWithFormFields | undefined> {
+    console.log(`🔍 [Storage] getInspectionTypeByUUID - UUID: ${id}`);
+    const result = await db.query.inspectionTypes.findFirst({
+      where: eq(inspectionTypes.id, id),
       with: {
         formFields: true,
       },
