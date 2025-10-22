@@ -90,7 +90,7 @@ async function seed() {
     });
     console.log("   ✅ Created user: adrianal (companyId: WALMART)");
     
-    // Add an inactive user for testing filters
+    // Add inactive users for testing filters
     await storage.createUser({
       userId: "bob_inactive",
       password: "password123",
@@ -100,7 +100,16 @@ async function seed() {
     });
     console.log("   ✅ Created inactive user: bob_inactive (companyId: NEC)");
     
-    console.log("✅ Created 6 users (1 superuser + 4 active company users + 1 inactive user)");
+    await storage.createUser({
+      userId: "jane_former",
+      password: "password123",
+      userFullName: "Jane Former",
+      status: "INACTIVE",
+      companyId: "FEDEX",
+    });
+    console.log("   ✅ Created inactive user: jane_former (companyId: FEDEX)");
+    
+    console.log("✅ Created 7 users (1 superuser + 4 active company users + 2 inactive users)");
 
     // Create sample inspections - 45 per company with varied data
     console.log("📋 Creating sample inspections...");
