@@ -1,5 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { CompanySelector } from "./CompanySelector";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { LogOut, User } from "lucide-react";
 import logoUrl from "@assets/FBricklogo_1761093196077.png";
 
 const menuItems = [
@@ -12,6 +15,11 @@ const menuItems = [
 
 export function TopBar() {
   const [location] = useLocation();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card border-border">
@@ -45,8 +53,26 @@ export function TopBar() {
           </nav>
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center gap-4">
           <CompanySelector />
+          
+          {user && (
+            <div className="flex items-center gap-3 pl-4 border-l border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>{user.userId}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                data-testid="button-logout"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </header>

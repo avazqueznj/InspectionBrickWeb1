@@ -1,10 +1,19 @@
 import { db } from "./db";
-import { companies, inspections, defects } from "@shared/schema";
+import { companies, inspections, defects, users } from "@shared/schema";
+import { storage } from "./storage";
 
 async function seed() {
   console.log("🌱 Seeding database...");
 
   try {
+    // Clear existing data (in reverse order due to foreign keys)
+    console.log("🗑️  Clearing existing data...");
+    await db.delete(defects);
+    await db.delete(inspections);
+    await db.delete(users);
+    await db.delete(companies);
+    console.log("✅ Cleared existing data");
+
     // Create sample companies
     await db.insert(companies).values([
       {
@@ -28,6 +37,17 @@ async function seed() {
     ]);
 
     console.log("✅ Created 3 companies");
+
+    // Create users
+    // avazquez - can view all companies (no companyId assignment)
+    await storage.createUser("avazquez", "password123", null);
+    
+    // Company-specific users
+    await storage.createUser("john_nec", "password123", "NEC");
+    await storage.createUser("sarah_walmart", "password123", "WALMART");
+    await storage.createUser("mike_fedex", "password123", "FEDEX");
+    
+    console.log("✅ Created 4 users (avazquez + 3 company users)");
 
     // Create sample inspections for NEC
     const inspection1 = await db
