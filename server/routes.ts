@@ -650,6 +650,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updateData = insertInspectionTypeFormFieldSchema.partial().parse(req.body);
       
+      // Get the existing form field to check authorization
+      const existingFormField = await storage.getInspectionTypeFormFieldById(id);
+      if (!existingFormField) {
+        console.log(`❌ [Routes] Form field not found: ${id}`);
+        return res.status(404).json({ error: "Form field not found" });
+      }
+      
+      // Get the inspection type to enforce company scoping
+      const inspectionType = await storage.getInspectionTypeById(existingFormField.inspectionTypeId);
+      if (!inspectionType) {
+        console.log(`❌ [Routes] Inspection type not found for form field`);
+        return res.status(404).json({ error: "Inspection type not found" });
+      }
+      
+      // Enforce company scoping
+      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot update form field from another company`);
+        return res.status(403).json({ error: "Cannot modify form fields from other companies" });
+      }
+      
       const updatedFormField = await storage.updateInspectionTypeFormField(id, updateData);
       if (!updatedFormField) {
         return res.status(404).json({ error: "Form field not found" });
@@ -672,6 +692,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🗑️ [Routes] DELETE /api/inspection-type-form-fields/${id}`);
     
     try {
+      // Get the existing form field to check authorization
+      const existingFormField = await storage.getInspectionTypeFormFieldById(id);
+      if (!existingFormField) {
+        console.log(`❌ [Routes] Form field not found: ${id}`);
+        return res.status(404).json({ error: "Form field not found" });
+      }
+      
+      // Get the inspection type to enforce company scoping
+      const inspectionType = await storage.getInspectionTypeById(existingFormField.inspectionTypeId);
+      if (!inspectionType) {
+        console.log(`❌ [Routes] Inspection type not found for form field`);
+        return res.status(404).json({ error: "Inspection type not found" });
+      }
+      
+      // Enforce company scoping
+      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot delete form field from another company`);
+        return res.status(403).json({ error: "Cannot delete form fields from other companies" });
+      }
+      
       const success = await storage.deleteInspectionTypeFormField(id);
       if (!success) {
         return res.status(404).json({ error: "Form field not found" });

@@ -105,6 +105,7 @@ export interface IStorage {
   getInspectionTypeFilterValues(companyId?: string): Promise<InspectionTypeFilterValues>;
   
   // Inspection Type Form Fields
+  getInspectionTypeFormFieldById(id: string): Promise<InspectionTypeFormField | undefined>;
   createInspectionTypeFormField(formField: InsertInspectionTypeFormField): Promise<InspectionTypeFormField>;
   updateInspectionTypeFormField(id: string, formField: Partial<InsertInspectionTypeFormField>): Promise<InspectionTypeFormField | undefined>;
   deleteInspectionTypeFormField(id: string): Promise<boolean>;
@@ -545,6 +546,16 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`✅ [Storage] getInspectionTypeFilterValues - Found ${result.statuses.length} statuses`);
     return result;
+  }
+
+  async getInspectionTypeFormFieldById(id: string): Promise<InspectionTypeFormField | undefined> {
+    console.log(`🔍 [Storage] Fetching form field by ID: ${id}`);
+    const [formField] = await db
+      .select()
+      .from(inspectionTypeFormFields)
+      .where(eq(inspectionTypeFormFields.id, id));
+    console.log(`${formField ? '✅' : '❌'} [Storage] Form field ${formField ? 'found' : 'not found'}`);
+    return formField;
   }
 
   async createInspectionTypeFormField(insertFormField: InsertInspectionTypeFormField): Promise<InspectionTypeFormField> {
