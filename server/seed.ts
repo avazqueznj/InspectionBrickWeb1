@@ -62,346 +62,108 @@ async function seed() {
     
     console.log("✅ Created 5 users (1 superuser + 4 company users)");
 
-    // Create sample inspections - 12+ per company with varied data
+    // Create sample inspections - 45 per company with varied data
     console.log("📋 Creating sample inspections...");
     
-    // NEC Inspections (12 inspections)
-    const necInspections = await db.insert(inspections).values([
-      {
+    // Helper arrays for varied data
+    const inspectionTypes = [
+      "DOT Vehicle Inspection",
+      "Equipment Safety Check",
+      "Heavy Equipment Check",
+      "Warehouse Equipment Check",
+      "Pre-Trip Safety Check",
+    ];
+    
+    const necAssets = ["TRUCK-2401", "TRUCK-2402", "TRUCK-2403", "VAN-1501", "VAN-1502", "FORKLIFT-089", "FORKLIFT-090", "CRANE-12", "CRANE-13", "PALLET-JACK-05"];
+    const necDrivers = [
+      { name: "John Smith", id: "DRV-10234" },
+      { name: "Sarah Johnson", id: "DRV-10567" },
+      { name: "Mike Davis", id: "DRV-10890" },
+      { name: "Emily Chen", id: "DRV-10445" },
+      { name: "Robert Wilson", id: "DRV-10778" },
+    ];
+    
+    // Generate 45 NEC inspections across October 2025
+    const necInspectionData = [];
+    for (let i = 0; i < 45; i++) {
+      const day = (i % 22) + 1; // Days 1-22
+      const hour = 7 + (i % 10); // Hours 7-16
+      const minute = (i * 15) % 60;
+      
+      necInspectionData.push({
         companyId: "NEC",
-        datetime: new Date("2025-10-01T08:30:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-2401",
-        driverName: "John Smith",
-        driverId: "DRV-10234",
-        inspectionFormData: "Pre-trip inspection completed.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-03T14:15:00"),
-        inspectionType: "Equipment Safety Check",
-        assetId: "FORKLIFT-089",
-        driverName: "Sarah Johnson",
-        driverId: "DRV-10567",
-        inspectionFormData: "Routine safety inspection.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-05T09:00:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-2402",
-        driverName: "Mike Davis",
-        driverId: "DRV-10890",
-        inspectionFormData: "Morning pre-route check.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-07T11:30:00"),
-        inspectionType: "Heavy Equipment Check",
-        assetId: "CRANE-12",
-        driverName: "John Smith",
-        driverId: "DRV-10234",
-        inspectionFormData: "Weekly equipment inspection.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-10T07:45:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "VAN-1501",
-        driverName: "Emily Chen",
-        driverId: "DRV-10445",
-        inspectionFormData: "Daily vehicle check.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-12T16:20:00"),
-        inspectionType: "Equipment Safety Check",
-        assetId: "FORKLIFT-090",
-        driverName: "Sarah Johnson",
-        driverId: "DRV-10567",
-        inspectionFormData: "End of shift inspection.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-15T10:00:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-2401",
-        driverName: "Mike Davis",
-        driverId: "DRV-10890",
-        inspectionFormData: "Mid-month check.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-17T13:30:00"),
-        inspectionType: "Warehouse Equipment Check",
-        assetId: "PALLET-JACK-05",
-        driverName: "Emily Chen",
-        driverId: "DRV-10445",
-        inspectionFormData: "Equipment maintenance check.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-19T08:00:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-2403",
-        driverName: "John Smith",
-        driverId: "DRV-10234",
-        inspectionFormData: "Regular vehicle inspection.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-20T15:15:00"),
-        inspectionType: "Equipment Safety Check",
-        assetId: "FORKLIFT-089",
-        driverName: "Sarah Johnson",
-        driverId: "DRV-10567",
-        inspectionFormData: "Afternoon safety check.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-21T09:30:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "VAN-1502",
-        driverName: "Mike Davis",
-        driverId: "DRV-10890",
-        inspectionFormData: "Pre-delivery inspection.",
-      },
-      {
-        companyId: "NEC",
-        datetime: new Date("2025-10-22T12:00:00"),
-        inspectionType: "Heavy Equipment Check",
-        assetId: "CRANE-13",
-        driverName: "Emily Chen",
-        driverId: "DRV-10445",
-        inspectionFormData: "Crane safety inspection.",
-      },
-    ]).returning();
-
-    // WALMART Inspections (12 inspections)
-    const walmartInspections = await db.insert(inspections).values([
-      {
+        datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
+        inspectionType: inspectionTypes[i % inspectionTypes.length],
+        assetId: necAssets[i % necAssets.length],
+        driverName: necDrivers[i % necDrivers.length].name,
+        driverId: necDrivers[i % necDrivers.length].id,
+        inspectionFormData: `Inspection #${i + 1} - Routine check completed.`,
+      });
+    }
+    
+    const necInspections = await db.insert(inspections).values(necInspectionData).returning();
+    
+    // WALMART data
+    const walmartAssets = ["VAN-1145", "VAN-1146", "TRUCK-5001", "TRUCK-5002", "EXCAVATOR-45", "LOADER-22", "FORKLIFT-W01", "FORKLIFT-W02", "CONVEYOR-C3", "PALLET-JACK-W10"];
+    const walmartDrivers = [
+      { name: "Michael Brown", id: "DRV-10892" },
+      { name: "Emily Davis", id: "DRV-10123" },
+      { name: "Robert Lee", id: "DRV-10678" },
+      { name: "Jennifer Park", id: "DRV-10334" },
+      { name: "David Martinez", id: "DRV-10556" },
+    ];
+    
+    // Generate 45 WALMART inspections
+    const walmartInspectionData = [];
+    for (let i = 0; i < 45; i++) {
+      const day = (i % 22) + 1;
+      const hour = 8 + (i % 9);
+      const minute = (i * 20) % 60;
+      
+      walmartInspectionData.push({
         companyId: "WALMART",
-        datetime: new Date("2025-10-02T07:00:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "VAN-1145",
-        driverName: "Michael Brown",
-        driverId: "DRV-10892",
-        inspectionFormData: "Daily route inspection.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-04T10:30:00"),
-        inspectionType: "Heavy Equipment Check",
-        assetId: "EXCAVATOR-45",
-        driverName: "Emily Davis",
-        driverId: "DRV-10123",
-        inspectionFormData: "Equipment check.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-06T14:00:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-5001",
-        driverName: "Robert Lee",
-        driverId: "DRV-10678",
-        inspectionFormData: "Standard vehicle check.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-08T08:30:00"),
-        inspectionType: "Equipment Safety Check",
-        assetId: "LOADER-22",
-        driverName: "Michael Brown",
-        driverId: "DRV-10892",
-        inspectionFormData: "Morning safety check.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-11T11:45:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "VAN-1146",
-        driverName: "Jennifer Park",
-        driverId: "DRV-10334",
-        inspectionFormData: "Pre-trip vehicle inspection.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-13T09:15:00"),
-        inspectionType: "Warehouse Equipment Check",
-        assetId: "FORKLIFT-201",
-        driverName: "Emily Davis",
-        driverId: "DRV-10123",
-        inspectionFormData: "Warehouse equipment review.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-14T16:00:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-5002",
-        driverName: "Robert Lee",
-        driverId: "DRV-10678",
-        inspectionFormData: "End of day inspection.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-16T07:30:00"),
-        inspectionType: "Equipment Safety Check",
-        assetId: "LOADER-23",
-        driverName: "Michael Brown",
-        driverId: "DRV-10892",
-        inspectionFormData: "Equipment safety review.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-18T13:00:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "VAN-1145",
-        driverName: "Jennifer Park",
-        driverId: "DRV-10334",
-        inspectionFormData: "Midday vehicle check.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-19T10:20:00"),
-        inspectionType: "Heavy Equipment Check",
-        assetId: "EXCAVATOR-46",
-        driverName: "Emily Davis",
-        driverId: "DRV-10123",
-        inspectionFormData: "Heavy equipment inspection.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-21T08:45:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-5003",
-        driverName: "Robert Lee",
-        driverId: "DRV-10678",
-        inspectionFormData: "Regular DOT inspection.",
-      },
-      {
-        companyId: "WALMART",
-        datetime: new Date("2025-10-22T15:30:00"),
-        inspectionType: "Equipment Safety Check",
-        assetId: "FORKLIFT-202",
-        driverName: "Michael Brown",
-        driverId: "DRV-10892",
-        inspectionFormData: "Afternoon equipment check.",
-      },
-    ]).returning();
-
-    // FEDEX Inspections (12 inspections)
-    const fedexInspections = await db.insert(inspections).values([
-      {
+        datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
+        inspectionType: inspectionTypes[i % inspectionTypes.length],
+        assetId: walmartAssets[i % walmartAssets.length],
+        driverName: walmartDrivers[i % walmartDrivers.length].name,
+        driverId: walmartDrivers[i % walmartDrivers.length].id,
+        inspectionFormData: `Inspection #${i + 1} - Standard inspection protocol.`,
+      });
+    }
+    
+    const walmartInspections = await db.insert(inspections).values(walmartInspectionData).returning();
+    
+    // FEDEX data
+    const fedexAssets = ["CONVEYOR-C3", "SORTATION-UNIT-4", "VAN-8803", "TRUCK-5503", "FORKLIFT-F10", "LOADER-F22", "PALLET-JACK-F05", "TRUCK-5504", "VAN-8804", "CRANE-F1"];
+    const fedexDrivers = [
+      { name: "James Wilson", id: "DRV-20445" },
+      { name: "Maria Garcia", id: "DRV-20567" },
+      { name: "David Chen", id: "DRV-20789" },
+      { name: "Linda Martinez", id: "DRV-20123" },
+      { name: "Thomas Anderson", id: "DRV-20334" },
+    ];
+    
+    // Generate 45 FEDEX inspections
+    const fedexInspectionData = [];
+    for (let i = 0; i < 45; i++) {
+      const day = (i % 22) + 1;
+      const hour = 6 + (i % 11);
+      const minute = (i * 13) % 60;
+      
+      fedexInspectionData.push({
         companyId: "FEDEX",
-        datetime: new Date("2025-10-01T06:00:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-5501",
-        driverName: "James Wilson",
-        driverId: "DRV-20445",
-        inspectionFormData: "Early morning inspection.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-03T09:30:00"),
-        inspectionType: "Equipment Safety Check",
-        assetId: "CONVEYOR-A1",
-        driverName: "Maria Garcia",
-        driverId: "DRV-20567",
-        inspectionFormData: "Conveyor safety check.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-05T12:15:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "VAN-8801",
-        driverName: "David Chen",
-        driverId: "DRV-20789",
-        inspectionFormData: "Midday vehicle inspection.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-07T07:45:00"),
-        inspectionType: "Heavy Equipment Check",
-        assetId: "SORTATION-UNIT-3",
-        driverName: "James Wilson",
-        driverId: "DRV-20445",
-        inspectionFormData: "Sortation unit check.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-09T14:30:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-5502",
-        driverName: "Linda Martinez",
-        driverId: "DRV-20123",
-        inspectionFormData: "Afternoon vehicle check.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-11T10:00:00"),
-        inspectionType: "Equipment Safety Check",
-        assetId: "CONVEYOR-B2",
-        driverName: "Maria Garcia",
-        driverId: "DRV-20567",
-        inspectionFormData: "Equipment maintenance review.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-13T08:15:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "VAN-8802",
-        driverName: "David Chen",
-        driverId: "DRV-20789",
-        inspectionFormData: "Morning route inspection.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-15T15:45:00"),
-        inspectionType: "Warehouse Equipment Check",
-        assetId: "FORKLIFT-F10",
-        driverName: "James Wilson",
-        driverId: "DRV-20445",
-        inspectionFormData: "Forklift inspection.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-17T11:30:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "TRUCK-5503",
-        driverName: "Linda Martinez",
-        driverId: "DRV-20123",
-        inspectionFormData: "Vehicle safety inspection.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-19T09:00:00"),
-        inspectionType: "Equipment Safety Check",
-        assetId: "SORTATION-UNIT-4",
-        driverName: "Maria Garcia",
-        driverId: "DRV-20567",
-        inspectionFormData: "Safety equipment check.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-20T13:20:00"),
-        inspectionType: "DOT Vehicle Inspection",
-        assetId: "VAN-8803",
-        driverName: "David Chen",
-        driverId: "DRV-20789",
-        inspectionFormData: "Delivery van inspection.",
-      },
-      {
-        companyId: "FEDEX",
-        datetime: new Date("2025-10-22T07:00:00"),
-        inspectionType: "Heavy Equipment Check",
-        assetId: "CONVEYOR-C3",
-        driverName: "James Wilson",
-        driverId: "DRV-20445",
-        inspectionFormData: "Heavy equipment review.",
-      },
-    ]).returning();
-
-    console.log("✅ Created 36 inspections (12 per company)");
+        datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
+        inspectionType: inspectionTypes[i % inspectionTypes.length],
+        assetId: fedexAssets[i % fedexAssets.length],
+        driverName: fedexDrivers[i % fedexDrivers.length].name,
+        driverId: fedexDrivers[i % fedexDrivers.length].id,
+        inspectionFormData: `Inspection #${i + 1} - Operations check complete.`,
+      });
+    }
+    
+    const fedexInspections = await db.insert(inspections).values(fedexInspectionData).returning();
+    
+    console.log(`✅ Created ${necInspections.length + walmartInspections.length + fedexInspections.length} inspections (${necInspections.length} NEC, ${walmartInspections.length} WALMART, ${fedexInspections.length} FEDEX)`);
 
     // Create sample defects for some inspections
     console.log("🔧 Creating sample defects...");
@@ -487,7 +249,7 @@ async function seed() {
     console.log("📊 Summary:");
     console.log("   - 3 companies");
     console.log("   - 5 users (1 superuser + 4 company users)");
-    console.log("   - 36 inspections (12 per company)");
+    console.log(`   - ${necInspections.length + walmartInspections.length + fedexInspections.length} inspections (${necInspections.length} per company)`);
     console.log("   - Multiple defects across different statuses");
   } catch (error) {
     console.error("❌ Seeding failed:", error);

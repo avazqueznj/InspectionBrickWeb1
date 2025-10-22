@@ -37,7 +37,7 @@ export default function Inspections() {
   const [selectedInspection, setSelectedInspection] = useState<InspectionWithDefects | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>({});
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
 
   // Reset to page 1 when search query, filters, or company changes
   useEffect(() => {
