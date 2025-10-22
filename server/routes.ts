@@ -187,115 +187,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get a single inspection by ID (protected)
-  app.get("/api/inspections/:id", requireAuth, async (req, res) => {
-    try {
-      const inspection = await storage.getInspection(req.params.id);
-      if (!inspection) {
-        return res.status(404).json({ error: "Inspection not found" });
-      }
-      
-      // Verify user has access to this inspection's company
-      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-      
-      res.json(inspection);
-    } catch (error) {
-      console.error("Error fetching inspection:", error);
-      res.status(500).json({ error: "Failed to fetch inspection" });
-    }
-  });
-
-  // Print single inspection - serves simple HTML in new tab (protected)
-  app.get("/api/inspections/:id/print", requireAuth, async (req, res) => {
-    try {
-      const inspection = await storage.getInspection(req.params.id);
-      if (!inspection) {
-        return res.status(404).send("<html><body><h1>Inspection not found</h1></body></html>");
-      }
-      
-      // Verify user has access to this inspection's company
-      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
-        return res.status(403).send("<html><body><h1>Access denied</h1></body></html>");
-      }
-      
-      // Get company name
-      const companies = await storage.getCompanies();
-      const company = companies.find(c => c.id === inspection.companyId);
-      
-      // Format date
-      const date = new Date(inspection.datetime);
-      const formattedDate = date.toLocaleDateString();
-      const formattedTime = date.toLocaleTimeString();
-      
-      // Generate simple HTML
-      const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Inspection Report - ${inspection.assetId}</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
-    h1 { font-size: 24px; margin-bottom: 20px; }
-    h2 { font-size: 18px; margin-top: 30px; margin-bottom: 15px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { text-align: left; padding: 8px; border: 1px solid #ddd; }
-    th { background-color: #f5f5f5; font-weight: bold; }
-    .info-row { margin-bottom: 8px; }
-    .label { font-weight: bold; display: inline-block; width: 150px; }
-  </style>
-</head>
-<body>
-  <h1>EQUIPMENT INSPECTION REPORT</h1>
-  
-  <div class="info-row"><span class="label">Company:</span> ${company?.name || inspection.companyId}</div>
-  <div class="info-row"><span class="label">Inspection ID:</span> ${inspection.id}</div>
-  <div class="info-row"><span class="label">Date:</span> ${formattedDate}</div>
-  <div class="info-row"><span class="label">Time:</span> ${formattedTime}</div>
-  <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
-  <div class="info-row"><span class="label">Asset ID:</span> ${inspection.assetId}</div>
-  <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName}</div>
-  <div class="info-row"><span class="label">Driver ID:</span> ${inspection.driverId}</div>
-  
-  <h2>Defects</h2>
-  ${inspection.defects && inspection.defects.length > 0 ? `
-  <table>
-    <thead>
-      <tr>
-        <th>Zone</th>
-        <th>Component</th>
-        <th>Defect</th>
-        <th>Severity</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${inspection.defects.map(d => `
-      <tr>
-        <td>${d.zoneName}</td>
-        <td>${d.componentName}</td>
-        <td>${d.defect}</td>
-        <td>${d.severity}</td>
-        <td>${d.status}</td>
-      </tr>
-      `).join('')}
-    </tbody>
-  </table>
-  ` : '<p>No defects found.</p>'}
-</body>
-</html>`;
-      
-      res.setHeader('Content-Type', 'text/html');
-      res.send(html);
-    } catch (error) {
-      console.error("Error generating print view:", error);
-      res.status(500).send("<html><body><h1>Error generating report</h1></body></html>");
-    }
-  });
-
   // Print inspection list - serves simple HTML in new tab (protected)
+  // NOTE: This MUST be before the /:id route to avoid Express matching "print-list" as an ID
   app.get("/api/inspections/print-list", requireAuth, async (req, res) => {
     try {
       const params = queryParamsSchema.parse(req.query);
@@ -388,6 +281,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating print list:", error);
       res.status(500).send("<html><body><h1>Error generating list</h1></body></html>");
+    }
+  });
+
+  // Print single inspection - serves simple HTML in new tab (protected)
+  app.get("/api/inspections/:id/print", requireAuth, async (req, res) => {
+    try {
+      const inspection = await storage.getInspection(req.params.id);
+      if (!inspection) {
+        return res.status(404).send("<html><body><h1>Inspection not found</h1></body></html>");
+      }
+      
+      // Verify user has access to this inspection's company
+      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+        return res.status(403).send("<html><body><h1>Access denied</h1></body></html>");
+      }
+      
+      // Get company name
+      const companies = await storage.getCompanies();
+      const company = companies.find(c => c.id === inspection.companyId);
+      
+      // Format date
+      const date = new Date(inspection.datetime);
+      const formattedDate = date.toLocaleDateString();
+      const formattedTime = date.toLocaleTimeString();
+      
+      // Generate simple HTML
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Inspection Report - ${inspection.assetId}</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-top: 30px; margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { text-align: left; padding: 8px; border: 1px solid #ddd; }
+    th { background-color: #f5f5f5; font-weight: bold; }
+    .info-row { margin-bottom: 8px; }
+    .label { font-weight: bold; display: inline-block; width: 150px; }
+  </style>
+</head>
+<body>
+  <h1>EQUIPMENT INSPECTION REPORT</h1>
+  
+  <div class="info-row"><span class="label">Company:</span> ${company?.name || inspection.companyId}</div>
+  <div class="info-row"><span class="label">Inspection ID:</span> ${inspection.id}</div>
+  <div class="info-row"><span class="label">Date:</span> ${formattedDate}</div>
+  <div class="info-row"><span class="label">Time:</span> ${formattedTime}</div>
+  <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
+  <div class="info-row"><span class="label">Asset ID:</span> ${inspection.assetId}</div>
+  <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName}</div>
+  <div class="info-row"><span class="label">Driver ID:</span> ${inspection.driverId}</div>
+  
+  <h2>Defects</h2>
+  ${inspection.defects && inspection.defects.length > 0 ? `
+  <table>
+    <thead>
+      <tr>
+        <th>Zone</th>
+        <th>Component</th>
+        <th>Defect</th>
+        <th>Severity</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${inspection.defects.map(d => `
+      <tr>
+        <td>${d.zoneName}</td>
+        <td>${d.componentName}</td>
+        <td>${d.defect}</td>
+        <td>${d.severity}</td>
+        <td>${d.status}</td>
+      </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  ` : '<p>No defects found.</p>'}
+</body>
+</html>`;
+      
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } catch (error) {
+      console.error("Error generating print view:", error);
+      res.status(500).send("<html><body><h1>Error generating report</h1></body></html>");
+    }
+  });
+
+  // Get a single inspection by ID (protected)
+  app.get("/api/inspections/:id", requireAuth, async (req, res) => {
+    try {
+      const inspection = await storage.getInspection(req.params.id);
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+      
+      // Verify user has access to this inspection's company
+      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      res.json(inspection);
+    } catch (error) {
+      console.error("Error fetching inspection:", error);
+      res.status(500).json({ error: "Failed to fetch inspection" });
     }
   });
 
