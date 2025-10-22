@@ -5,6 +5,7 @@ import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
+import { FilterBar } from "@/components/FilterBar";
 import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -18,6 +19,15 @@ interface PaginatedResponse {
   totalPages: number;
 }
 
+interface Filters {
+  dateFrom?: string;
+  dateTo?: string;
+  inspectionType?: string;
+  assetId?: string;
+  driverName?: string;
+  driverId?: string;
+}
+
 export default function Inspections() {
   const { selectedCompany } = useCompany();
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,15 +36,39 @@ export default function Inspections() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedInspection, setSelectedInspection] = useState<InspectionWithDefects | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filters, setFilters] = useState<Filters>({});
   const itemsPerPage = 20;
 
-  // Reset to page 1 when search query or company changes
+  // Reset to page 1 when search query, filters, or company changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCompany]);
+  }, [
+    searchQuery, 
+    selectedCompany, 
+    filters.dateFrom, 
+    filters.dateTo, 
+    filters.inspectionType, 
+    filters.assetId, 
+    filters.driverName, 
+    filters.driverId
+  ]);
 
   const { data, isLoading } = useQuery<PaginatedResponse>({
-    queryKey: ["/api/inspections", selectedCompany, searchQuery, sortField, sortDirection, currentPage, itemsPerPage],
+    queryKey: [
+      "/api/inspections", 
+      selectedCompany, 
+      searchQuery, 
+      sortField, 
+      sortDirection, 
+      currentPage, 
+      itemsPerPage,
+      filters.dateFrom,
+      filters.dateTo,
+      filters.inspectionType,
+      filters.assetId,
+      filters.driverName,
+      filters.driverId
+    ],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
       
@@ -44,6 +78,14 @@ export default function Inspections() {
       if (sortDirection) queryParams.set("sortDirection", sortDirection);
       queryParams.set("page", currentPage.toString());
       queryParams.set("limit", itemsPerPage.toString());
+      
+      // Add filter parameters
+      if (filters.dateFrom) queryParams.set("dateFrom", filters.dateFrom);
+      if (filters.dateTo) queryParams.set("dateTo", filters.dateTo);
+      if (filters.inspectionType) queryParams.set("inspectionType", filters.inspectionType);
+      if (filters.assetId) queryParams.set("assetId", filters.assetId);
+      if (filters.driverName) queryParams.set("driverName", filters.driverName);
+      if (filters.driverId) queryParams.set("driverId", filters.driverId);
       
       const response = await fetch(`/api/inspections?${queryParams.toString()}`);
       if (!response.ok) {
@@ -108,6 +150,9 @@ export default function Inspections() {
             />
           </div>
         </div>
+
+        {/* Filter Bar */}
+        <FilterBar companyId={selectedCompany || undefined} onFilterChange={setFilters} />
 
         {/* Table */}
         <div className="border rounded-lg overflow-hidden bg-card">

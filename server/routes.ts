@@ -21,6 +21,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
+    // Filter parameters
+    dateFrom: z.string().optional(),
+    dateTo: z.string().optional(),
+    inspectionType: z.string().optional(),
+    assetId: z.string().optional(),
+    driverName: z.string().optional(),
+    driverId: z.string().optional(),
   });
 
   // Login schema
@@ -128,6 +135,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Routes] Error fetching companies:", error);
       res.status(500).json({ error: "Failed to fetch companies" });
+    }
+  });
+
+  // Get available filter values for inspections (protected)
+  app.get("/api/inspections/filter-values", requireAuth, async (req, res) => {
+    console.log(`🔍 [Routes] GET /api/inspections/filter-values - User: ${req.session.userId}, CompanyId: ${req.session.companyId || 'null (superuser)'}`);
+    
+    try {
+      // Enforce company scoping: use session's companyId unless user is superuser
+      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for filter values - Company: ${req.session.companyId}`);
+      } else {
+        console.log(`👑 [Routes] Superuser access - getting filter values for company: ${companyId || 'ALL'}`);
+      }
+      
+      const filterValues = await storage.getFilterValues(companyId);
+      res.json(filterValues);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching filter values:", error);
+      res.status(500).json({ error: "Failed to fetch filter values" });
     }
   });
 

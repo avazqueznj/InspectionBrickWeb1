@@ -10,6 +10,20 @@ export interface QueryParams {
   sortDirection?: "asc" | "desc";
   page?: number;
   limit?: number;
+  // Filter parameters
+  dateFrom?: string;
+  dateTo?: string;
+  inspectionType?: string;
+  assetId?: string;
+  driverName?: string;
+  driverId?: string;
+}
+
+export interface FilterValues {
+  inspectionTypes: string[];
+  assetIds: string[];
+  driverNames: string[];
+  driverIds: string[];
 }
 
 export interface PaginatedResult<T> {
@@ -31,6 +45,7 @@ export interface IStorage {
   // Inspections
   getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>>;
   getInspection(id: string): Promise<InspectionWithDefects | undefined>;
+  getFilterValues(companyId?: string): Promise<FilterValues>;
   createInspection(inspection: InsertInspection): Promise<Inspection>;
   updateInspection(id: string, inspection: Partial<InsertInspection>): Promise<Inspection | undefined>;
   deleteInspection(id: string): Promise<boolean>;
@@ -100,8 +115,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>> {
-    const { companyId, search, sortField = "datetime", sortDirection = "desc", page = 1, limit = 20 } = params || {};
+    const { 
+      companyId, 
+      search, 
+      sortField = "datetime", 
+      sortDirection = "desc", 
+      page = 1, 
+      limit = 20,
+      dateFrom,
+      dateTo,
+      inspectionType,
+      assetId,
+      driverName,
+      driverId
+    } = params || {};
+    
     console.log(`📊 [Storage] getInspections - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}`);
+    if (dateFrom || dateTo || inspectionType || assetId || driverName || driverId) {
+      console.log(`🔍 [Storage] Filters - dateFrom: ${dateFrom || 'none'}, dateTo: ${dateTo || 'none'}, type: ${inspectionType || 'none'}, asset: ${assetId || 'none'}, driver: ${driverName || 'none'}, driverId: ${driverId || 'none'}`);
+    }
     
     // Build where conditions array
     const conditions = [];
@@ -121,6 +153,26 @@ export class DatabaseStorage implements IStorage {
           ilike(inspections.driverId, `%${search}%`)
         )!
       );
+    }
+    
+    // Add filter conditions
+    if (dateFrom) {
+      conditions.push(sql`${inspections.datetime}::date >= ${dateFrom}::date`);
+    }
+    if (dateTo) {
+      conditions.push(sql`${inspections.datetime}::date <= ${dateTo}::date`);
+    }
+    if (inspectionType) {
+      conditions.push(eq(inspections.inspectionType, inspectionType));
+    }
+    if (assetId) {
+      conditions.push(eq(inspections.assetId, assetId));
+    }
+    if (driverName) {
+      conditions.push(eq(inspections.driverName, driverName));
+    }
+    if (driverId) {
+      conditions.push(eq(inspections.driverId, driverId));
     }
     
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
@@ -175,6 +227,42 @@ export class DatabaseStorage implements IStorage {
     });
     console.log(`${result ? '✅' : '❌'} [Storage] Inspection ${result ? 'found' : 'not found'}`);
     return result as InspectionWithDefects | undefined;
+  }
+
+  async getFilterValues(companyId?: string): Promise<FilterValues> {
+    console.log(`🔍 [Storage] getFilterValues - companyId: ${companyId || 'ALL'}`);
+    
+    const whereCondition = companyId ? eq(inspections.companyId, companyId) : undefined;
+    
+    // Get distinct values for each filterable column
+    const [inspectionTypesResult, assetIdsResult, driverNamesResult, driverIdsResult] = await Promise.all([
+      db.selectDistinct({ value: inspections.inspectionType })
+        .from(inspections)
+        .where(whereCondition)
+        .orderBy(asc(inspections.inspectionType)),
+      db.selectDistinct({ value: inspections.assetId })
+        .from(inspections)
+        .where(whereCondition)
+        .orderBy(asc(inspections.assetId)),
+      db.selectDistinct({ value: inspections.driverName })
+        .from(inspections)
+        .where(whereCondition)
+        .orderBy(asc(inspections.driverName)),
+      db.selectDistinct({ value: inspections.driverId })
+        .from(inspections)
+        .where(whereCondition)
+        .orderBy(asc(inspections.driverId)),
+    ]);
+    
+    const result = {
+      inspectionTypes: inspectionTypesResult.map(r => r.value),
+      assetIds: assetIdsResult.map(r => r.value),
+      driverNames: driverNamesResult.map(r => r.value),
+      driverIds: driverIdsResult.map(r => r.value),
+    };
+    
+    console.log(`✅ [Storage] getFilterValues - Found ${result.inspectionTypes.length} types, ${result.assetIds.length} assets, ${result.driverNames.length} drivers`);
+    return result;
   }
 
   async createInspection(insertInspection: InsertInspection): Promise<Inspection> {
