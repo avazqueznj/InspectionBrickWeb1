@@ -46,7 +46,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         companyId: asset.companyId,
       });
     } else if (open && !asset) {
-      // In create mode, use current company context (or empty for superusers)
+      // In create mode, use user's company (or empty for superusers to select)
       form.reset({
         assetId: "",
         assetConfig: "",
@@ -61,7 +61,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         assetConfig: "",
         assetName: "",
         status: "ACTIVE",
-        companyId: currentCompanyId || "",
+        companyId: "",
       });
     }
   }, [open, asset, form, currentCompanyId]);

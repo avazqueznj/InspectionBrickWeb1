@@ -70,6 +70,11 @@ export default function Assets() {
     queryKey: ["/api/companies"],
   });
 
+  // Fetch current user to determine if they're a superuser
+  const { data: currentUser } = useQuery<{ userId: string; companyId: string | null }>({
+    queryKey: ["/api/auth/user"],
+  });
+
   // Create asset mutation
   const createMutation = useMutation({
     mutationFn: async (data: InsertAsset) => {
@@ -368,7 +373,7 @@ export default function Assets() {
         onSubmit={handleModalSubmit}
         isPending={createMutation.isPending || updateMutation.isPending}
         companies={companies}
-        currentCompanyId={selectedCompany}
+        currentCompanyId={currentUser?.companyId || null}
       />
     </div>
   );
