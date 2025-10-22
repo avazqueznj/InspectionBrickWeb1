@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertInspectionSchema, insertDefectSchema } from "@shared/schema";
+import { generateInspectionsPDF } from "./pdfGenerator";
 import { z } from "zod";
 
 // Authentication middleware
@@ -184,6 +185,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error fetching inspections:", error);
       res.status(500).json({ error: "Failed to fetch inspections" });
+    }
+  });
+
+  // Generate PDF report for inspections (protected)
+  app.get("/api/inspections/pdf", requireAuth, async (req, res) => {
+    console.log(`📄 [Routes] GET /api/inspections/pdf - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    
+    try {
+      const params = queryParamsSchema.parse(req.query);
+      
+      // Enforce company scoping
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for PDF - User restricted to: ${req.session.companyId}`);
+        params.companyId = req.session.companyId;
+      } else {
+        console.log(`👑 [Routes] Superuser access for PDF - allowing companyId: ${params.companyId || 'ALL'}`);
+      }
+      
+      // Override limit to max 100 for PDF generation
+      params.limit = 100;
+      params.page = 1;
+      console.log(`📊 [Routes] Limiting PDF to ${params.limit} inspections`);
+      
+      const result = await storage.getInspections(params);
+      
+      if (result.data.length === 0) {
+        console.log(`⚠️ [Routes] No inspections found for PDF generation`);
+        return res.status(404).json({ error: "No inspections found matching the criteria" });
+      }
+      
+      // Get company information
+      const companyId = params.companyId;
+      if (!companyId) {
+        console.log(`❌ [Routes] PDF generation requires a company to be selected`);
+        return res.status(400).json({ error: "Please select a company to generate PDF report" });
+      }
+      
+      const companies = await storage.getCompanies();
+      const company = companies.find(c => c.id === companyId);
+      
+      if (!company) {
+        console.log(`❌ [Routes] Company not found: ${companyId}`);
+        return res.status(404).json({ error: "Company not found" });
+      }
+      
+      console.log(`✅ [Routes] Generating PDF for ${result.data.length} inspections - Company: ${company.name}`);
+      
+      // Generate PDF
+      const pdfDoc = generateInspectionsPDF({
+        inspections: result.data,
+        company: company,
+      });
+      
+      // Set response headers for PDF download
+      const filename = `inspections-${company.id}-${new Date().toISOString().split('T')[0]}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      // Pipe the PDF to the response
+      pdfDoc.pipe(res);
+      pdfDoc.end();
+      
+      console.log(`✅ [Routes] PDF generated successfully: ${filename}`);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.log(`❌ [Routes] Invalid query parameters for PDF:`, error.errors);
+        return res.status(400).json({ error: "Invalid query parameters", details: error.errors });
+      }
+      console.error("❌ [Routes] Error generating PDF:", error);
+      res.status(500).json({ error: "Failed to generate PDF report" });
     }
   });
 
