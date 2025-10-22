@@ -1,7 +1,8 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects } from "@shared/schema";
+import { companies, inspections, defects, users, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 export interface QueryParams {
   companyId?: string;
@@ -23,6 +24,11 @@ export interface IStorage {
   // Companies
   getCompanies(): Promise<Company[]>;
   
+  // Users & Auth
+  getUserById(userId: string): Promise<User | undefined>;
+  createUser(userId: string, password: string, companyId: string | null): Promise<User>;
+  authenticateUser(userId: string, password: string): Promise<User | null>;
+  
   // Inspections
   getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>>;
   getInspection(id: string): Promise<InspectionWithDefects | undefined>;
@@ -40,6 +46,40 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   async getCompanies(): Promise<Company[]> {
     return await db.select().from(companies).orderBy(asc(companies.name));
+  }
+
+  async getUserById(userId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.userId, userId));
+    return user;
+  }
+
+  async createUser(userId: string, password: string, companyId: string | null): Promise<User> {
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    
+    const [user] = await db
+      .insert(users)
+      .values({
+        userId,
+        password: hashedPassword,
+        companyId,
+      })
+      .returning();
+    return user;
+  }
+
+  async authenticateUser(userId: string, password: string): Promise<User | null> {
+    const user = await this.getUserById(userId);
+    if (!user) {
+      return null;
+    }
+    
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) {
+      return null;
+    }
+    
+    return user;
   }
 
   async getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>> {
