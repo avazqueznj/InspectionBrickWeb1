@@ -1,0 +1,213 @@
+Skip to content
+
+Files
+Commands
+.config
+.git
+attached_assets
+FBricklogo_1761093196077.png
+client
+public
+src
+components
+contexts
+hooks
+lib
+queryClient.ts
+utils.ts
+pages
+ComingSoon.tsx
+Inspections.tsx
+Login.tsx
+not-found.tsx
+App.tsx
+index.css
+main.tsx
+index.html
+server
+db.ts
+index.ts
+routes.ts
+seed.ts
+storage.ts
+vite.ts
+shared
+.gitignore
+components.json
+design_guidelines.md
+drizzle.config.ts
+postcss.config.js
+replit.md
+tailwind.config.ts
+tsconfig.json
+vite.config.ts
+Packager files
+.upm
+node_modules
+package-lock.json
+package.json
+Config files
+.replit
+You're viewing your database in read-only.
+Enable Editing
+Powered by
+
+4 rows•184ms
+
+61m • 1 hour ago
+Time
+Deployment
+Source
+Log
+2025-10-21 20:01:30.09
+abfe3b9a
+User
+3:01:30 AM [express] GET /api/auth/me 401 in 1ms :: {"error":"Not authenticated"}
+2025-10-21 20:03:50.20
+abfe3b9a
+User
+🔐 [Storage] Authenticating user: avazquez
+2025-10-21 20:03:50.20
+abfe3b9a
+User
+🔍 [Storage] Fetching user by ID: avazquez
+2025-10-21 20:03:50.23
+abfe3b9a
+User
+✅ [Storage] User found: avazquez, companyId: null (superuser)
+2025-10-21 20:03:50.23
+abfe3b9a
+User
+✅ [Storage] Authentication successful for user: avazquez
+2025-10-21 20:03:50.23
+abfe3b9a
+User
+✅ [Routes] Session created - userId: avazquez, companyId: null (superuser)
+2025-10-21 20:03:50.23
+abfe3b9a
+User
+✅ [Routes] Login successful for user: avazquez
+2025-10-21 20:03:50.23
+abfe3b9a
+User
+3:03:50 AM [express] POST /api/auth/login 200 in 25ms :: {"userId":"avazquez","companyId":null}
+2025-10-21 20:03:50.32
+abfe3b9a
+User
+👤 [Routes] GET /api/auth/me - Session userId: NONE
+2025-10-21 20:03:50.32
+abfe3b9a
+User
+❌ [Routes] Not authenticated - No session
+2025-10-21 20:03:50.32
+abfe3b9a
+User
+3:03:50 AM [express] GET /api/auth/me 401 in 1ms :: {"error":"Not authenticated"}
+2025-10-21 20:07:26.25
+abfe3b9a
+User
+👤 [Routes] GET /api/auth/me - Session userId: NONE
+2025-10-21 20:07:26.25
+abfe3b9a
+User
+❌ [Routes] Not authenticated - No session
+2025-10-21 20:07:26.26
+abfe3b9a
+User
+3:07:26 AM [express] GET /api/auth/me 401 in 1ms :: {"error":"Not authenticated"}
+2025-10-21 20:07:32.72
+abfe3b9a
+User
+🔐 [Routes] POST /api/auth/login - Attempting login for user: avazquez
+2025-10-21 20:07:32.72
+abfe3b9a
+User
+✅ [Routes] Login request validated - userId: avazquez
+2025-10-21 20:07:32.72
+abfe3b9a
+User
+🔐 [Storage] Authenticating user: avazquez
+2025-10-21 20:07:32.72
+abfe3b9a
+User
+🔍 [Storage] Fetching user by ID: avazquez
+2025-10-21 20:07:35.17
+abfe3b9a
+User
+✅ [Storage] User found: avazquez, companyId: null (superuser)
+2025-10-21 20:07:35.17
+abfe3b9a
+User
+✅ [Storage] Authentication successful for user: avazquez
+2025-10-21 20:07:35.17
+abfe3b9a
+User
+✅ [Routes] Session created - userId: avazquez, companyId: null (superuser)
+2025-10-21 20:07:35.17
+abfe3b9a
+User
+✅ [Routes] Login successful for user: avazquez
+2025-10-21 20:07:35.17
+abfe3b9a
+User
+3:07:35 AM [express] POST /api/auth/login 200 in 2450ms :: {"userId":"avazquez","companyId":null}
+2025-10-21 20:07:35.34
+abfe3b9a
+User
+👤 [Routes] GET /api/auth/me - Session userId: NONE
+2025-10-21 20:07:35.34
+abfe3b9a
+User
+❌ [Routes] Not authenticated - No session
+2025-10-21 20:07:35.35
+abfe3b9a
+User
+3:07:35 AM [express] GET /api/auth/me 401 in 1ms :: {"error":"Not authenticated"}
+2025-10-21 20:07:45.04
+abfe3b9a
+User
+🔐 [Routes] POST /api/auth/login - Attempting login for user: adrianal
+2025-10-21 20:07:45.04
+abfe3b9a
+User
+✅ [Routes] Login request validated - userId: adrianal
+2025-10-21 20:07:45.04
+abfe3b9a
+User
+🔐 [Storage] Authenticating user: adrianal
+2025-10-21 20:07:45.04
+abfe3b9a
+User
+🔍 [Storage] Fetching user by ID: adrianal
+2025-10-21 20:07:45.07
+abfe3b9a
+User
+✅ [Storage] User found: adrianal, companyId: WALMART
+2025-10-21 20:07:45.07
+abfe3b9a
+User
+✅ [Storage] Authentication successful for user: adrianal
+2025-10-21 20:07:45.07
+abfe3b9a
+User
+✅ [Routes] Session created - userId: adrianal, companyId: WALMART
+2025-10-21 20:07:45.07
+abfe3b9a
+User
+✅ [Routes] Login successful for user: adrianal
+2025-10-21 20:07:45.07
+abfe3b9a
+User
+3:07:45 AM [express] POST /api/auth/login 200 in 26ms :: {"userId":"adrianal","companyId":"WALMART"}
+2025-10-21 20:07:45.16
+abfe3b9a
+User
+👤 [Routes] GET /api/auth/me - Session userId: NONE
+2025-10-21 20:07:45.16
+abfe3b9a
+User
+❌ [Routes] Not authenticated - No session
+2025-10-21 20:07:45.16
+abfe3b9a
+User
+3:07:45 AM [express] GET /api/auth/me 401 in 1ms :: {"error":"Not authenticated"}

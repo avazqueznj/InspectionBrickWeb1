@@ -9,6 +9,10 @@ console.log("🚀 Starting Inspection Brick Server");
 console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
 console.log(`🔐 Session Secret: ${process.env.SESSION_SECRET ? 'SET (from env)' : 'USING DEFAULT (not secure for production)'}`);
 
+// Trust proxy - required for Replit deployments to handle cookies correctly
+app.set('trust proxy', 1);
+console.log(`🔒 Trust proxy: enabled (required for production deployments)`);
+
 // Extend session data type
 declare module 'express-session' {
   interface SessionData {
@@ -23,17 +27,22 @@ declare module 'http' {
   }
 }
 
-// Session configuration
+// Session configuration optimized for production
+const isProduction = process.env.NODE_ENV === "production";
 app.use(session({
   secret: process.env.SESSION_SECRET || "inspection-brick-secret-key-change-in-production",
   resave: false,
   saveUninitialized: false,
+  proxy: true, // Trust the reverse proxy for secure cookies
   cookie: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
+    secure: isProduction, // Require HTTPS in production
+    httpOnly: true, // Prevent client-side JS access
+    sameSite: isProduction ? 'none' : 'lax', // Required for cross-site cookies in production
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 }));
+
+console.log(`🍪 Session configured - secure: ${isProduction}, sameSite: ${isProduction ? 'none' : 'lax'}, maxAge: 24h`);
 
 app.use(express.json({
   verify: (req, _res, buf) => {

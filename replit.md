@@ -251,6 +251,20 @@ The application has been end-to-end tested with Playwright covering:
 
 The application is ready for pilot deployment. Use Replit's built-in publishing feature to make it accessible with a live URL.
 
+### Production Session Configuration
+
+The application automatically configures sessions for production environments:
+- **Trust Proxy:** Enabled to handle Replit's reverse proxy correctly
+- **Secure Cookies:** Required HTTPS in production (automatically handled by Replit)
+- **SameSite:** Set to 'none' in production for cross-site cookie support
+- **Session Persistence:** 24-hour session timeout
+
+When you publish, the server will log:
+```
+🔒 Trust proxy: enabled (required for production deployments)
+🍪 Session configured - secure: true, sameSite: none, maxAge: 24h
+```
+
 ## Support & Maintenance
 
 For questions or issues during the pilot:
