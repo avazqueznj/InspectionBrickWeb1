@@ -38,6 +38,14 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
   // Fetch available filter values
   const { data: filterValues } = useQuery<FilterValues>({
     queryKey: ["/api/inspections/filter-values", companyId],
+    queryFn: async () => {
+      if (!companyId) return { inspectionTypes: [], assetIds: [], driverNames: [], driverIds: [] };
+      const response = await fetch(`/api/inspections/filter-values?companyId=${companyId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch filter values");
+      }
+      return response.json();
+    },
     enabled: !!companyId,
   });
 
