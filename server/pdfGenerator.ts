@@ -1,17 +1,23 @@
 import PdfPrinter from "pdfmake";
 import type { TDocumentDefinitions, Content, TableCell } from "pdfmake/interfaces";
 import type { InspectionWithDefects, Company } from "@shared/schema";
+import * as pdfFonts from "pdfmake/build/vfs_fonts";
 
-const fonts = {
-  Roboto: {
-    normal: "node_modules/pdfmake/build/vfs_fonts.js",
-    bold: "node_modules/pdfmake/build/vfs_fonts.js",
-    italics: "node_modules/pdfmake/build/vfs_fonts.js",
-    bolditalics: "node_modules/pdfmake/build/vfs_fonts.js",
-  },
-};
-
-const printer = new PdfPrinter(fonts);
+function getPrinter(): PdfPrinter {
+  // Type assertion for vfs_fonts - the structure varies between versions
+  const vfs = (pdfFonts as any).pdfMake?.vfs || pdfFonts;
+  
+  const fonts = {
+    Roboto: {
+      normal: Buffer.from(vfs["Roboto-Regular.ttf"], 'base64'),
+      bold: Buffer.from(vfs["Roboto-Medium.ttf"], 'base64'),
+      italics: Buffer.from(vfs["Roboto-Italic.ttf"], 'base64'),
+      bolditalics: Buffer.from(vfs["Roboto-MediumItalic.ttf"], 'base64'),
+    },
+  };
+  
+  return new PdfPrinter(fonts);
+}
 
 interface GeneratePDFOptions {
   inspections: InspectionWithDefects[];
@@ -20,6 +26,7 @@ interface GeneratePDFOptions {
 
 export function generateInspectionsPDF(options: GeneratePDFOptions): PDFKit.PDFDocument {
   const { inspections, company } = options;
+  const printer = getPrinter();
 
   const docDefinition: TDocumentDefinitions = {
     pageSize: "LETTER",

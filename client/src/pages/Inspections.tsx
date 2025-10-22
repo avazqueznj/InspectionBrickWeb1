@@ -129,7 +129,28 @@ export default function Inspections() {
     if (filters.driverName) queryParams.set("driverName", filters.driverName);
     if (filters.driverId) queryParams.set("driverId", filters.driverId);
 
-    window.open(`/api/inspections/pdf?${queryParams.toString()}`, '_blank');
+    try {
+      const response = await fetch(`/api/inspections/pdf?${queryParams.toString()}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.error('Failed to generate PDF:', response.statusText);
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inspections-${selectedCompany}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+    }
   };
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
