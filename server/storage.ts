@@ -47,10 +47,16 @@ export class DatabaseStorage implements IStorage {
         )
       : undefined;
 
-    // Determine sort order
-    const orderBy = sortDirection === "asc"
-      ? asc(inspections[sortField as keyof typeof inspections] || inspections.datetime)
-      : desc(inspections[sortField as keyof typeof inspections] || inspections.datetime);
+    // Determine sort order based on sortField
+    const sortColumnMap = {
+      datetime: inspections.datetime,
+      inspectionType: inspections.inspectionType,
+      assetId: inspections.assetId,
+      driverName: inspections.driverName,
+    };
+    
+    const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspections.datetime;
+    const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
 
     // Get total count
     const countResult = await db
