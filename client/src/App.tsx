@@ -9,10 +9,11 @@ import { TopBar } from "@/components/TopBar";
 import Inspections from "@/pages/Inspections";
 import Users from "@/pages/Users";
 import Assets from "@/pages/Assets";
+import InspectionTypes from "@/pages/InspectionTypes";
 import Login from "@/pages/Login";
 import ComingSoon from "@/pages/ComingSoon";
 import NotFound from "@/pages/not-found";
-import { Wrench, ClipboardList } from "lucide-react";
+import { Wrench } from "lucide-react";
 
 function ProtectedRouter() {
   return (
@@ -29,15 +30,7 @@ function ProtectedRouter() {
       </Route>
       <Route path="/assets" component={Assets} />
       <Route path="/users" component={Users} />
-      <Route path="/inspection-types">
-        {() => (
-          <ComingSoon
-            title="Inspection Types"
-            description="Configure inspection templates and checklists"
-            icon={ClipboardList}
-          />
-        )}
-      </Route>
+      <Route path="/inspection-types" component={InspectionTypes} />
       <Route component={NotFound} />
     </Switch>
   );
