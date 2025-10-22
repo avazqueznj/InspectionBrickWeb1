@@ -8,10 +8,11 @@ import { CompanyProvider } from "@/contexts/CompanyContext";
 import { TopBar } from "@/components/TopBar";
 import Inspections from "@/pages/Inspections";
 import Users from "@/pages/Users";
+import Assets from "@/pages/Assets";
 import Login from "@/pages/Login";
 import ComingSoon from "@/pages/ComingSoon";
 import NotFound from "@/pages/not-found";
-import { Wrench, Box, Users as UsersIcon, ClipboardList } from "lucide-react";
+import { Wrench, ClipboardList } from "lucide-react";
 
 function ProtectedRouter() {
   return (
@@ -26,15 +27,7 @@ function ProtectedRouter() {
           />
         )}
       </Route>
-      <Route path="/assets">
-        {() => (
-          <ComingSoon
-            title="Assets"
-            description="View and manage all vehicles and equipment"
-            icon={Box}
-          />
-        )}
-      </Route>
+      <Route path="/assets" component={Assets} />
       <Route path="/users" component={Users} />
       <Route path="/inspection-types">
         {() => (
