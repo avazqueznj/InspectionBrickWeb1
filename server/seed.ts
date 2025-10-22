@@ -165,86 +165,116 @@ async function seed() {
     
     console.log(`✅ Created ${necInspections.length + walmartInspections.length + fedexInspections.length} inspections (${necInspections.length} NEC, ${walmartInspections.length} WALMART, ${fedexInspections.length} FEDEX)`);
 
-    // Create sample defects for some inspections
-    console.log("🔧 Creating sample defects...");
+    // Create comprehensive defects for realistic legal inspection reports
+    console.log("🔧 Creating comprehensive defect data...");
     
-    // Add defects to first NEC inspection
-    await db.insert(defects).values([
-      {
-        inspectionId: necInspections[0].id,
-        zoneName: "Front End",
-        componentName: "Left Headlight",
-        defect: "Headlight cracked, reduced visibility",
-        severity: 75,
-        driverNotes: "Noticed during pre-trip inspection",
-        status: "open",
-        repairNotes: null,
-      },
-      {
-        inspectionId: necInspections[0].id,
-        zoneName: "Rear",
-        componentName: "Brake Light",
-        defect: "Brake light not functioning",
-        severity: 85,
-        driverNotes: "Safety hazard for night driving",
-        status: "pending",
-        repairNotes: "Parts ordered",
-      },
-    ]);
+    // Defect templates for variety
+    const defectTemplates = [
+      // Critical Safety Defects (Severity 70-100)
+      { zoneName: "Brakes", componentName: "Front Brake Pads", defect: "Brake pads worn below minimum thickness (2mm remaining)", severity: 90, status: "open" as const, driverNotes: "Grinding noise when braking, requires immediate attention" },
+      { zoneName: "Steering", componentName: "Power Steering Pump", defect: "Power steering fluid leak detected at pump seal", severity: 85, status: "pending" as const, driverNotes: "Leak rate approximately 10ml/hour, steering becoming stiff", repairNotes: "Parts ordered, scheduled for replacement" },
+      { zoneName: "Lights", componentName: "Brake Lights", defect: "Both rear brake lights not functioning", severity: 95, status: "open" as const, driverNotes: "Critical safety issue - vehicle not road safe" },
+      { zoneName: "Tires", componentName: "Front Right Tire", defect: "Tire tread depth below legal minimum (1.6mm), visible steel belts", severity: 100, status: "pending" as const, driverNotes: "Tire failure risk - immediate replacement required", repairNotes: "New tire on order" },
+      
+      // Moderate Defects (Severity 40-69)
+      { zoneName: "Engine", componentName: "Air Filter", defect: "Air filter heavily contaminated, restricting airflow", severity: 50, status: "repaired" as const, driverNotes: "Reduced engine performance noted", repairNotes: "Air filter replaced with OEM part" },
+      { zoneName: "Suspension", componentName: "Shock Absorbers", defect: "Front left shock absorber leaking hydraulic fluid", severity: 65, status: "pending" as const, driverNotes: "Vehicle handling affected, bouncing on rough roads", repairNotes: "Repair scheduled for next maintenance window" },
+      { zoneName: "Electrical", componentName: "Battery Terminals", defect: "Battery terminals corroded, loose connection on positive terminal", severity: 55, status: "repaired" as const, driverNotes: "Intermittent starting issues reported", repairNotes: "Terminals cleaned and tightened, protective coating applied" },
+      { zoneName: "Windshield", componentName: "Wiper Blades", defect: "Wiper blades cracked and torn, leaving streaks", severity: 45, status: "repaired" as const, driverNotes: "Poor visibility during rain", repairNotes: "Both wiper blades replaced" },
+      { zoneName: "Cabin", componentName: "Driver Seat", defect: "Driver seat adjustment mechanism jammed, seat will not move", severity: 40, status: "open" as const, driverNotes: "Unable to adjust seat position for proper driving posture" },
+      
+      // Minor Defects (Severity 10-39)
+      { zoneName: "Exterior", componentName: "Side Mirror", defect: "Passenger side mirror glass has small crack in lower corner", severity: 25, status: "pending" as const, driverNotes: "Does not affect visibility significantly", repairNotes: "Replacement mirror ordered" },
+      { zoneName: "Interior", componentName: "Door Handle", defect: "Interior door handle loose, requires extra force to open", severity: 15, status: "open" as const, driverNotes: "Minor inconvenience, handle still functional" },
+      { zoneName: "Fluids", componentName: "Windshield Washer Fluid", defect: "Windshield washer fluid reservoir empty", severity: 10, status: "repaired" as const, driverNotes: "Unable to clean windshield during inspection", repairNotes: "Reservoir refilled with winter formula" },
+      { zoneName: "Body", componentName: "Front Bumper", defect: "Minor cosmetic damage - small dent on front bumper", severity: 20, status: "open" as const, driverNotes: "Cosmetic only, no structural damage" },
+      { zoneName: "Lights", componentName: "License Plate Light", defect: "License plate light bulb burned out", severity: 30, status: "repaired" as const, driverNotes: "May result in traffic citation", repairNotes: "Bulb replaced" },
+      
+      // Equipment-Specific Defects
+      { zoneName: "Hydraulics", componentName: "Lift Cylinder", defect: "Hydraulic lift cylinder showing slow leak at rod seal", severity: 70, status: "pending" as const, driverNotes: "Lift operation becoming sluggish, safety concern", repairNotes: "Seal replacement parts requisitioned" },
+      { zoneName: "Safety Equipment", componentName: "Fire Extinguisher", defect: "Fire extinguisher pressure gauge in red zone, expired inspection tag", severity: 75, status: "open" as const, driverNotes: "Fire extinguisher may not function properly in emergency" },
+      { zoneName: "Cargo Area", componentName: "Tie-Down Points", defect: "Two cargo tie-down anchors showing signs of stress fractures", severity: 60, status: "pending" as const, driverNotes: "Load securing capability compromised", repairNotes: "Structural engineer assessment scheduled" },
+    ];
+    
+    let totalDefects = 0;
+    
+    // Add varied defects to first 20 NEC inspections (will appear in first 2 pages)
+    for (let i = 0; i < Math.min(20, necInspections.length); i++) {
+      // 70% chance of having defects
+      if (Math.random() < 0.7) {
+        const numDefects = Math.floor(Math.random() * 4) + 1; // 1-4 defects per inspection
+        const selectedDefects = [];
+        
+        for (let j = 0; j < numDefects; j++) {
+          const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
+          selectedDefects.push({
+            inspectionId: necInspections[i].id,
+            zoneName: template.zoneName,
+            componentName: template.componentName,
+            defect: template.defect,
+            severity: template.severity,
+            driverNotes: template.driverNotes,
+            status: template.status,
+            repairNotes: template.repairNotes || null,
+          });
+        }
+        
+        await db.insert(defects).values(selectedDefects);
+        totalDefects += selectedDefects.length;
+      }
+    }
+    
+    // Add varied defects to first 20 WALMART inspections
+    for (let i = 0; i < Math.min(20, walmartInspections.length); i++) {
+      if (Math.random() < 0.7) {
+        const numDefects = Math.floor(Math.random() * 4) + 1;
+        const selectedDefects = [];
+        
+        for (let j = 0; j < numDefects; j++) {
+          const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
+          selectedDefects.push({
+            inspectionId: walmartInspections[i].id,
+            zoneName: template.zoneName,
+            componentName: template.componentName,
+            defect: template.defect,
+            severity: template.severity,
+            driverNotes: template.driverNotes,
+            status: template.status,
+            repairNotes: template.repairNotes || null,
+          });
+        }
+        
+        await db.insert(defects).values(selectedDefects);
+        totalDefects += selectedDefects.length;
+      }
+    }
+    
+    // Add varied defects to first 20 FEDEX inspections
+    for (let i = 0; i < Math.min(20, fedexInspections.length); i++) {
+      if (Math.random() < 0.7) {
+        const numDefects = Math.floor(Math.random() * 4) + 1;
+        const selectedDefects = [];
+        
+        for (let j = 0; j < numDefects; j++) {
+          const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
+          selectedDefects.push({
+            inspectionId: fedexInspections[i].id,
+            zoneName: template.zoneName,
+            componentName: template.componentName,
+            defect: template.defect,
+            severity: template.severity,
+            driverNotes: template.driverNotes,
+            status: template.status,
+            repairNotes: template.repairNotes || null,
+          });
+        }
+        
+        await db.insert(defects).values(selectedDefects);
+        totalDefects += selectedDefects.length;
+      }
+    }
 
-    // Add defects to third NEC inspection
-    await db.insert(defects).values([
-      {
-        inspectionId: necInspections[2].id,
-        zoneName: "Tires",
-        componentName: "Rear Left Tire",
-        defect: "Low tire pressure detected",
-        severity: 40,
-        driverNotes: "Tire pressure at 28 PSI",
-        status: "repaired",
-        repairNotes: "Inflated to 35 PSI",
-      },
-    ]);
-
-    // Add defects to first WALMART inspection
-    await db.insert(defects).values([
-      {
-        inspectionId: walmartInspections[0].id,
-        zoneName: "Engine",
-        componentName: "Oil Level",
-        defect: "Oil level slightly low",
-        severity: 20,
-        driverNotes: "Within acceptable range",
-        status: "repaired",
-        repairNotes: "Oil topped up",
-      },
-      {
-        inspectionId: walmartInspections[0].id,
-        zoneName: "Cabin",
-        componentName: "Windshield",
-        defect: "Small chip in windshield",
-        severity: 30,
-        driverNotes: "Upper right corner",
-        status: "pending",
-        repairNotes: "Scheduled for repair",
-      },
-    ]);
-
-    // Add defects to first FEDEX inspection
-    await db.insert(defects).values([
-      {
-        inspectionId: fedexInspections[0].id,
-        zoneName: "Engine",
-        componentName: "Check Engine Light",
-        defect: "Check engine light illuminated",
-        severity: 60,
-        driverNotes: "Light came on during route",
-        status: "open",
-        repairNotes: null,
-      },
-    ]);
-
-    console.log("✅ Created sample defects");
+    console.log(`✅ Created ${totalDefects} defects across ${Math.floor(totalDefects / 2)} inspections with varied severity levels`);
     console.log("🎉 Seeding completed successfully!");
     console.log("📊 Summary:");
     console.log("   - 3 companies");
