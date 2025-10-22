@@ -1,14 +1,39 @@
 import { db } from "./db";
-import { inspections, defects } from "@shared/schema";
+import { companies, inspections, defects } from "@shared/schema";
 
 async function seed() {
   console.log("🌱 Seeding database...");
 
   try {
-    // Create sample inspections
+    // Create sample companies
+    await db.insert(companies).values([
+      {
+        id: "NEC",
+        name: "National Equipment Corp",
+        address: "1234 Industrial Blvd, Houston, TX 77001",
+        settings: JSON.stringify({ timezone: "America/Chicago", locale: "en-US" }),
+      },
+      {
+        id: "WALMART",
+        name: "Walmart Distribution",
+        address: "5678 Logistics Way, Bentonville, AR 72712",
+        settings: JSON.stringify({ timezone: "America/Chicago", locale: "en-US" }),
+      },
+      {
+        id: "FEDEX",
+        name: "FedEx Ground Operations",
+        address: "9012 Freight Dr, Memphis, TN 38125",
+        settings: JSON.stringify({ timezone: "America/Central", locale: "en-US" }),
+      },
+    ]);
+
+    console.log("✅ Created 3 companies");
+
+    // Create sample inspections for NEC
     const inspection1 = await db
       .insert(inspections)
       .values({
+        companyId: "NEC",
         datetime: new Date("2025-10-20T08:30:00"),
         inspectionType: "DOT Vehicle Inspection",
         assetId: "TRUCK-2401",
@@ -21,6 +46,7 @@ async function seed() {
     const inspection2 = await db
       .insert(inspections)
       .values({
+        companyId: "NEC",
         datetime: new Date("2025-10-21T14:15:00"),
         inspectionType: "Equipment Safety Check",
         assetId: "FORKLIFT-089",
@@ -30,9 +56,11 @@ async function seed() {
       })
       .returning();
 
+    // Create sample inspections for WALMART
     const inspection3 = await db
       .insert(inspections)
       .values({
+        companyId: "WALMART",
         datetime: new Date("2025-10-22T09:00:00"),
         inspectionType: "DOT Vehicle Inspection",
         assetId: "VAN-1145",
@@ -45,6 +73,7 @@ async function seed() {
     const inspection4 = await db
       .insert(inspections)
       .values({
+        companyId: "WALMART",
         datetime: new Date("2025-10-19T16:45:00"),
         inspectionType: "Heavy Equipment Check",
         assetId: "EXCAVATOR-45",
@@ -54,9 +83,23 @@ async function seed() {
       })
       .returning();
 
-    console.log("✅ Created 4 inspections");
+    // Create sample inspections for FEDEX
+    const inspection5 = await db
+      .insert(inspections)
+      .values({
+        companyId: "FEDEX",
+        datetime: new Date("2025-10-22T11:30:00"),
+        inspectionType: "DOT Vehicle Inspection",
+        assetId: "TRUCK-5501",
+        driverName: "James Wilson",
+        driverId: "DRV-20445",
+        inspectionFormData: "Morning pre-route inspection.",
+      })
+      .returning();
 
-    // Create defects for inspection 1
+    console.log("✅ Created 5 inspections across 3 companies");
+
+    // Create defects for NEC inspection 1
     await db.insert(defects).values([
       {
         inspectionId: inspection1[0].id,
@@ -80,7 +123,7 @@ async function seed() {
       },
     ]);
 
-    // Create defects for inspection 2
+    // Create defects for NEC inspection 2
     await db.insert(defects).values([
       {
         inspectionId: inspection2[0].id,
@@ -94,7 +137,7 @@ async function seed() {
       },
     ]);
 
-    // Create defects for inspection 3
+    // Create defects for WALMART inspection 3
     await db.insert(defects).values([
       {
         inspectionId: inspection3[0].id,
@@ -128,7 +171,21 @@ async function seed() {
       },
     ]);
 
-    // Inspection 4 has no defects (perfect inspection)
+    // Create defects for FEDEX inspection 5
+    await db.insert(defects).values([
+      {
+        inspectionId: inspection5[0].id,
+        zoneName: "Engine",
+        componentName: "Check Engine Light",
+        defect: "Check engine light illuminated",
+        severity: 60,
+        driverNotes: "Light came on during route",
+        status: "open",
+        repairNotes: null,
+      },
+    ]);
+
+    // Inspection 4 (WALMART) has no defects (perfect inspection)
 
     console.log("✅ Created sample defects");
     console.log("🎉 Seeding completed successfully!");

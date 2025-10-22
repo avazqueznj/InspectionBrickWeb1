@@ -1,9 +1,10 @@
 // Referenced from blueprint:javascript_database
-import { inspections, defects, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects } from "@shared/schema";
+import { companies, inspections, defects, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
 
 export interface QueryParams {
+  companyId?: string;
   search?: string;
   sortField?: string;
   sortDirection?: "asc" | "desc";
@@ -19,6 +20,9 @@ export interface PaginatedResult<T> {
 }
 
 export interface IStorage {
+  // Companies
+  getCompanies(): Promise<Company[]>;
+  
   // Inspections
   getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>>;
   getInspection(id: string): Promise<InspectionWithDefects | undefined>;
@@ -34,18 +38,34 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async getCompanies(): Promise<Company[]> {
+    return await db.select().from(companies).orderBy(asc(companies.name));
+  }
+
   async getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>> {
-    const { search, sortField = "datetime", sortDirection = "desc", page = 1, limit = 20 } = params || {};
+    const { companyId, search, sortField = "datetime", sortDirection = "desc", page = 1, limit = 20 } = params || {};
     
-    // Build where clause for search (excluding UUID id to avoid type errors)
-    const whereConditions = search
-      ? or(
+    // Build where conditions array
+    const conditions = [];
+    
+    // Filter by company (required)
+    if (companyId) {
+      conditions.push(eq(inspections.companyId, companyId));
+    }
+    
+    // Add search conditions
+    if (search) {
+      conditions.push(
+        or(
           ilike(inspections.inspectionType, `%${search}%`),
           ilike(inspections.assetId, `%${search}%`),
           ilike(inspections.driverName, `%${search}%`),
           ilike(inspections.driverId, `%${search}%`)
-        )
-      : undefined;
+        )!
+      );
+    }
+    
+    const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Determine sort order based on sortField
     const sortColumnMap = {

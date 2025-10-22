@@ -7,11 +7,23 @@ import { z } from "zod";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Query params validation schema
   const queryParamsSchema = z.object({
+    companyId: z.string().optional(),
     search: z.string().optional(),
     sortField: z.enum(["datetime", "inspectionType", "assetId", "driverName"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
+  });
+
+  // Get all companies
+  app.get("/api/companies", async (req, res) => {
+    try {
+      const companies = await storage.getCompanies();
+      res.json(companies);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({ error: "Failed to fetch companies" });
+    }
   });
 
   // Get all inspections with their defects (with query params for search, sort, pagination)

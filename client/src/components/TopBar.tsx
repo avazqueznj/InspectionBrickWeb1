@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { Box } from "lucide-react";
+import { CompanySelector } from "./CompanySelector";
+import logoUrl from "@assets/FBricklogo_1761093196077.png";
 
 const menuItems = [
   { path: "/", label: "Inspections" },
@@ -13,24 +14,20 @@ export function TopBar() {
   const [location] = useLocation();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card">
-      <div className="flex h-16 items-center px-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-            <Box className="h-6 w-6 text-primary-foreground" />
+    <header className="sticky top-0 z-50 w-full border-b bg-card border-border">
+      <div className="flex h-16 items-center justify-between px-6">
+        <div className="flex items-center gap-12">
+          <div className="flex items-center gap-3">
+            <img src={logoUrl} alt="Inspection Brick" className="h-10" />
           </div>
-          <h1 className="text-lg font-semibold">Inspection Brick</h1>
-        </div>
-        
-        <nav className="ml-12 hidden md:flex items-center gap-1">
-          {menuItems.map((item) => {
-            const isActive = location === item.path;
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-              >
-                <a
+          
+          <nav className="hidden md:flex items-center gap-1">
+            {menuItems.map((item) => {
+              const isActive = location === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
                   className={`
                     px-4 py-2 text-sm font-medium rounded-md transition-colors
                     hover-elevate active-elevate-2
@@ -42,11 +39,15 @@ export function TopBar() {
                   data-testid={`nav-${item.label.toLowerCase().replace(/\//g, '-')}`}
                 >
                   {item.label}
-                </a>
-              </Link>
-            );
-          })}
-        </nav>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="flex items-center">
+          <CompanySelector />
+        </div>
       </div>
     </header>
   );

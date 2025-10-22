@@ -3,9 +3,18 @@ import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core"
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Companies table
+export const companies = pgTable("companies", {
+  id: text("company_id").primaryKey(),
+  name: text("company_name").notNull(),
+  address: text("company_address"),
+  settings: text("settings"),
+});
+
 // Inspections table
 export const inspections = pgTable("inspections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   datetime: timestamp("datetime").notNull().defaultNow(),
   inspectionType: text("inspection_type").notNull(),
   assetId: text("asset_id").notNull(),
@@ -28,8 +37,16 @@ export const defects = pgTable("defects", {
 });
 
 // Define relations
-export const inspectionsRelations = relations(inspections, ({ many }) => ({
+export const companiesRelations = relations(companies, ({ many }) => ({
+  inspections: many(inspections),
+}));
+
+export const inspectionsRelations = relations(inspections, ({ many, one }) => ({
   defects: many(defects),
+  company: one(companies, {
+    fields: [inspections.companyId],
+    references: [companies.id],
+  }),
 }));
 
 export const defectsRelations = relations(defects, ({ one }) => ({
@@ -40,6 +57,8 @@ export const defectsRelations = relations(defects, ({ one }) => ({
 }));
 
 // Insert schemas
+export const insertCompanySchema = createInsertSchema(companies);
+
 export const insertInspectionSchema = createInsertSchema(inspections).omit({
   id: true,
 });
@@ -52,6 +71,8 @@ export const insertDefectSchema = createInsertSchema(defects).omit({
 });
 
 // Types
+export type Company = typeof companies.$inferSelect;
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type Inspection = typeof inspections.$inferSelect;
 export type InsertInspection = z.infer<typeof insertInspectionSchema>;
 export type Defect = typeof defects.$inferSelect;

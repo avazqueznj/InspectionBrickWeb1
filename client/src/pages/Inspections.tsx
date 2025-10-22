@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type InspectionWithDefects } from "@shared/schema";
+import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
@@ -18,6 +19,7 @@ interface PaginatedResponse {
 }
 
 export default function Inspections() {
+  const { selectedCompany } = useCompany();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>("datetime");
@@ -26,16 +28,17 @@ export default function Inspections() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const itemsPerPage = 20;
 
-  // Reset to page 1 when search query changes
+  // Reset to page 1 when search query or company changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, selectedCompany]);
 
   const { data, isLoading } = useQuery<PaginatedResponse>({
-    queryKey: ["/api/inspections", searchQuery, sortField, sortDirection, currentPage, itemsPerPage],
+    queryKey: ["/api/inspections", selectedCompany, searchQuery, sortField, sortDirection, currentPage, itemsPerPage],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
       
+      if (selectedCompany) queryParams.set("companyId", selectedCompany);
       if (searchQuery) queryParams.set("search", searchQuery);
       if (sortField) queryParams.set("sortField", sortField);
       if (sortDirection) queryParams.set("sortDirection", sortDirection);
@@ -48,6 +51,7 @@ export default function Inspections() {
       }
       return response.json();
     },
+    enabled: !!selectedCompany,
   });
 
   const handleSort = (field: SortField) => {
