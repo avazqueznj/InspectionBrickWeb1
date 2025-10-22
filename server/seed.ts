@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { companies, inspections, defects, users, assets } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields } from "@shared/schema";
 import { storage } from "./storage";
 
 async function seed() {
@@ -10,6 +10,8 @@ async function seed() {
     console.log("🗑️  Clearing existing data...");
     await db.delete(defects);
     await db.delete(inspections);
+    await db.delete(inspectionTypeFormFields);
+    await db.delete(inspectionTypes);
     await db.delete(assets);
     await db.delete(users);
     await db.delete(companies);
@@ -39,6 +41,164 @@ async function seed() {
     ]);
 
     console.log("✅ Created 3 companies");
+
+    // Create inspection types with form fields
+    console.log("📋 Creating inspection types...");
+    
+    // NEC Inspection Types
+    const necInspectionTypesData = [
+      {
+        inspectionTypeId: "preflight",
+        inspectionLayout: "ALL",
+        status: "ACTIVE" as const,
+        companyId: "NEC",
+      },
+      {
+        inspectionTypeId: "pre-trip",
+        inspectionLayout: "TRUCK",
+        status: "ACTIVE" as const,
+        companyId: "NEC",
+      },
+      {
+        inspectionTypeId: "post-trip",
+        inspectionLayout: "TRUCK",
+        status: "ACTIVE" as const,
+        companyId: "NEC",
+      },
+      {
+        inspectionTypeId: "10000-mile-check",
+        inspectionLayout: "TRUCK",
+        status: "ACTIVE" as const,
+        companyId: "NEC",
+      },
+      {
+        inspectionTypeId: "crane-daily",
+        inspectionLayout: "CRANE",
+        status: "ACTIVE" as const,
+        companyId: "NEC",
+      },
+    ];
+    
+    // WALMART Inspection Types
+    const walmartInspectionTypesData = [
+      {
+        inspectionTypeId: "warehouse-safety",
+        inspectionLayout: "ALL",
+        status: "ACTIVE" as const,
+        companyId: "WALMART",
+      },
+      {
+        inspectionTypeId: "forklift-daily",
+        inspectionLayout: "FORKLIFT",
+        status: "ACTIVE" as const,
+        companyId: "WALMART",
+      },
+      {
+        inspectionTypeId: "delivery-pre-trip",
+        inspectionLayout: "VAN",
+        status: "ACTIVE" as const,
+        companyId: "WALMART",
+      },
+      {
+        inspectionTypeId: "equipment-monthly",
+        inspectionLayout: "ALL",
+        status: "INACTIVE" as const,
+        companyId: "WALMART",
+      },
+    ];
+    
+    // FEDEX Inspection Types
+    const fedexInspectionTypesData = [
+      {
+        inspectionTypeId: "sortation-check",
+        inspectionLayout: "SORTATION-UNIT",
+        status: "ACTIVE" as const,
+        companyId: "FEDEX",
+      },
+      {
+        inspectionTypeId: "van-pre-route",
+        inspectionLayout: "VAN",
+        status: "ACTIVE" as const,
+        companyId: "FEDEX",
+      },
+      {
+        inspectionTypeId: "conveyor-weekly",
+        inspectionLayout: "CONVEYOR",
+        status: "ACTIVE" as const,
+        companyId: "FEDEX",
+      },
+    ];
+    
+    await db.insert(inspectionTypes).values([...necInspectionTypesData, ...walmartInspectionTypesData, ...fedexInspectionTypesData]);
+    console.log(`✅ Created ${necInspectionTypesData.length + walmartInspectionTypesData.length + fedexInspectionTypesData.length} inspection types`);
+    
+    // Create form fields for inspection types
+    console.log("📝 Creating form fields...");
+    
+    const formFields = [
+      // Preflight inspection fields (ALL layouts)
+      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "preflight" },
+      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "preflight" },
+      { formFieldName: "route", formFieldType: "TEXT" as const, formFieldLength: "0-64", inspectionTypeId: "preflight" },
+      { formFieldName: "destination", formFieldType: "TEXT" as const, formFieldLength: "0-64", inspectionTypeId: "preflight" },
+      
+      // Pre-trip inspection fields (TRUCK layout)
+      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "pre-trip" },
+      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-fl", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-fr", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-rl", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-rr", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
+      { formFieldName: "cargo-weight", formFieldType: "NUM" as const, formFieldLength: "0-6", inspectionTypeId: "pre-trip" },
+      
+      // Post-trip inspection fields
+      { formFieldName: "ending-odometer", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "post-trip" },
+      { formFieldName: "fuel-remaining", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "post-trip" },
+      { formFieldName: "issues-noted", formFieldType: "TEXT" as const, formFieldLength: "0-64", inspectionTypeId: "post-trip" },
+      
+      // 10,000 mile check fields
+      { formFieldName: "oil-level", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "10000-mile-check" },
+      { formFieldName: "brake-wear", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "10000-mile-check" },
+      { formFieldName: "coolant-level", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "10000-mile-check" },
+      
+      // Crane daily inspection fields
+      { formFieldName: "load-capacity", formFieldType: "NUM" as const, formFieldLength: "0-6", inspectionTypeId: "crane-daily" },
+      { formFieldName: "hydraulic-pressure", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "crane-daily" },
+      { formFieldName: "cable-condition", formFieldType: "TEXT" as const, formFieldLength: "0-32", inspectionTypeId: "crane-daily" },
+      
+      // Warehouse safety fields
+      { formFieldName: "walkway-clear", formFieldType: "TEXT" as const, formFieldLength: "0-10", inspectionTypeId: "warehouse-safety" },
+      { formFieldName: "emergency-exit", formFieldType: "TEXT" as const, formFieldLength: "0-10", inspectionTypeId: "warehouse-safety" },
+      { formFieldName: "fire-extinguisher", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "warehouse-safety" },
+      
+      // Forklift daily fields
+      { formFieldName: "battery-charge", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "forklift-daily" },
+      { formFieldName: "forks-condition", formFieldType: "TEXT" as const, formFieldLength: "0-32", inspectionTypeId: "forklift-daily" },
+      { formFieldName: "hours-meter", formFieldType: "NUM" as const, formFieldLength: "0-8", inspectionTypeId: "forklift-daily" },
+      
+      // Delivery pre-trip fields (WALMART VAN)
+      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "delivery-pre-trip" },
+      { formFieldName: "packages-loaded", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "delivery-pre-trip" },
+      { formFieldName: "route-number", formFieldType: "TEXT" as const, formFieldLength: "0-16", inspectionTypeId: "delivery-pre-trip" },
+      
+      // Sortation check fields
+      { formFieldName: "throughput-rate", formFieldType: "NUM" as const, formFieldLength: "0-6", inspectionTypeId: "sortation-check" },
+      { formFieldName: "error-rate", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "sortation-check" },
+      { formFieldName: "scanner-status", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "sortation-check" },
+      
+      // Van pre-route fields (FEDEX)
+      { formFieldName: "odometer-start", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "van-pre-route" },
+      { formFieldName: "route-id", formFieldType: "TEXT" as const, formFieldLength: "0-16", inspectionTypeId: "van-pre-route" },
+      { formFieldName: "package-count", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "van-pre-route" },
+      
+      // Conveyor weekly fields
+      { formFieldName: "belt-tension", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "conveyor-weekly" },
+      { formFieldName: "motor-temp", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "conveyor-weekly" },
+      { formFieldName: "alignment-check", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "conveyor-weekly" },
+    ];
+    
+    await db.insert(inspectionTypeFormFields).values(formFields);
+    console.log(`✅ Created ${formFields.length} form fields for inspection types`);
 
     // Create users with plain text passwords (pilot configuration)
     console.log("👥 Creating users...");
@@ -166,7 +326,7 @@ async function seed() {
     console.log("📋 Creating sample inspections...");
     
     // Helper arrays for varied data
-    const inspectionTypes = [
+    const inspectionTypeNames = [
       "DOT Vehicle Inspection",
       "Equipment Safety Check",
       "Heavy Equipment Check",
@@ -193,7 +353,7 @@ async function seed() {
       necInspectionData.push({
         companyId: "NEC",
         datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
-        inspectionType: inspectionTypes[i % inspectionTypes.length],
+        inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
         assetId: necAssets[i % necAssets.length],
         driverName: necDrivers[i % necDrivers.length].name,
         driverId: necDrivers[i % necDrivers.length].id,
@@ -223,7 +383,7 @@ async function seed() {
       walmartInspectionData.push({
         companyId: "WALMART",
         datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
-        inspectionType: inspectionTypes[i % inspectionTypes.length],
+        inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
         assetId: walmartAssets[i % walmartAssets.length],
         driverName: walmartDrivers[i % walmartDrivers.length].name,
         driverId: walmartDrivers[i % walmartDrivers.length].id,
@@ -253,7 +413,7 @@ async function seed() {
       fedexInspectionData.push({
         companyId: "FEDEX",
         datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
-        inspectionType: inspectionTypes[i % inspectionTypes.length],
+        inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
         assetId: fedexAssets[i % fedexAssets.length],
         driverName: fedexDrivers[i % fedexDrivers.length].name,
         driverId: fedexDrivers[i % fedexDrivers.length].id,
