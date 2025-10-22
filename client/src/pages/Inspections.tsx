@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
 import { PrintReportModal } from "@/components/PrintReportModal";
+import { PrintListModal } from "@/components/PrintListModal";
 import { FilterBar } from "@/components/FilterBar";
-import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText, Printer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type SortField = "datetime" | "inspectionType" | "assetId" | "driverName";
@@ -39,6 +40,7 @@ export default function Inspections() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [printInspectionId, setPrintInspectionId] = useState<string | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isPrintListModalOpen, setIsPrintListModalOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>({});
   const itemsPerPage = 10;
 
@@ -145,7 +147,7 @@ export default function Inspections() {
           </p>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar and Actions */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -157,6 +159,14 @@ export default function Inspections() {
               data-testid="input-search"
             />
           </div>
+          <Button
+            variant="default"
+            onClick={() => setIsPrintListModalOpen(true)}
+            data-testid="button-print-list"
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Print List
+          </Button>
         </div>
 
         {/* Filter Bar */}
@@ -301,6 +311,15 @@ export default function Inspections() {
         inspectionId={printInspectionId}
         open={isPrintModalOpen}
         onOpenChange={setIsPrintModalOpen}
+      />
+
+      <PrintListModal
+        open={isPrintListModalOpen}
+        onOpenChange={setIsPrintListModalOpen}
+        searchQuery={searchQuery}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        filters={filters}
       />
     </div>
   );

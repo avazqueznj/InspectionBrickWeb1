@@ -1,6 +1,6 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, X } from "lucide-react";
+import { X } from "lucide-react";
 import { type InspectionWithDefects } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -35,36 +35,21 @@ export function PrintReportModal({ inspectionId, open, onOpenChange }: PrintRepo
 
   const company = companies?.find(c => c.id === inspection?.companyId);
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   if (!inspection) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-full print:max-h-full print:overflow-visible">
         <div className="print:hidden flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Inspection Report</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handlePrint}
-              data-testid="button-print"
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              data-testid="button-close-print"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold">Inspection Report - Use Ctrl+P / Cmd+P to Print</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onOpenChange(false)}
+            data-testid="button-close-print"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
         <div className="print-content bg-white text-black p-8">
