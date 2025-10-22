@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
 
@@ -41,6 +41,17 @@ export interface AssetQueryParams {
   status?: "ACTIVE" | "INACTIVE";
 }
 
+export interface InspectionTypeQueryParams {
+  companyId?: string;
+  search?: string;
+  sortField?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+  // Filter parameters
+  status?: "ACTIVE" | "INACTIVE";
+}
+
 export interface FilterValues {
   inspectionTypes: string[];
   assetIds: string[];
@@ -53,6 +64,10 @@ export interface UserFilterValues {
 }
 
 export interface AssetFilterValues {
+  statuses: ("ACTIVE" | "INACTIVE")[];
+}
+
+export interface InspectionTypeFilterValues {
   statuses: ("ACTIVE" | "INACTIVE")[];
 }
 
@@ -81,6 +96,18 @@ export interface IStorage {
   createAsset(asset: InsertAsset): Promise<Asset>;
   updateAsset(assetId: string, asset: Partial<InsertAsset>): Promise<Asset | undefined>;
   getAssetFilterValues(companyId?: string): Promise<AssetFilterValues>;
+  
+  // Inspection Types
+  getInspectionTypes(params?: InspectionTypeQueryParams): Promise<PaginatedResult<InspectionTypeWithFormFields>>;
+  getInspectionTypeById(inspectionTypeId: string): Promise<InspectionTypeWithFormFields | undefined>;
+  createInspectionType(inspectionType: InsertInspectionType): Promise<InspectionType>;
+  updateInspectionType(inspectionTypeId: string, inspectionType: Partial<InsertInspectionType>): Promise<InspectionType | undefined>;
+  getInspectionTypeFilterValues(companyId?: string): Promise<InspectionTypeFilterValues>;
+  
+  // Inspection Type Form Fields
+  createInspectionTypeFormField(formField: InsertInspectionTypeFormField): Promise<InspectionTypeFormField>;
+  updateInspectionTypeFormField(id: string, formField: Partial<InsertInspectionTypeFormField>): Promise<InspectionTypeFormField | undefined>;
+  deleteInspectionTypeFormField(id: string): Promise<boolean>;
   
   // Inspections
   getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>>;
@@ -387,6 +414,170 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`✅ [Storage] getAssetFilterValues - Found ${result.statuses.length} statuses`);
     return result;
+  }
+
+  async getInspectionTypes(params?: InspectionTypeQueryParams): Promise<PaginatedResult<InspectionTypeWithFormFields>> {
+    const { 
+      companyId, 
+      search, 
+      sortField = "inspectionTypeId", 
+      sortDirection = "asc", 
+      page = 1, 
+      limit = 10,
+      status
+    } = params || {};
+    
+    console.log(`📊 [Storage] getInspectionTypes - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}`);
+    
+    // Build where conditions array
+    const conditions = [];
+    
+    // Filter by company (if specified)
+    if (companyId) {
+      conditions.push(eq(inspectionTypes.companyId, companyId));
+    }
+    
+    // Add search conditions
+    if (search) {
+      conditions.push(
+        or(
+          ilike(inspectionTypes.inspectionTypeId, `%${search}%`),
+          ilike(inspectionTypes.inspectionLayout, `%${search}%`)
+        )!
+      );
+    }
+    
+    // Add status filter
+    if (status) {
+      conditions.push(eq(inspectionTypes.status, status));
+    }
+    
+    const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Determine sort order based on sortField
+    const sortColumnMap = {
+      inspectionTypeId: inspectionTypes.inspectionTypeId,
+      inspectionLayout: inspectionTypes.inspectionLayout,
+      status: inspectionTypes.status,
+    };
+    
+    const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspectionTypes.inspectionTypeId;
+    const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
+
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(inspectionTypes)
+      .where(whereConditions);
+    const total = countResult[0]?.count || 0;
+
+    // Get paginated data with form fields
+    const offset = (page - 1) * limit;
+    const data = await db.query.inspectionTypes.findMany({
+      where: whereConditions,
+      with: {
+        formFields: true,
+      },
+      orderBy: [orderBy],
+      limit,
+      offset,
+    });
+
+    console.log(`✅ [Storage] getInspectionTypes - Found ${data.length} of ${total} total inspection types`);
+    
+    return {
+      data: data as InspectionTypeWithFormFields[],
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getInspectionTypeById(inspectionTypeId: string): Promise<InspectionTypeWithFormFields | undefined> {
+    console.log(`🔍 [Storage] getInspectionTypeById - id: ${inspectionTypeId}`);
+    const result = await db.query.inspectionTypes.findFirst({
+      where: eq(inspectionTypes.inspectionTypeId, inspectionTypeId),
+      with: {
+        formFields: true,
+      },
+    });
+    console.log(`${result ? '✅' : '❌'} [Storage] Inspection type ${result ? 'found' : 'not found'}`);
+    return result as InspectionTypeWithFormFields | undefined;
+  }
+
+  async createInspectionType(insertInspectionType: InsertInspectionType): Promise<InspectionType> {
+    console.log(`➕ [Storage] Creating inspection type: ${insertInspectionType.inspectionTypeId}, companyId: ${insertInspectionType.companyId}`);
+    
+    const [inspectionType] = await db
+      .insert(inspectionTypes)
+      .values(insertInspectionType)
+      .returning();
+    
+    console.log(`✅ [Storage] Inspection type created successfully: ${insertInspectionType.inspectionTypeId}`);
+    return inspectionType;
+  }
+
+  async updateInspectionType(inspectionTypeId: string, updateData: Partial<InsertInspectionType>): Promise<InspectionType | undefined> {
+    console.log(`🔄 [Storage] Updating inspection type: ${inspectionTypeId}`);
+    const [inspectionType] = await db
+      .update(inspectionTypes)
+      .set(updateData)
+      .where(eq(inspectionTypes.inspectionTypeId, inspectionTypeId))
+      .returning();
+    console.log(`${inspectionType ? '✅' : '❌'} [Storage] Inspection type ${inspectionType ? 'updated' : 'not found'}`);
+    return inspectionType;
+  }
+
+  async getInspectionTypeFilterValues(companyId?: string): Promise<InspectionTypeFilterValues> {
+    console.log(`🔍 [Storage] getInspectionTypeFilterValues - companyId: ${companyId || 'ALL'}`);
+    
+    const whereCondition = companyId ? eq(inspectionTypes.companyId, companyId) : undefined;
+    
+    // Get distinct status values
+    const statusesResult = await db.selectDistinct({ value: inspectionTypes.status })
+      .from(inspectionTypes)
+      .where(whereCondition)
+      .orderBy(asc(inspectionTypes.status));
+    
+    const result = {
+      statuses: statusesResult.map(r => r.value).filter((v): v is "ACTIVE" | "INACTIVE" => v === "ACTIVE" || v === "INACTIVE"),
+    };
+    
+    console.log(`✅ [Storage] getInspectionTypeFilterValues - Found ${result.statuses.length} statuses`);
+    return result;
+  }
+
+  async createInspectionTypeFormField(insertFormField: InsertInspectionTypeFormField): Promise<InspectionTypeFormField> {
+    console.log(`➕ [Storage] Creating form field: ${insertFormField.formFieldName} for inspection type: ${insertFormField.inspectionTypeId}`);
+    
+    const [formField] = await db
+      .insert(inspectionTypeFormFields)
+      .values(insertFormField)
+      .returning();
+    
+    console.log(`✅ [Storage] Form field created successfully`);
+    return formField;
+  }
+
+  async updateInspectionTypeFormField(id: string, updateData: Partial<InsertInspectionTypeFormField>): Promise<InspectionTypeFormField | undefined> {
+    console.log(`🔄 [Storage] Updating form field: ${id}`);
+    const [formField] = await db
+      .update(inspectionTypeFormFields)
+      .set(updateData)
+      .where(eq(inspectionTypeFormFields.id, id))
+      .returning();
+    console.log(`${formField ? '✅' : '❌'} [Storage] Form field ${formField ? 'updated' : 'not found'}`);
+    return formField;
+  }
+
+  async deleteInspectionTypeFormField(id: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting form field: ${id}`);
+    const result = await db
+      .delete(inspectionTypeFormFields)
+      .where(eq(inspectionTypeFormFields.id, id))
+      .returning();
+    console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Form field ${result.length > 0 ? 'deleted' : 'not found'}`);
+    return result.length > 0;
   }
 
   async getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>> {
