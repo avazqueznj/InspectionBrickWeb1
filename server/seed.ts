@@ -137,64 +137,64 @@ async function seed() {
     
     const formFields = [
       // Preflight inspection fields (ALL layouts)
-      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "preflight" },
-      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "preflight" },
-      { formFieldName: "route", formFieldType: "TEXT" as const, formFieldLength: "0-64", inspectionTypeId: "preflight" },
-      { formFieldName: "destination", formFieldType: "TEXT" as const, formFieldLength: "0-64", inspectionTypeId: "preflight" },
+      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, inspectionTypeId: "preflight" },
+      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, inspectionTypeId: "preflight" },
+      { formFieldName: "route", formFieldType: "TEXT" as const, formFieldLength: 64, inspectionTypeId: "preflight" },
+      { formFieldName: "destination", formFieldType: "TEXT" as const, formFieldLength: 64, inspectionTypeId: "preflight" },
       
       // Pre-trip inspection fields (TRUCK layout)
-      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "pre-trip" },
-      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
-      { formFieldName: "tire-pressure-fl", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
-      { formFieldName: "tire-pressure-fr", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
-      { formFieldName: "tire-pressure-rl", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
-      { formFieldName: "tire-pressure-rr", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "pre-trip" },
-      { formFieldName: "cargo-weight", formFieldType: "NUM" as const, formFieldLength: "0-6", inspectionTypeId: "pre-trip" },
+      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, inspectionTypeId: "pre-trip" },
+      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, inspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-fl", formFieldType: "NUM" as const, formFieldLength: 3, inspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-fr", formFieldType: "NUM" as const, formFieldLength: 3, inspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-rl", formFieldType: "NUM" as const, formFieldLength: 3, inspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-rr", formFieldType: "NUM" as const, formFieldLength: 3, inspectionTypeId: "pre-trip" },
+      { formFieldName: "cargo-weight", formFieldType: "NUM" as const, formFieldLength: 6, inspectionTypeId: "pre-trip" },
       
       // Post-trip inspection fields
-      { formFieldName: "ending-odometer", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "post-trip" },
-      { formFieldName: "fuel-remaining", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "post-trip" },
-      { formFieldName: "issues-noted", formFieldType: "TEXT" as const, formFieldLength: "0-64", inspectionTypeId: "post-trip" },
+      { formFieldName: "ending-odometer", formFieldType: "NUM" as const, formFieldLength: 10, inspectionTypeId: "post-trip" },
+      { formFieldName: "fuel-remaining", formFieldType: "NUM" as const, formFieldLength: 3, inspectionTypeId: "post-trip" },
+      { formFieldName: "issues-noted", formFieldType: "TEXT" as const, formFieldLength: 64, inspectionTypeId: "post-trip" },
       
       // 10,000 mile check fields
-      { formFieldName: "oil-level", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "10000-mile-check" },
-      { formFieldName: "brake-wear", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "10000-mile-check" },
-      { formFieldName: "coolant-level", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "10000-mile-check" },
+      { formFieldName: "oil-level", formFieldType: "TEXT" as const, formFieldLength: 20, inspectionTypeId: "10000-mile-check" },
+      { formFieldName: "brake-wear", formFieldType: "NUM" as const, formFieldLength: 3, inspectionTypeId: "10000-mile-check" },
+      { formFieldName: "coolant-level", formFieldType: "TEXT" as const, formFieldLength: 20, inspectionTypeId: "10000-mile-check" },
       
       // Crane daily inspection fields
-      { formFieldName: "load-capacity", formFieldType: "NUM" as const, formFieldLength: "0-6", inspectionTypeId: "crane-daily" },
-      { formFieldName: "hydraulic-pressure", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "crane-daily" },
-      { formFieldName: "cable-condition", formFieldType: "TEXT" as const, formFieldLength: "0-32", inspectionTypeId: "crane-daily" },
+      { formFieldName: "load-capacity", formFieldType: "NUM" as const, formFieldLength: 6, inspectionTypeId: "crane-daily" },
+      { formFieldName: "hydraulic-pressure", formFieldType: "NUM" as const, formFieldLength: 4, inspectionTypeId: "crane-daily" },
+      { formFieldName: "cable-condition", formFieldType: "TEXT" as const, formFieldLength: 32, inspectionTypeId: "crane-daily" },
       
       // Warehouse safety fields
-      { formFieldName: "walkway-clear", formFieldType: "TEXT" as const, formFieldLength: "0-10", inspectionTypeId: "warehouse-safety" },
-      { formFieldName: "emergency-exit", formFieldType: "TEXT" as const, formFieldLength: "0-10", inspectionTypeId: "warehouse-safety" },
-      { formFieldName: "fire-extinguisher", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "warehouse-safety" },
+      { formFieldName: "walkway-clear", formFieldType: "TEXT" as const, formFieldLength: 10, inspectionTypeId: "warehouse-safety" },
+      { formFieldName: "emergency-exit", formFieldType: "TEXT" as const, formFieldLength: 10, inspectionTypeId: "warehouse-safety" },
+      { formFieldName: "fire-extinguisher", formFieldType: "TEXT" as const, formFieldLength: 20, inspectionTypeId: "warehouse-safety" },
       
       // Forklift daily fields
-      { formFieldName: "battery-charge", formFieldType: "NUM" as const, formFieldLength: "0-3", inspectionTypeId: "forklift-daily" },
-      { formFieldName: "forks-condition", formFieldType: "TEXT" as const, formFieldLength: "0-32", inspectionTypeId: "forklift-daily" },
-      { formFieldName: "hours-meter", formFieldType: "NUM" as const, formFieldLength: "0-8", inspectionTypeId: "forklift-daily" },
+      { formFieldName: "battery-charge", formFieldType: "NUM" as const, formFieldLength: 3, inspectionTypeId: "forklift-daily" },
+      { formFieldName: "forks-condition", formFieldType: "TEXT" as const, formFieldLength: 32, inspectionTypeId: "forklift-daily" },
+      { formFieldName: "hours-meter", formFieldType: "NUM" as const, formFieldLength: 8, inspectionTypeId: "forklift-daily" },
       
       // Delivery pre-trip fields (WALMART VAN)
-      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "delivery-pre-trip" },
-      { formFieldName: "packages-loaded", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "delivery-pre-trip" },
-      { formFieldName: "route-number", formFieldType: "TEXT" as const, formFieldLength: "0-16", inspectionTypeId: "delivery-pre-trip" },
+      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, inspectionTypeId: "delivery-pre-trip" },
+      { formFieldName: "packages-loaded", formFieldType: "NUM" as const, formFieldLength: 4, inspectionTypeId: "delivery-pre-trip" },
+      { formFieldName: "route-number", formFieldType: "TEXT" as const, formFieldLength: 16, inspectionTypeId: "delivery-pre-trip" },
       
       // Sortation check fields
-      { formFieldName: "throughput-rate", formFieldType: "NUM" as const, formFieldLength: "0-6", inspectionTypeId: "sortation-check" },
-      { formFieldName: "error-rate", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "sortation-check" },
-      { formFieldName: "scanner-status", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "sortation-check" },
+      { formFieldName: "throughput-rate", formFieldType: "NUM" as const, formFieldLength: 6, inspectionTypeId: "sortation-check" },
+      { formFieldName: "error-rate", formFieldType: "NUM" as const, formFieldLength: 4, inspectionTypeId: "sortation-check" },
+      { formFieldName: "scanner-status", formFieldType: "TEXT" as const, formFieldLength: 20, inspectionTypeId: "sortation-check" },
       
       // Van pre-route fields (FEDEX)
-      { formFieldName: "odometer-start", formFieldType: "NUM" as const, formFieldLength: "0-10", inspectionTypeId: "van-pre-route" },
-      { formFieldName: "route-id", formFieldType: "TEXT" as const, formFieldLength: "0-16", inspectionTypeId: "van-pre-route" },
-      { formFieldName: "package-count", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "van-pre-route" },
+      { formFieldName: "odometer-start", formFieldType: "NUM" as const, formFieldLength: 10, inspectionTypeId: "van-pre-route" },
+      { formFieldName: "route-id", formFieldType: "TEXT" as const, formFieldLength: 16, inspectionTypeId: "van-pre-route" },
+      { formFieldName: "package-count", formFieldType: "NUM" as const, formFieldLength: 4, inspectionTypeId: "van-pre-route" },
       
       // Conveyor weekly fields
-      { formFieldName: "belt-tension", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "conveyor-weekly" },
-      { formFieldName: "motor-temp", formFieldType: "NUM" as const, formFieldLength: "0-4", inspectionTypeId: "conveyor-weekly" },
-      { formFieldName: "alignment-check", formFieldType: "TEXT" as const, formFieldLength: "0-20", inspectionTypeId: "conveyor-weekly" },
+      { formFieldName: "belt-tension", formFieldType: "NUM" as const, formFieldLength: 4, inspectionTypeId: "conveyor-weekly" },
+      { formFieldName: "motor-temp", formFieldType: "NUM" as const, formFieldLength: 4, inspectionTypeId: "conveyor-weekly" },
+      { formFieldName: "alignment-check", formFieldType: "TEXT" as const, formFieldLength: 20, inspectionTypeId: "conveyor-weekly" },
     ];
     
     await db.insert(inspectionTypeFormFields).values(formFields);

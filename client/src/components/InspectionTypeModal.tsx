@@ -37,7 +37,7 @@ function FormFieldDialog({ open, onOpenChange, formField, inspectionTypeId, onSu
   
   const [formFieldName, setFormFieldName] = useState("");
   const [formFieldType, setFormFieldType] = useState<"TEXT" | "NUM">("TEXT");
-  const [formFieldLength, setFormFieldLength] = useState("");
+  const [formFieldLength, setFormFieldLength] = useState<number>(0);
 
   useEffect(() => {
     if (open && formField) {
@@ -47,7 +47,7 @@ function FormFieldDialog({ open, onOpenChange, formField, inspectionTypeId, onSu
     } else if (!open) {
       setFormFieldName("");
       setFormFieldType("TEXT");
-      setFormFieldLength("");
+      setFormFieldLength(0);
     }
   }, [open, formField]);
 
@@ -157,11 +157,14 @@ function FormFieldDialog({ open, onOpenChange, formField, inspectionTypeId, onSu
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">Field Length</label>
+            <label className="text-sm font-medium mb-2 block">Field Length (0-64)</label>
             <Input
+              type="number"
+              min={0}
+              max={64}
               value={formFieldLength}
-              onChange={(e) => setFormFieldLength(e.target.value)}
-              placeholder="e.g., 0-64"
+              onChange={(e) => setFormFieldLength(parseInt(e.target.value) || 0)}
+              placeholder="Enter length (0-64)"
               required
               data-testid="input-formFieldLength"
             />
@@ -223,7 +226,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
 
   // Delete form field mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       return await apiRequest("DELETE", `/api/inspection-type-form-fields/${id}`, {});
     },
     onSuccess: () => {

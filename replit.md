@@ -63,7 +63,7 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **Companies:** `id`, `name`
 - **Assets:** `assetId`, `assetConfig`, `assetName`, `status`, `companyId` (FK)
 - **Inspection Types:** `inspectionTypeId` (PK), `inspectionLayout`, `status` (ACTIVE/INACTIVE), `companyId` (FK)
-- **Inspection Type Form Fields:** `id` (PK), `inspectionTypeId` (FK), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength`
+- **Inspection Type Form Fields:** `id` (PK), `inspectionTypeId` (FK), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength` (integer 0-64)
 - **Inspections:** `id`, `companyId` (FK), `datetime`, `inspectionType`, `assetId`, `driverName`, `driverId`, `inspectionFormData`
   - Note: `assetId` is stored as text (not FK) to avoid stale data issues with permanent inspection records
 - **Defects:** `id`, `inspectionId` (FK), `zoneName`, `componentName`, `defect`, `severity`, `driverNotes`, `status`, `repairNotes`

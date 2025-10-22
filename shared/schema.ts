@@ -67,7 +67,7 @@ export const inspectionTypeFormFields = pgTable("inspection_type_form_fields", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   formFieldName: text("form_field_name").notNull(),
   formFieldType: text("form_field_type").notNull().$type<"TEXT" | "NUM">(),
-  formFieldLength: text("form_field_length").notNull(),
+  formFieldLength: integer("form_field_length").notNull(),
   inspectionTypeId: text("inspection_type_id").notNull().references(() => inspectionTypes.inspectionTypeId, { onDelete: "cascade" }),
 });
 
@@ -153,7 +153,7 @@ export const insertInspectionTypeFormFieldSchema = createInsertSchema(inspection
   id: true,
 }).extend({
   formFieldType: z.enum(["TEXT", "NUM"]),
-  formFieldLength: z.string().regex(/^\d+-\d+$/, "Format must be like 0-64"),
+  formFieldLength: z.number().int().min(0).max(64),
 });
 
 // Types
