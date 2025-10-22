@@ -1,8 +1,16 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertInspectionSchema, insertDefectSchema } from "@shared/schema";
 import { z } from "zod";
+
+// Authentication middleware
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  next();
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Query params validation schema
@@ -83,8 +91,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all companies
-  app.get("/api/companies", async (req, res) => {
+  // Get all companies (protected)
+  app.get("/api/companies", requireAuth, async (req, res) => {
     try {
       const companies = await storage.getCompanies();
       res.json(companies);
@@ -94,8 +102,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all inspections with their defects (with query params for search, sort, pagination)
-  app.get("/api/inspections", async (req, res) => {
+  // Get all inspections with their defects (with query params for search, sort, pagination) (protected)
+  app.get("/api/inspections", requireAuth, async (req, res) => {
     try {
       const params = queryParamsSchema.parse(req.query);
       const result = await storage.getInspections(params);
@@ -109,8 +117,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get a single inspection by ID
-  app.get("/api/inspections/:id", async (req, res) => {
+  // Get a single inspection by ID (protected)
+  app.get("/api/inspections/:id", requireAuth, async (req, res) => {
     try {
       const inspection = await storage.getInspection(req.params.id);
       if (!inspection) {
@@ -123,8 +131,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create a new inspection
-  app.post("/api/inspections", async (req, res) => {
+  // Create a new inspection (protected)
+  app.post("/api/inspections", requireAuth, async (req, res) => {
     try {
       const validatedData = insertInspectionSchema.parse(req.body);
       const inspection = await storage.createInspection(validatedData);
@@ -138,8 +146,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update an inspection
-  app.patch("/api/inspections/:id", async (req, res) => {
+  // Update an inspection (protected)
+  app.patch("/api/inspections/:id", requireAuth, async (req, res) => {
     try {
       const validatedData = insertInspectionSchema.partial().parse(req.body);
       const inspection = await storage.updateInspection(req.params.id, validatedData);
@@ -156,8 +164,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete an inspection
-  app.delete("/api/inspections/:id", async (req, res) => {
+  // Delete an inspection (protected)
+  app.delete("/api/inspections/:id", requireAuth, async (req, res) => {
     try {
       const success = await storage.deleteInspection(req.params.id);
       if (!success) {
@@ -170,8 +178,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create a new defect
-  app.post("/api/defects", async (req, res) => {
+  // Create a new defect (protected)
+  app.post("/api/defects", requireAuth, async (req, res) => {
     try {
       const validatedData = insertDefectSchema.parse(req.body);
       const defect = await storage.createDefect(validatedData);
@@ -185,8 +193,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update a defect
-  app.patch("/api/defects/:id", async (req, res) => {
+  // Update a defect (protected)
+  app.patch("/api/defects/:id", requireAuth, async (req, res) => {
     try {
       const validatedData = insertDefectSchema.partial().parse(req.body);
       const defect = await storage.updateDefect(req.params.id, validatedData);
@@ -203,8 +211,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete a defect
-  app.delete("/api/defects/:id", async (req, res) => {
+  // Delete a defect (protected)
+  app.delete("/api/defects/:id", requireAuth, async (req, res) => {
     try {
       const success = await storage.deleteDefect(req.params.id);
       if (!success) {
@@ -217,8 +225,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get defects by inspection ID
-  app.get("/api/inspections/:id/defects", async (req, res) => {
+  // Get defects by inspection ID (protected)
+  app.get("/api/inspections/:id/defects", requireAuth, async (req, res) => {
     try {
       const defects = await storage.getDefectsByInspectionId(req.params.id);
       res.json(defects);
