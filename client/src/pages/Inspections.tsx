@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
 import { FilterBar } from "@/components/FilterBar";
-import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type SortField = "datetime" | "inspectionType" | "assetId" | "driverName";
@@ -108,6 +108,11 @@ export default function Inspections() {
   const handleEditClick = (inspection: InspectionWithDefects) => {
     setSelectedInspection(inspection);
     setIsModalOpen(true);
+  };
+
+  const handlePrintReport = (inspectionId: string) => {
+    // Open PDF report in new window for download
+    window.open(`/api/inspections/${inspectionId}/report`, '_blank');
   };
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
@@ -217,14 +222,26 @@ export default function Inspections() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditClick(inspection)}
-                            data-testid={`button-edit-${inspection.id}`}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handlePrintReport(inspection.id)}
+                              data-testid={`button-report-${inspection.id}`}
+                              title="Print Report"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditClick(inspection)}
+                              data-testid={`button-edit-${inspection.id}`}
+                              title="View Details"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
