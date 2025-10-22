@@ -18,26 +18,40 @@ Inspection Brick is a professional web application designed to help organization
 **Last Updated:** October 22, 2025
 
 ### Completed Features (MVP v1.0)
+- ✅ **Authentication & Authorization:**
+  - Session-based authentication with bcrypt password hashing
+  - Users table with company foreign key for data isolation
+  - Login/logout functionality with secure session management
+  - Server-side authorization enforcing company scoping on all endpoints
+  - Superuser support (avazquez) with access to all companies
+  - Regular users restricted to their assigned company only
+  - Protected API routes with authentication middleware
+  - Authorization prevents cross-company data access attempts
 - ✅ **Multi-Company Support:**
   - Companies table with human-readable IDs (NEC, WALMART, FEDEX)
   - Company selector in top right corner of navigation
   - Complete data isolation per company (inspections, defects)
   - React Context for company state management
+  - Server-side enforcement prevents client-side bypasses
 - ✅ **Database & Backend:**
-  - Complete PostgreSQL schema (companies, inspections, defects tables)
+  - Complete PostgreSQL schema (companies, inspections, defects, users tables)
   - Full CRUD operations with company filtering
   - Server-side search, sorting, and pagination
   - Foreign key relationships with cascade delete
+  - Secure password storage with bcrypt
 - ✅ **User Interface:**
   - Dark industrial theme with orange (#FF5722) primary accent
   - Professional navigation bar with 8-bit brick logo
+  - Login page with form validation and error handling
+  - User display and logout button in top bar
   - Inspections list page with real-time search, sortable columns, pagination
   - Inspection details modal with defects table and severity indicators
   - Color-coded status badges (open/pending/repaired)
   - Beautiful loading states and empty states
 - ✅ **Quality & Testing:**
   - Responsive design optimized for desktop
-  - End-to-end tested with Playwright (multi-company switching, search, modals)
+  - End-to-end tested with Playwright (authentication, multi-company switching, search, modals)
+  - Authorization security tested (cross-company access prevention)
   - Comprehensive design system documented
 
 ### Planned Future Features
@@ -60,6 +74,11 @@ Inspection Brick is a professional web application designed to help organization
 - **Routing:** Wouter
 
 ### Database Schema
+
+**Users Table:**
+- `userId`: text (primary key) - Unique user identifier (e.g., "avazquez", "john_nec")
+- `password`: text - Bcrypt hashed password (10 salt rounds)
+- `companyId`: text (nullable, foreign key to companies.id) - null for superusers like avazquez, specific company ID for regular users
 
 **Companies Table:**
 - `id`: text (primary key) - Human-readable company ID (e.g., "NEC", "WALMART", "FEDEX")
@@ -88,8 +107,13 @@ Inspection Brick is a professional web application designed to help organization
 
 ### API Endpoints
 
+**Authentication:**
+- `POST /api/auth/login` - Login with userId and password
+- `POST /api/auth/logout` - Logout and destroy session
+- `GET /api/auth/me` - Get current authenticated user info
+
 **Companies:**
-- `GET /api/companies` - Get all companies
+- `GET /api/companies` - Get companies (filtered by user's company for regular users, all companies for superusers)
 
 **Inspections:**
 - `GET /api/inspections?companyId={id}` - List with company filter, search, sort, pagination (query params: companyId, search, sortField, sortDirection, page, limit)
@@ -117,12 +141,14 @@ Inspection Brick is a professional web application designed to help organization
 
 **Frontend:**
 - `client/src/App.tsx` - Main app component with routing
+- `client/src/contexts/AuthContext.tsx` - Authentication state management
 - `client/src/contexts/CompanyContext.tsx` - Company state management
 - `client/src/components/TopBar.tsx` - Navigation header
 - `client/src/components/CompanySelector.tsx` - Company dropdown selector
 - `client/src/components/InspectionModal.tsx` - Inspection details modal
 - `client/src/components/StatusBadge.tsx` - Defect status indicator
 - `client/src/components/SeverityIndicator.tsx` - Severity visualization
+- `client/src/pages/Login.tsx` - Login page component
 - `client/src/pages/Inspections.tsx` - Main inspections list page
 - `client/src/pages/ComingSoon.tsx` - Placeholder for future pages
 
@@ -174,8 +200,22 @@ npm run db:push --force
 npx tsx server/seed.ts
 ```
 
+### Test Credentials
+The database is seeded with the following test users (all with password: "password123"):
+
+**Superuser:**
+- **avazquez** - Can view and switch between all companies (NEC, WALMART, FEDEX)
+
+**Company-specific users:**
+- **john_nec** - Restricted to NEC company only
+- **sarah_walmart** - Restricted to WALMART company only
+- **mike_fedex** - Restricted to FEDEX company only
+
 ### Testing
 The application has been end-to-end tested with Playwright covering:
+- Authentication flow (login/logout)
+- Authorization security (company data isolation)
+- Multi-company switching (superuser vs regular users)
 - Navigation and page rendering
 - Search functionality
 - Sorting and pagination
@@ -204,7 +244,6 @@ The application has been end-to-end tested with Playwright covering:
 2. **Search:** Searches across inspection type, asset ID, driver name, and driver ID (not UUID)
 3. **Mobile:** Optimized for desktop; mobile responsive design can be enhanced in future iterations
 4. **Real-time:** No WebSocket/real-time updates; uses polling via TanStack Query
-5. **Auth:** No authentication yet; planned for future with user management
 
 ## Deployment
 
