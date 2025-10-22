@@ -4,15 +4,12 @@ import type { InspectionWithDefects, Company } from "@shared/schema";
 import * as pdfFonts from "pdfmake/build/vfs_fonts";
 
 function getPrinter(): PdfPrinter {
-  // Type assertion for vfs_fonts - the structure varies between versions
-  const vfs = (pdfFonts as any).pdfMake?.vfs || pdfFonts;
-  
   const fonts = {
     Roboto: {
-      normal: Buffer.from(vfs["Roboto-Regular.ttf"], 'base64'),
-      bold: Buffer.from(vfs["Roboto-Medium.ttf"], 'base64'),
-      italics: Buffer.from(vfs["Roboto-Italic.ttf"], 'base64'),
-      bolditalics: Buffer.from(vfs["Roboto-MediumItalic.ttf"], 'base64'),
+      normal: 'Helvetica',
+      bold: 'Helvetica-Bold',
+      italics: 'Helvetica-Oblique',
+      bolditalics: 'Helvetica-BoldOblique',
     },
   };
   
