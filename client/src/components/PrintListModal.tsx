@@ -37,24 +37,24 @@ export function PrintListModal({
 }: PrintListModalProps) {
   const { selectedCompany } = useCompany();
 
-  const queryParams = new URLSearchParams({
-    companyId: selectedCompany || "",
-    search: searchQuery,
-    sortField,
-    sortDirection,
-    page: "1",
-    limit: "100",
-    ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
-    ...(filters.dateTo && { dateTo: filters.dateTo }),
-    ...(filters.inspectionType && { inspectionType: filters.inspectionType }),
-    ...(filters.assetId && { assetId: filters.assetId }),
-    ...(filters.driverName && { driverName: filters.driverName }),
-    ...(filters.driverId && { driverId: filters.driverId }),
-  });
-
-  const { data: inspectionsData } = useQuery<{ inspections: InspectionWithDefects[]; total: number }>({
+  const { data: inspectionsData, isLoading } = useQuery<{ data: InspectionWithDefects[]; total: number; page: number; totalPages: number }>({
     queryKey: ["/api/inspections", selectedCompany, searchQuery, sortField, sortDirection, 1, 100, filters.dateFrom, filters.dateTo, filters.inspectionType, filters.assetId, filters.driverName, filters.driverId],
     queryFn: async () => {
+      const queryParams = new URLSearchParams({
+        companyId: selectedCompany || "",
+        search: searchQuery,
+        sortField,
+        sortDirection,
+        page: "1",
+        limit: "100",
+        ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
+        ...(filters.dateTo && { dateTo: filters.dateTo }),
+        ...(filters.inspectionType && { inspectionType: filters.inspectionType }),
+        ...(filters.assetId && { assetId: filters.assetId }),
+        ...(filters.driverName && { driverName: filters.driverName }),
+        ...(filters.driverId && { driverId: filters.driverId }),
+      });
+      
       const response = await fetch(`/api/inspections?${queryParams}`);
       if (!response.ok) throw new Error("Failed to fetch inspections");
       return response.json();
@@ -68,7 +68,7 @@ export function PrintListModal({
   });
 
   const company = companies?.find(c => c.id === selectedCompany);
-  const inspections = inspectionsData?.inspections || [];
+  const inspections = inspectionsData?.data || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -115,7 +115,11 @@ export function PrintListModal({
 
           <hr className="border-gray-300 mb-6" />
 
-          {inspections.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Loading inspections...</p>
+            </div>
+          ) : inspections.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-600">No inspections found matching the current filters.</p>
             </div>
