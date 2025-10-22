@@ -17,13 +17,14 @@ interface UserModalProps {
   onSubmit: (data: InsertUser) => void;
   isPending: boolean;
   companies: Array<{ id: string; name: string }>;
+  currentCompanyId: string | null;
 }
 
 type UserFormData = z.infer<typeof insertUserSchema> & {
   password: string;
 };
 
-export function UserModal({ user, open, onOpenChange, onSubmit, isPending, companies }: UserModalProps) {
+export function UserModal({ user, open, onOpenChange, onSubmit, isPending, companies, currentCompanyId }: UserModalProps) {
   const isEdit = !!user;
 
   // Create dynamic schema based on mode
@@ -40,7 +41,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
       password: "",
       userFullName: "",
       status: "ACTIVE",
-      companyId: null,
+      companyId: currentCompanyId,
     },
   });
 
@@ -52,7 +53,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         password: "", // Never pre-fill password
         userFullName: user.userFullName,
         status: user.status,
-        companyId: user.companyId,
+        companyId: currentCompanyId, // Always use current company context in edit mode
       });
     } else if (!open) {
       form.reset({
@@ -60,10 +61,10 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         password: "",
         userFullName: "",
         status: "ACTIVE",
-        companyId: null,
+        companyId: currentCompanyId, // Default to current company in create mode
       });
     }
-  }, [open, user, form]);
+  }, [open, user, form, currentCompanyId]);
 
   const handleSubmit = (data: UserFormData) => {
     // For edit mode, if password is empty, don't send it
@@ -170,6 +171,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                   <Select
                     onValueChange={(value) => field.onChange(value === "null" ? null : value)}
                     value={field.value || "null"}
+                    disabled={isEdit}
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-companyId">

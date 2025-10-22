@@ -4,7 +4,7 @@ import { type UserWithoutPassword, type InsertUser, type Company } from "@shared
 import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Plus } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Plus, Pencil } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -255,20 +255,23 @@ export default function Users() {
                   <SortableHeader field="userId">User ID</SortableHeader>
                   <SortableHeader field="userFullName">Full Name</SortableHeader>
                   <SortableHeader field="status">Status</SortableHeader>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      <td className="px-4 py-4" colSpan={3}>
+                      <td className="px-4 py-4" colSpan={4}>
                         <Skeleton className="h-8 w-full" />
                       </td>
                     </tr>
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-12 text-center">
+                    <td colSpan={4} className="px-4 py-12 text-center">
                       <div className="text-muted-foreground">
                         <p className="text-sm">No users found</p>
                         <p className="text-xs mt-1">Try adjusting your search or filters</p>
@@ -279,8 +282,7 @@ export default function Users() {
                   users.map((user) => (
                     <tr 
                       key={user.userId} 
-                      className="hover-elevate cursor-pointer"
-                      onClick={() => handleEditUser(user)}
+                      className="hover-elevate"
                       data-testid={`row-user-${user.userId}`}
                     >
                       <td className="px-4 py-4">
@@ -300,6 +302,17 @@ export default function Users() {
                         >
                           {user.status}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditUser(user)}
+                          data-testid={`button-edit-${user.userId}`}
+                          title="Edit User"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))
@@ -349,6 +362,7 @@ export default function Users() {
         onSubmit={handleModalSubmit}
         isPending={createMutation.isPending || updateMutation.isPending}
         companies={companies}
+        currentCompanyId={selectedCompany}
       />
     </div>
   );
