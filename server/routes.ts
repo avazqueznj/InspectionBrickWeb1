@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertInspectionSchema, insertDefectSchema, insertUserSchema } from "@shared/schema";
+import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema } from "@shared/schema";
 import { z } from "zod";
 
 // Authentication middleware
@@ -35,6 +35,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     companyId: z.string().optional(),
     search: z.string().optional(),
     sortField: z.enum(["userId", "userFullName", "status"]).optional(),
+    sortDirection: z.enum(["asc", "desc"]).optional(),
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+    status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  });
+
+  // Asset query params validation schema
+  const assetQueryParamsSchema = z.object({
+    companyId: z.string().optional(),
+    search: z.string().optional(),
+    sortField: z.enum(["assetId", "assetConfig", "assetName", "status"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
@@ -311,6 +322,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Routes] Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // === ASSET ROUTES ===
+
+  // Get available filter values for assets (protected)
+  app.get("/api/assets/filter-values", requireAuth, async (req, res) => {
+    console.log(`🔍 [Routes] GET /api/assets/filter-values - User: ${req.session.userId}`);
+    
+    try {
+      // Enforce company scoping: use session's companyId unless user is superuser
+      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for asset filter values - Company: ${req.session.companyId}`);
+      } else {
+        console.log(`👑 [Routes] Superuser access - getting asset filter values for company: ${companyId || 'ALL'}`);
+      }
+      
+      const filterValues = await storage.getAssetFilterValues(companyId);
+      res.json(filterValues);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching asset filter values:", error);
+      res.status(500).json({ error: "Failed to fetch asset filter values" });
+    }
+  });
+
+  // Get all assets (protected)
+  app.get("/api/assets", requireAuth, async (req, res) => {
+    console.log(`📦 [Routes] GET /api/assets - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    
+    try {
+      const params = assetQueryParamsSchema.parse(req.query);
+      
+      // Enforce company scoping
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
+        params.companyId = req.session.companyId;
+      } else {
+        console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
+      }
+      
+      const result = await storage.getAssets(params);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid query parameters", details: error.errors });
+      }
+      console.error("❌ [Routes] Error fetching assets:", error);
+      res.status(500).json({ error: "Failed to fetch assets" });
+    }
+  });
+
+  // Create a new asset (protected)
+  app.post("/api/assets", requireAuth, async (req, res) => {
+    console.log(`➕ [Routes] POST /api/assets - Creating asset: ${req.body?.assetId || 'UNKNOWN'}`);
+    
+    try {
+      const assetData = insertAssetSchema.parse(req.body);
+      
+      // Enforce company scoping: non-superusers can only create assets in their own company
+      if (req.session.companyId && assetData.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - User can only create assets in their own company`);
+        return res.status(403).json({ error: "Cannot create assets in other companies" });
+      }
+      
+      const asset = await storage.createAsset(assetData);
+      console.log(`✅ [Routes] Asset created successfully: ${asset.assetId}`);
+      
+      res.json(asset);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.log(`❌ [Routes] Asset validation error:`, error.errors);
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error creating asset:", error);
+      res.status(500).json({ error: "Failed to create asset" });
+    }
+  });
+
+  // Update an asset (protected)
+  app.patch("/api/assets/:assetId", requireAuth, async (req, res) => {
+    const { assetId } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/assets/${assetId} - Updating asset`);
+    
+    try {
+      const updateData = insertAssetSchema.partial().parse(req.body);
+      
+      // Get the existing asset to check authorization
+      const existingAssets = await storage.getAssets({ companyId: req.session.companyId || undefined });
+      const existingAsset = existingAssets.data.find(a => a.assetId === assetId);
+      
+      if (!existingAsset) {
+        console.log(`❌ [Routes] Asset not found: ${assetId}`);
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      
+      // Enforce company scoping
+      if (req.session.companyId && existingAsset.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot update asset from another company`);
+        return res.status(403).json({ error: "Cannot update assets from other companies" });
+      }
+      
+      const updatedAsset = await storage.updateAsset(assetId, updateData);
+      if (!updatedAsset) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      
+      console.log(`✅ [Routes] Asset updated successfully: ${assetId}`);
+      res.json(updatedAsset);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating asset:", error);
+      res.status(500).json({ error: "Failed to update asset" });
     }
   });
 
