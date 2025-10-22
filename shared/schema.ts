@@ -11,6 +11,13 @@ export const companies = pgTable("companies", {
   settings: text("settings"),
 });
 
+// Users table
+export const users = pgTable("users", {
+  userId: text("user_id").primaryKey(),
+  password: text("password").notNull(),
+  companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }),
+});
+
 // Inspections table
 export const inspections = pgTable("inspections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -39,6 +46,14 @@ export const defects = pgTable("defects", {
 // Define relations
 export const companiesRelations = relations(companies, ({ many }) => ({
   inspections: many(inspections),
+  users: many(users),
+}));
+
+export const usersRelations = relations(users, ({ one }) => ({
+  company: one(companies, {
+    fields: [users.companyId],
+    references: [companies.id],
+  }),
 }));
 
 export const inspectionsRelations = relations(inspections, ({ many, one }) => ({
@@ -59,6 +74,8 @@ export const defectsRelations = relations(defects, ({ one }) => ({
 // Insert schemas
 export const insertCompanySchema = createInsertSchema(companies);
 
+export const insertUserSchema = createInsertSchema(users);
+
 export const insertInspectionSchema = createInsertSchema(inspections).omit({
   id: true,
 });
@@ -73,6 +90,8 @@ export const insertDefectSchema = createInsertSchema(defects).omit({
 // Types
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Inspection = typeof inspections.$inferSelect;
 export type InsertInspection = z.infer<typeof insertInspectionSchema>;
 export type Defect = typeof defects.$inferSelect;
