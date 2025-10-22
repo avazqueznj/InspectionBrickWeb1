@@ -18,6 +18,14 @@ Inspection Brick is a professional web application designed to help organization
 **Last Updated:** October 22, 2025
 
 ### Completed Features (MVP v1.0)
+- ✅ **Print Functionality:**
+  - Individual inspection reports via browser print (Ctrl+P/Cmd+P)
+  - Bulk inspection list printing (up to 100 records with filters applied)
+  - Clean HTML-based print layouts (no PDF generation)
+  - Print individual inspection button in each table row
+  - Print List button at top of inspections page
+  - Print-optimized CSS for professional document output
+  - All filter, search, and sort settings respected in bulk print
 - ✅ **Authentication & Authorization:**
   - Session-based authentication with plain text passwords (pilot configuration for flexibility)
   - Users table with company foreign key for data isolation
