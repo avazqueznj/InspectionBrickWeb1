@@ -5,8 +5,6 @@ import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
-import { PrintReportModal } from "@/components/PrintReportModal";
-import { PrintListModal } from "@/components/PrintListModal";
 import { FilterBar } from "@/components/FilterBar";
 import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText, Printer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,9 +36,6 @@ export default function Inspections() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedInspection, setSelectedInspection] = useState<InspectionWithDefects | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [printInspectionId, setPrintInspectionId] = useState<string | null>(null);
-  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-  const [isPrintListModalOpen, setIsPrintListModalOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>({});
   const itemsPerPage = 10;
 
@@ -116,8 +111,26 @@ export default function Inspections() {
   };
 
   const handlePrintReport = (inspectionId: string) => {
-    setPrintInspectionId(inspectionId);
-    setIsPrintModalOpen(true);
+    // Open in new browser tab
+    window.open(`/api/inspections/${inspectionId}/print`, '_blank');
+  };
+
+  const handlePrintList = () => {
+    // Build query params from current filters
+    const queryParams = new URLSearchParams();
+    if (selectedCompany) queryParams.set("companyId", selectedCompany);
+    if (searchQuery) queryParams.set("search", searchQuery);
+    if (sortField) queryParams.set("sortField", sortField);
+    if (sortDirection) queryParams.set("sortDirection", sortDirection);
+    if (filters.dateFrom) queryParams.set("dateFrom", filters.dateFrom);
+    if (filters.dateTo) queryParams.set("dateTo", filters.dateTo);
+    if (filters.inspectionType) queryParams.set("inspectionType", filters.inspectionType);
+    if (filters.assetId) queryParams.set("assetId", filters.assetId);
+    if (filters.driverName) queryParams.set("driverName", filters.driverName);
+    if (filters.driverId) queryParams.set("driverId", filters.driverId);
+    
+    // Open in new browser tab
+    window.open(`/api/inspections/print-list?${queryParams.toString()}`, '_blank');
   };
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
@@ -161,7 +174,7 @@ export default function Inspections() {
           </div>
           <Button
             variant="default"
-            onClick={() => setIsPrintListModalOpen(true)}
+            onClick={handlePrintList}
             data-testid="button-print-list"
           >
             <Printer className="h-4 w-4 mr-2" />
@@ -305,21 +318,6 @@ export default function Inspections() {
         inspection={selectedInspection}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-      />
-
-      <PrintReportModal
-        inspectionId={printInspectionId}
-        open={isPrintModalOpen}
-        onOpenChange={setIsPrintModalOpen}
-      />
-
-      <PrintListModal
-        open={isPrintListModalOpen}
-        onOpenChange={setIsPrintListModalOpen}
-        searchQuery={searchQuery}
-        sortField={sortField}
-        sortDirection={sortDirection}
-        filters={filters}
       />
     </div>
   );
