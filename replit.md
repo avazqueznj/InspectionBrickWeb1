@@ -4,29 +4,41 @@ A professional web application for managing equipment and vehicle inspections wi
 
 ## Overview
 
-Inspection Brick is a pilot project designed to help organizations manage Department of Transportation (DOT) vehicle inspections, equipment safety checks, and defect tracking. The application provides a clean, efficient interface for viewing inspection records, analyzing defects, and maintaining compliance.
+Inspection Brick is a professional web application designed to help organizations manage Department of Transportation (DOT) vehicle inspections, equipment safety checks, and defect tracking. The application provides a clean, efficient interface for viewing inspection records, analyzing defects, and maintaining compliance.
+
+**Key Features:**
+- Multi-company data isolation with company selector
+- Real-time inspection search and filtering
+- Detailed defect tracking with severity levels (0-100)
+- Dark industrial theme with orange branding accents
+- Server-side pagination and sorting for performance
 
 ## Project Status
 
 **Last Updated:** October 22, 2025
 
 ### Completed Features (MVP v1.0)
-- ✅ Complete database schema with PostgreSQL (inspections and defects tables)
-- ✅ Full CRUD operations for inspections and defects
-- ✅ Server-side search, sorting, and pagination
-- ✅ Professional top navigation bar with logo and menu
-- ✅ Inspections list page with:
-  - Real-time search across all fields
-  - Sortable columns (date/time, inspection type, asset ID, driver name)
-  - Pagination controls (20 items per page)
-  - Defect count display
-- ✅ Inspection details modal with:
-  - Complete inspection information
-  - Defects table with severity indicators (0-100 scale)
+- ✅ **Multi-Company Support:**
+  - Companies table with human-readable IDs (NEC, WALMART, FEDEX)
+  - Company selector in top right corner of navigation
+  - Complete data isolation per company (inspections, defects)
+  - React Context for company state management
+- ✅ **Database & Backend:**
+  - Complete PostgreSQL schema (companies, inspections, defects tables)
+  - Full CRUD operations with company filtering
+  - Server-side search, sorting, and pagination
+  - Foreign key relationships with cascade delete
+- ✅ **User Interface:**
+  - Dark industrial theme with orange (#FF5722) primary accent
+  - Professional navigation bar with 8-bit brick logo
+  - Inspections list page with real-time search, sortable columns, pagination
+  - Inspection details modal with defects table and severity indicators
   - Color-coded status badges (open/pending/repaired)
-- ✅ Beautiful loading states and empty states
-- ✅ Responsive design optimized for desktop
-- ✅ End-to-end tested and verified
+  - Beautiful loading states and empty states
+- ✅ **Quality & Testing:**
+  - Responsive design optimized for desktop
+  - End-to-end tested with Playwright (multi-company switching, search, modals)
+  - Comprehensive design system documented
 
 ### Planned Future Features
 - Defects/Repairs management screen
@@ -49,8 +61,13 @@ Inspection Brick is a pilot project designed to help organizations manage Depart
 
 ### Database Schema
 
+**Companies Table:**
+- `id`: text (primary key) - Human-readable company ID (e.g., "NEC", "WALMART", "FEDEX")
+- `name`: text - Full company name (e.g., "Northeast Container", "Walmart Distribution")
+
 **Inspections Table:**
 - `id`: UUID (primary key, auto-generated)
+- `companyId`: text (foreign key to companies.id, required)
 - `datetime`: timestamp (defaults to current time)
 - `inspectionType`: text (e.g., "DOT Vehicle Inspection")
 - `assetId`: text (vehicle/equipment identifier)
@@ -60,7 +77,7 @@ Inspection Brick is a pilot project designed to help organizations manage Depart
 
 **Defects Table:**
 - `id`: UUID (primary key, auto-generated)
-- `inspectionId`: UUID (foreign key, cascade delete)
+- `inspectionId`: UUID (foreign key to inspections.id, cascade delete)
 - `zoneName`: text (e.g., "Front End", "Hydraulics")
 - `componentName`: text (e.g., "Left Headlight", "Brake Light")
 - `defect`: text (description of the defect)
@@ -71,8 +88,11 @@ Inspection Brick is a pilot project designed to help organizations manage Depart
 
 ### API Endpoints
 
+**Companies:**
+- `GET /api/companies` - Get all companies
+
 **Inspections:**
-- `GET /api/inspections` - List with search, sort, pagination (query params: search, sortField, sortDirection, page, limit)
+- `GET /api/inspections?companyId={id}` - List with company filter, search, sort, pagination (query params: companyId, search, sortField, sortDirection, page, limit)
 - `GET /api/inspections/:id` - Get single inspection with defects
 - `POST /api/inspections` - Create new inspection
 - `PATCH /api/inspections/:id` - Update inspection
@@ -97,7 +117,9 @@ Inspection Brick is a pilot project designed to help organizations manage Depart
 
 **Frontend:**
 - `client/src/App.tsx` - Main app component with routing
+- `client/src/contexts/CompanyContext.tsx` - Company state management
 - `client/src/components/TopBar.tsx` - Navigation header
+- `client/src/components/CompanySelector.tsx` - Company dropdown selector
 - `client/src/components/InspectionModal.tsx` - Inspection details modal
 - `client/src/components/StatusBadge.tsx` - Defect status indicator
 - `client/src/components/SeverityIndicator.tsx` - Severity visualization
