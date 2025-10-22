@@ -37,6 +37,7 @@ export interface IStorage {
   deleteInspection(id: string): Promise<boolean>;
   
   // Defects
+  getDefectById(id: string): Promise<Defect | undefined>;
   getDefectsByInspectionId(inspectionId: string): Promise<Defect[]>;
   createDefect(defect: InsertDefect): Promise<Defect>;
   updateDefect(id: string, defect: Partial<InsertDefect>): Promise<Defect | undefined>;
@@ -178,6 +179,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(inspections.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  async getDefectById(id: string): Promise<Defect | undefined> {
+    const [defect] = await db.select().from(defects).where(eq(defects.id, id));
+    return defect;
   }
 
   async getDefectsByInspectionId(inspectionId: string): Promise<Defect[]> {

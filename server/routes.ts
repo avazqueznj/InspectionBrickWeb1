@@ -95,7 +95,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/companies", requireAuth, async (req, res) => {
     try {
       const companies = await storage.getCompanies();
-      res.json(companies);
+      
+      // If user has a specific company, only return that company
+      if (req.session.companyId) {
+        const filteredCompanies = companies.filter(c => c.id === req.session.companyId);
+        res.json(filteredCompanies);
+      } else {
+        // Superuser (avazquez) sees all companies
+        res.json(companies);
+      }
     } catch (error) {
       console.error("Error fetching companies:", error);
       res.status(500).json({ error: "Failed to fetch companies" });
@@ -106,6 +114,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/inspections", requireAuth, async (req, res) => {
     try {
       const params = queryParamsSchema.parse(req.query);
+      
+      // Enforce company scoping: override companyId with session's companyId
+      // unless user is superuser (companyId is null, like avazquez)
+      if (req.session.companyId) {
+        params.companyId = req.session.companyId;
+      }
+      
       const result = await storage.getInspections(params);
       res.json(result);
     } catch (error) {
@@ -124,6 +139,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!inspection) {
         return res.status(404).json({ error: "Inspection not found" });
       }
+      
+      // Verify user has access to this inspection's company
+      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       res.json(inspection);
     } catch (error) {
       console.error("Error fetching inspection:", error);
@@ -135,6 +156,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/inspections", requireAuth, async (req, res) => {
     try {
       const validatedData = insertInspectionSchema.parse(req.body);
+      
+      // Enforce company scoping: user can only create inspections for their company
+      if (req.session.companyId && validatedData.companyId !== req.session.companyId) {
+        return res.status(403).json({ error: "Access denied: cannot create inspection for other company" });
+      }
+      
       const inspection = await storage.createInspection(validatedData);
       res.status(201).json(inspection);
     } catch (error) {
@@ -149,11 +176,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update an inspection (protected)
   app.patch("/api/inspections/:id", requireAuth, async (req, res) => {
     try {
-      const validatedData = insertInspectionSchema.partial().parse(req.body);
-      const inspection = await storage.updateInspection(req.params.id, validatedData);
-      if (!inspection) {
+      // First, verify user has access to this inspection
+      const existingInspection = await storage.getInspection(req.params.id);
+      if (!existingInspection) {
         return res.status(404).json({ error: "Inspection not found" });
       }
+      
+      if (req.session.companyId && existingInspection.companyId !== req.session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const validatedData = insertInspectionSchema.partial().parse(req.body);
+      
+      // Prevent changing companyId to a different company
+      if (validatedData.companyId && validatedData.companyId !== existingInspection.companyId) {
+        return res.status(403).json({ error: "Access denied: cannot change inspection company" });
+      }
+      
+      const inspection = await storage.updateInspection(req.params.id, validatedData);
       res.json(inspection);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -167,10 +207,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete an inspection (protected)
   app.delete("/api/inspections/:id", requireAuth, async (req, res) => {
     try {
-      const success = await storage.deleteInspection(req.params.id);
-      if (!success) {
+      // First, verify user has access to this inspection
+      const existingInspection = await storage.getInspection(req.params.id);
+      if (!existingInspection) {
         return res.status(404).json({ error: "Inspection not found" });
       }
+      
+      if (req.session.companyId && existingInspection.companyId !== req.session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const success = await storage.deleteInspection(req.params.id);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting inspection:", error);
@@ -182,6 +229,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/defects", requireAuth, async (req, res) => {
     try {
       const validatedData = insertDefectSchema.parse(req.body);
+      
+      // Verify user has access to the parent inspection
+      const inspection = await storage.getInspection(validatedData.inspectionId);
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+      
+      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+        return res.status(403).json({ error: "Access denied: cannot create defect for other company's inspection" });
+      }
+      
       const defect = await storage.createDefect(validatedData);
       res.status(201).json(defect);
     } catch (error) {
@@ -196,11 +254,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update a defect (protected)
   app.patch("/api/defects/:id", requireAuth, async (req, res) => {
     try {
-      const validatedData = insertDefectSchema.partial().parse(req.body);
-      const defect = await storage.updateDefect(req.params.id, validatedData);
-      if (!defect) {
+      // Get the existing defect
+      const existingDefect = await storage.getDefectById(req.params.id);
+      
+      if (!existingDefect) {
         return res.status(404).json({ error: "Defect not found" });
       }
+      
+      // Verify user has access to the parent inspection
+      const inspection = await storage.getInspection(existingDefect.inspectionId);
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+      
+      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const validatedData = insertDefectSchema.partial().parse(req.body);
+      
+      // Prevent changing inspectionId to move defect to another inspection/company
+      if (validatedData.inspectionId && validatedData.inspectionId !== existingDefect.inspectionId) {
+        return res.status(403).json({ error: "Access denied: cannot change defect's inspection" });
+      }
+      
+      const defect = await storage.updateDefect(req.params.id, validatedData);
       res.json(defect);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -214,10 +292,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete a defect (protected)
   app.delete("/api/defects/:id", requireAuth, async (req, res) => {
     try {
-      const success = await storage.deleteDefect(req.params.id);
-      if (!success) {
+      // Get the existing defect
+      const existingDefect = await storage.getDefectById(req.params.id);
+      
+      if (!existingDefect) {
         return res.status(404).json({ error: "Defect not found" });
       }
+      
+      // Verify user has access to the parent inspection
+      const inspection = await storage.getInspection(existingDefect.inspectionId);
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+      
+      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const success = await storage.deleteDefect(req.params.id);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting defect:", error);
@@ -228,6 +320,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get defects by inspection ID (protected)
   app.get("/api/inspections/:id/defects", requireAuth, async (req, res) => {
     try {
+      // Verify user has access to the parent inspection
+      const inspection = await storage.getInspection(req.params.id);
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+      
+      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const defects = await storage.getDefectsByInspectionId(req.params.id);
       res.json(defects);
     } catch (error) {
