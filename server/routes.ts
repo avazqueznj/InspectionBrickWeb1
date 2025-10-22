@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema } from "@shared/schema";
+import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema } from "@shared/schema";
 import { z } from "zod";
 
 // Authentication middleware
@@ -46,6 +46,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     companyId: z.string().optional(),
     search: z.string().optional(),
     sortField: z.enum(["assetId", "assetConfig", "assetName", "status"]).optional(),
+    sortDirection: z.enum(["asc", "desc"]).optional(),
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+    status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  });
+
+  // Inspection Type query params validation schema
+  const inspectionTypeQueryParamsSchema = z.object({
+    companyId: z.string().optional(),
+    search: z.string().optional(),
+    sortField: z.enum(["inspectionTypeId", "inspectionLayout", "status"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
@@ -444,6 +455,233 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("❌ [Routes] Error updating asset:", error);
       res.status(500).json({ error: "Failed to update asset" });
+    }
+  });
+
+  // === INSPECTION TYPE ROUTES ===
+
+  // Get available filter values for inspection types (protected)
+  app.get("/api/inspection-types/filter-values", requireAuth, async (req, res) => {
+    console.log(`🔍 [Routes] GET /api/inspection-types/filter-values - User: ${req.session.userId}`);
+    
+    try {
+      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for inspection type filter values - Company: ${req.session.companyId}`);
+      } else {
+        console.log(`👑 [Routes] Superuser access - getting inspection type filter values for company: ${companyId || 'ALL'}`);
+      }
+      
+      const filterValues = await storage.getInspectionTypeFilterValues(companyId);
+      res.json(filterValues);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching inspection type filter values:", error);
+      res.status(500).json({ error: "Failed to fetch inspection type filter values" });
+    }
+  });
+
+  // Get all inspection types (protected)
+  app.get("/api/inspection-types", requireAuth, async (req, res) => {
+    console.log(`📋 [Routes] GET /api/inspection-types - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    
+    try {
+      const params = inspectionTypeQueryParamsSchema.parse(req.query);
+      
+      // Enforce company scoping
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
+        params.companyId = req.session.companyId;
+      } else {
+        console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
+      }
+      
+      const result = await storage.getInspectionTypes(params);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid query parameters", details: error.errors });
+      }
+      console.error("❌ [Routes] Error fetching inspection types:", error);
+      res.status(500).json({ error: "Failed to fetch inspection types" });
+    }
+  });
+
+  // Get a single inspection type with form fields (protected)
+  app.get("/api/inspection-types/:inspectionTypeId", requireAuth, async (req, res) => {
+    const { inspectionTypeId } = req.params;
+    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeId} - User: ${req.session.userId}`);
+    
+    try {
+      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId);
+      
+      if (!inspectionType) {
+        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
+        return res.status(404).json({ error: "Inspection type not found" });
+      }
+      
+      // Enforce company scoping
+      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot access inspection type from another company`);
+        return res.status(403).json({ error: "Cannot access inspection types from other companies" });
+      }
+      
+      console.log(`✅ [Routes] Inspection type found: ${inspectionTypeId}`);
+      res.json(inspectionType);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching inspection type:", error);
+      res.status(500).json({ error: "Failed to fetch inspection type" });
+    }
+  });
+
+  // Create a new inspection type (protected)
+  app.post("/api/inspection-types", requireAuth, async (req, res) => {
+    console.log(`➕ [Routes] POST /api/inspection-types - Creating inspection type: ${req.body?.inspectionTypeId || 'UNKNOWN'}`);
+    
+    try {
+      const inspectionTypeData = insertInspectionTypeSchema.parse(req.body);
+      
+      // Enforce company scoping: non-superusers must create inspection types in their own company
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - Inspection type will be created in: ${req.session.companyId}`);
+        inspectionTypeData.companyId = req.session.companyId;
+      }
+      
+      if (!inspectionTypeData.companyId) {
+        console.log(`❌ [Routes] Cannot create inspection type without company ID`);
+        return res.status(400).json({ error: "Company ID is required" });
+      }
+      
+      const inspectionType = await storage.createInspectionType(inspectionTypeData);
+      console.log(`✅ [Routes] Inspection type created successfully: ${inspectionType.inspectionTypeId}`);
+      
+      res.json(inspectionType);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.log(`❌ [Routes] Inspection type validation error:`, error.errors);
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error creating inspection type:", error);
+      res.status(500).json({ error: "Failed to create inspection type" });
+    }
+  });
+
+  // Update an inspection type (protected)
+  app.patch("/api/inspection-types/:inspectionTypeId", requireAuth, async (req, res) => {
+    const { inspectionTypeId } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/inspection-types/${inspectionTypeId} - Updating inspection type`);
+    
+    try {
+      const updateData = insertInspectionTypeSchema.partial().parse(req.body);
+      
+      // Get the existing inspection type to check authorization
+      const existingInspectionType = await storage.getInspectionTypeById(inspectionTypeId);
+      
+      if (!existingInspectionType) {
+        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
+        return res.status(404).json({ error: "Inspection type not found" });
+      }
+      
+      // Enforce company scoping
+      if (req.session.companyId && existingInspectionType.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot update inspection type from another company`);
+        return res.status(403).json({ error: "Cannot update inspection types from other companies" });
+      }
+      
+      const updatedInspectionType = await storage.updateInspectionType(inspectionTypeId, updateData);
+      if (!updatedInspectionType) {
+        return res.status(404).json({ error: "Inspection type not found" });
+      }
+      
+      console.log(`✅ [Routes] Inspection type updated successfully: ${inspectionTypeId}`);
+      res.json(updatedInspectionType);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating inspection type:", error);
+      res.status(500).json({ error: "Failed to update inspection type" });
+    }
+  });
+
+  // Create a new form field for an inspection type (protected)
+  app.post("/api/inspection-types/:inspectionTypeId/form-fields", requireAuth, async (req, res) => {
+    const { inspectionTypeId } = req.params;
+    console.log(`➕ [Routes] POST /api/inspection-types/${inspectionTypeId}/form-fields - Creating form field`);
+    
+    try {
+      // Verify the inspection type exists and user has access
+      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId);
+      if (!inspectionType) {
+        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
+        return res.status(404).json({ error: "Inspection type not found" });
+      }
+      
+      // Enforce company scoping
+      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot add form fields to inspection type from another company`);
+        return res.status(403).json({ error: "Cannot modify inspection types from other companies" });
+      }
+      
+      const formFieldData = insertInspectionTypeFormFieldSchema.parse({
+        ...req.body,
+        inspectionTypeId,
+      });
+      
+      const formField = await storage.createInspectionTypeFormField(formFieldData);
+      console.log(`✅ [Routes] Form field created successfully`);
+      
+      res.json(formField);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.log(`❌ [Routes] Form field validation error:`, error.errors);
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error creating form field:", error);
+      res.status(500).json({ error: "Failed to create form field" });
+    }
+  });
+
+  // Update a form field (protected)
+  app.patch("/api/inspection-type-form-fields/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/inspection-type-form-fields/${id} - Updating form field`);
+    
+    try {
+      const updateData = insertInspectionTypeFormFieldSchema.partial().parse(req.body);
+      
+      const updatedFormField = await storage.updateInspectionTypeFormField(id, updateData);
+      if (!updatedFormField) {
+        return res.status(404).json({ error: "Form field not found" });
+      }
+      
+      console.log(`✅ [Routes] Form field updated successfully: ${id}`);
+      res.json(updatedFormField);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating form field:", error);
+      res.status(500).json({ error: "Failed to update form field" });
+    }
+  });
+
+  // Delete a form field (protected)
+  app.delete("/api/inspection-type-form-fields/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    console.log(`🗑️ [Routes] DELETE /api/inspection-type-form-fields/${id}`);
+    
+    try {
+      const success = await storage.deleteInspectionTypeFormField(id);
+      if (!success) {
+        return res.status(404).json({ error: "Form field not found" });
+      }
+      
+      console.log(`✅ [Routes] Form field deleted successfully: ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Routes] Error deleting form field:", error);
+      res.status(500).json({ error: "Failed to delete form field" });
     }
   });
 
