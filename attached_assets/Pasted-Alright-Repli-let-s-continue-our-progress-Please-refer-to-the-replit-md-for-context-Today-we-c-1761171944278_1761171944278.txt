@@ -1,0 +1,27 @@
+Alright, Repli, let's continue our progress.
+
+Please refer to the replit.md for context. Today, we completed the users and assets list, and we have one more screen to finish, which will be similar to the users list.
+
+Next, we will create the inspection types admin screen, following the same structure as the users admin page. This page will be accessible from the inspection types menu item in the top bar. Inspection types refer to the different inspections that need to be conducted, such as preflight, pre-trip, cargo securement, 10,000-mile check, and so on. Each inspection has a corresponding inspection type, which the inspection mobile device will use  to set up the user interface for the driver or inspector.
+
+I was considering setting up a foreign key from inspections to the corresponding inspection type. However, for now, let's keep them separate since inspections are permanent records, while asset data may change over time. I want to avoid potential issues with stale data affecting inspections.
+
+As mentioned earlier, let's create the new inspection types page and table, along with test data, similar to the users page. It will be accessible from the inspection types link in the top bar and will include the following columns:
+
+inspection_type_id string {like preflight, pre trip , post trip},
+inspection_layout string {like ALL, TRUCK, CESSNA, FORD-150 etc },
+status  string { ACTIVE or INACTIVE}
+company_id fk to company,
+
+
+Now here is the complication:
+Each inspection type requires a list of form fields. These fields will be presented on the mobile device for the driver to input values. Therefore, for each inspection type, we need a corresponding child table called inspection_type_form_fields with the following columns:
+
+form_field_name string {like odometer, fuel level, route},
+form_field_type string  {only TEXT or NUM }
+form_field_length string  { 0 - 64}
+inspection_type_id  string, the fk to its parent type.
+
+So the inspection types edit modal will need a table at the bottom where we can add, edit delete these child items, the form fields. 
+
+Does that make sense? Remember to set the company as a non-editable field in the edit screen. If we create an inspection type , it must be associated with the displaying company.
