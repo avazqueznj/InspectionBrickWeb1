@@ -318,3 +318,54 @@
     inset: -1px;
   }
 }
+
+/* Print styles for inspection reports */
+@media print {
+  @page {
+    margin: 0.5in;
+    size: letter;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-content,
+  .print-content * {
+    visibility: visible;
+  }
+
+  .print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide dialog overlay and wrapper when printing */
+  [role="dialog"] {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure proper page breaks */
+  .print-content h1,
+  .print-content h2,
+  .print-content h3 {
+    page-break-after: avoid;
+  }
+
+  .print-content > div {
+    page-break-inside: avoid;
+  }
+}

@@ -5,6 +5,7 @@ import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
+import { PrintReportModal } from "@/components/PrintReportModal";
 import { FilterBar } from "@/components/FilterBar";
 import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,6 +37,8 @@ export default function Inspections() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedInspection, setSelectedInspection] = useState<InspectionWithDefects | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [printInspectionId, setPrintInspectionId] = useState<string | null>(null);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>({});
   const itemsPerPage = 10;
 
@@ -111,8 +114,8 @@ export default function Inspections() {
   };
 
   const handlePrintReport = (inspectionId: string) => {
-    // Open PDF report in new window for download
-    window.open(`/api/inspections/${inspectionId}/report`, '_blank');
+    setPrintInspectionId(inspectionId);
+    setIsPrintModalOpen(true);
   };
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
@@ -292,6 +295,12 @@ export default function Inspections() {
         inspection={selectedInspection}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
+      />
+
+      <PrintReportModal
+        inspectionId={printInspectionId}
+        open={isPrintModalOpen}
+        onOpenChange={setIsPrintModalOpen}
       />
     </div>
   );
