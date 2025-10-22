@@ -53,10 +53,10 @@ function FormFieldDialog({ open, onOpenChange, formField, inspectionTypeId, onSu
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertInspectionTypeFormField) => {
-      return await apiRequest("POST", "/api/inspection-type-form-fields", data);
+      return await apiRequest("POST", `/api/inspection-types/${inspectionTypeId}/form-fields`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inspection-type-form-fields", inspectionTypeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inspection-types", inspectionTypeId, "form-fields"] });
       toast({
         title: "Success",
         description: "Form field created successfully",
@@ -78,7 +78,7 @@ function FormFieldDialog({ open, onOpenChange, formField, inspectionTypeId, onSu
       return await apiRequest("PATCH", `/api/inspection-type-form-fields/${formField?.id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inspection-type-form-fields", inspectionTypeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inspection-types", inspectionTypeId, "form-fields"] });
       toast({
         title: "Success",
         description: "Form field updated successfully",
@@ -210,9 +210,9 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
 
   // Fetch form fields for this inspection type
   const { data: formFields = [], refetch: refetchFormFields } = useQuery<InspectionTypeFormField[]>({
-    queryKey: ["/api/inspection-type-form-fields", inspectionType?.inspectionTypeId],
+    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeId, "form-fields"],
     queryFn: async () => {
-      const response = await fetch(`/api/inspection-type-form-fields?inspectionTypeId=${inspectionType?.inspectionTypeId}`);
+      const response = await fetch(`/api/inspection-types/${inspectionType?.inspectionTypeId}/form-fields`);
       if (!response.ok) {
         throw new Error("Failed to fetch form fields");
       }
@@ -227,7 +227,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
       return await apiRequest("DELETE", `/api/inspection-type-form-fields/${id}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inspection-type-form-fields", inspectionType?.inspectionTypeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeId, "form-fields"] });
       toast({
         title: "Success",
         description: "Form field deleted successfully",

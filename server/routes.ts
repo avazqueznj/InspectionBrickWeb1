@@ -604,6 +604,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get form fields for an inspection type (protected)
+  app.get("/api/inspection-types/:inspectionTypeId/form-fields", requireAuth, async (req, res) => {
+    const { inspectionTypeId } = req.params;
+    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeId}/form-fields - Fetching form fields`);
+    
+    try {
+      // Verify the inspection type exists and user has access
+      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId);
+      if (!inspectionType) {
+        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
+        return res.status(404).json({ error: "Inspection type not found" });
+      }
+      
+      // Enforce company scoping
+      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot access form fields from another company`);
+        return res.status(403).json({ error: "Cannot access inspection types from other companies" });
+      }
+      
+      // Return the form fields from the inspection type
+      console.log(`✅ [Routes] Returning ${inspectionType.formFields?.length || 0} form fields`);
+      res.json(inspectionType.formFields || []);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching form fields:", error);
+      res.status(500).json({ error: "Failed to fetch form fields" });
+    }
+  });
+
   // Create a new form field for an inspection type (protected)
   app.post("/api/inspection-types/:inspectionTypeId/form-fields", requireAuth, async (req, res) => {
     const { inspectionTypeId } = req.params;
