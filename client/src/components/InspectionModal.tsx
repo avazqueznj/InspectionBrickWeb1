@@ -1,0 +1,167 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { type InspectionWithDefects } from "@shared/schema";
+import { StatusBadge } from "./StatusBadge";
+import { SeverityIndicator } from "./SeverityIndicator";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface InspectionModalProps {
+  inspection: InspectionWithDefects | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function InspectionModal({ inspection, open, onOpenChange }: InspectionModalProps) {
+  if (!inspection) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="modal-inspection-details">
+        <DialogHeader>
+          <div className="flex items-start justify-between">
+            <div>
+              <DialogTitle className="text-xl font-semibold">Inspection Details</DialogTitle>
+              <p className="text-sm text-muted-foreground font-mono mt-1">
+                ID: {inspection.id}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenChange(false)}
+              data-testid="button-close-modal"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-6 mt-4">
+          {/* Inspection Metadata */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">Inspection Information</h3>
+            <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  Date & Time
+                </p>
+                <p className="text-sm font-medium" data-testid="text-datetime">
+                  {new Date(inspection.datetime).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  Inspection Type
+                </p>
+                <p className="text-sm font-medium" data-testid="text-inspection-type">
+                  {inspection.inspectionType}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  Asset ID
+                </p>
+                <p className="text-sm font-medium font-mono" data-testid="text-asset-id">
+                  {inspection.assetId}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  Driver Name
+                </p>
+                <p className="text-sm font-medium" data-testid="text-driver-name">
+                  {inspection.driverName}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  Driver ID
+                </p>
+                <p className="text-sm font-medium font-mono" data-testid="text-driver-id">
+                  {inspection.driverId}
+                </p>
+              </div>
+              {inspection.inspectionFormData && (
+                <div className="col-span-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                    Form Data
+                  </p>
+                  <p className="text-sm text-muted-foreground" data-testid="text-form-data">
+                    {inspection.inspectionFormData}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Defects Section */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">
+              Defects ({inspection.defects?.length || 0})
+            </h3>
+            {inspection.defects && inspection.defects.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Zone
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Component
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Defect
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Severity
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {inspection.defects.map((defect) => (
+                        <tr key={defect.id} className="hover-elevate" data-testid={`row-defect-${defect.id}`}>
+                          <td className="px-4 py-3 text-sm">{defect.zoneName}</td>
+                          <td className="px-4 py-3 text-sm">{defect.componentName}</td>
+                          <td className="px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium">{defect.defect}</p>
+                              {defect.driverNotes && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Note: {defect.driverNotes}
+                                </p>
+                              )}
+                              {defect.repairNotes && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Repair: {defect.repairNotes}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <SeverityIndicator severity={defect.severity} />
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge status={defect.status as "open" | "pending" | "repaired"} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-muted/30 rounded-lg">
+                <p className="text-sm text-muted-foreground">No defects reported for this inspection</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
