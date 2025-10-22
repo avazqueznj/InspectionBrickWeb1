@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { companies, inspections, defects, users } from "@shared/schema";
+import { companies, inspections, defects, users, assets } from "@shared/schema";
 import { storage } from "./storage";
 
 async function seed() {
@@ -10,6 +10,7 @@ async function seed() {
     console.log("🗑️  Clearing existing data...");
     await db.delete(defects);
     await db.delete(inspections);
+    await db.delete(assets);
     await db.delete(users);
     await db.delete(companies);
     console.log("✅ Cleared existing data");
@@ -110,6 +111,56 @@ async function seed() {
     console.log("   ✅ Created inactive user: jane_former (companyId: FEDEX)");
     
     console.log("✅ Created 7 users (1 superuser + 4 active company users + 2 inactive users)");
+
+    // Create assets for all companies
+    console.log("📦 Creating assets...");
+    
+    // NEC Assets - matching the inspection data
+    const necAssetData = [
+      { assetId: "TRUCK-2401", assetConfig: "TRUCK", assetName: "Freightliner 2401", status: "ACTIVE" as const, companyId: "NEC" },
+      { assetId: "TRUCK-2402", assetConfig: "TRUCK", assetName: "Peterbilt 2402", status: "ACTIVE" as const, companyId: "NEC" },
+      { assetId: "TRUCK-2403", assetConfig: "TRUCK", assetName: "Kenworth 2403", status: "ACTIVE" as const, companyId: "NEC" },
+      { assetId: "VAN-1501", assetConfig: "VAN", assetName: "Ford Transit 1501", status: "ACTIVE" as const, companyId: "NEC" },
+      { assetId: "VAN-1502", assetConfig: "VAN", assetName: "Mercedes Sprinter 1502", status: "ACTIVE" as const, companyId: "NEC" },
+      { assetId: "FORKLIFT-089", assetConfig: "FORKLIFT", assetName: "Toyota 089", status: "ACTIVE" as const, companyId: "NEC" },
+      { assetId: "FORKLIFT-090", assetConfig: "FORKLIFT", assetName: "Caterpillar 090", status: "ACTIVE" as const, companyId: "NEC" },
+      { assetId: "CRANE-12", assetConfig: "CRANE", assetName: "Mobile Crane 12", status: "ACTIVE" as const, companyId: "NEC" },
+      { assetId: "CRANE-13", assetConfig: "CRANE", assetName: "Tower Crane 13", status: "INACTIVE" as const, companyId: "NEC" },
+      { assetId: "PALLET-JACK-05", assetConfig: "PALLET JACK", assetName: "Electric Jack 05", status: "ACTIVE" as const, companyId: "NEC" },
+    ];
+    
+    // WALMART Assets
+    const walmartAssetData = [
+      { assetId: "VAN-1145", assetConfig: "VAN", assetName: "Delivery Van 1145", status: "ACTIVE" as const, companyId: "WALMART" },
+      { assetId: "VAN-1146", assetConfig: "VAN", assetName: "Delivery Van 1146", status: "ACTIVE" as const, companyId: "WALMART" },
+      { assetId: "TRUCK-5001", assetConfig: "TRUCK", assetName: "Semi Truck 5001", status: "ACTIVE" as const, companyId: "WALMART" },
+      { assetId: "TRUCK-5002", assetConfig: "TRUCK", assetName: "Semi Truck 5002", status: "ACTIVE" as const, companyId: "WALMART" },
+      { assetId: "EXCAVATOR-45", assetConfig: "EXCAVATOR", assetName: "Excavator 45", status: "INACTIVE" as const, companyId: "WALMART" },
+      { assetId: "LOADER-22", assetConfig: "LOADER", assetName: "Front Loader 22", status: "ACTIVE" as const, companyId: "WALMART" },
+      { assetId: "FORKLIFT-W01", assetConfig: "FORKLIFT", assetName: "Warehouse Forklift W01", status: "ACTIVE" as const, companyId: "WALMART" },
+      { assetId: "FORKLIFT-W02", assetConfig: "FORKLIFT", assetName: "Warehouse Forklift W02", status: "ACTIVE" as const, companyId: "WALMART" },
+      { assetId: "CONVEYOR-C3", assetConfig: "CONVEYOR", assetName: "Belt Conveyor C3", status: "ACTIVE" as const, companyId: "WALMART" },
+      { assetId: "PALLET-JACK-W10", assetConfig: "PALLET JACK", assetName: "Manual Jack W10", status: "ACTIVE" as const, companyId: "WALMART" },
+    ];
+    
+    // FEDEX Assets
+    const fedexAssetData = [
+      { assetId: "CONVEYOR-C3", assetConfig: "CONVEYOR", assetName: "Sortation Belt C3", status: "ACTIVE" as const, companyId: "FEDEX" },
+      { assetId: "SORTATION-UNIT-4", assetConfig: "SORTATION UNIT", assetName: "Auto Sort Unit 4", status: "ACTIVE" as const, companyId: "FEDEX" },
+      { assetId: "VAN-8803", assetConfig: "VAN", assetName: "Delivery Van 8803", status: "ACTIVE" as const, companyId: "FEDEX" },
+      { assetId: "TRUCK-5503", assetConfig: "TRUCK", assetName: "Box Truck 5503", status: "ACTIVE" as const, companyId: "FEDEX" },
+      { assetId: "FORKLIFT-F10", assetConfig: "FORKLIFT", assetName: "Hyster F10", status: "ACTIVE" as const, companyId: "FEDEX" },
+      { assetId: "LOADER-F22", assetConfig: "LOADER", assetName: "Front Loader F22", status: "ACTIVE" as const, companyId: "FEDEX" },
+      { assetId: "PALLET-JACK-F05", assetConfig: "PALLET JACK", assetName: "Electric Jack F05", status: "ACTIVE" as const, companyId: "FEDEX" },
+      { assetId: "TRUCK-5504", assetConfig: "TRUCK", assetName: "Box Truck 5504", status: "INACTIVE" as const, companyId: "FEDEX" },
+      { assetId: "VAN-8804", assetConfig: "VAN", assetName: "Delivery Van 8804", status: "ACTIVE" as const, companyId: "FEDEX" },
+      { assetId: "CRANE-F1", assetConfig: "CRANE", assetName: "Gantry Crane F1", status: "ACTIVE" as const, companyId: "FEDEX" },
+    ];
+    
+    // Insert all assets
+    await db.insert(assets).values([...necAssetData, ...walmartAssetData, ...fedexAssetData]);
+    
+    console.log(`✅ Created ${necAssetData.length + walmartAssetData.length + fedexAssetData.length} assets (${necAssetData.length} NEC, ${walmartAssetData.length} WALMART, ${fedexAssetData.length} FEDEX)`);
 
     // Create sample inspections - 45 per company with varied data
     console.log("📋 Creating sample inspections...");
@@ -327,9 +378,10 @@ async function seed() {
     console.log("🎉 Seeding completed successfully!");
     console.log("📊 Summary:");
     console.log("   - 3 companies");
-    console.log("   - 5 users (1 superuser + 4 company users)");
+    console.log("   - 7 users (1 superuser + 4 active company users + 2 inactive users)");
+    console.log("   - 30 assets (10 per company with varied types and statuses)");
     console.log(`   - ${necInspections.length + walmartInspections.length + fedexInspections.length} inspections (${necInspections.length} per company)`);
-    console.log("   - Multiple defects across different statuses");
+    console.log(`   - ${totalDefects} defects across different statuses`);
   } catch (error) {
     console.error("❌ Seeding failed:", error);
     throw error;
