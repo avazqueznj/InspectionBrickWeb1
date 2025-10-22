@@ -54,11 +54,29 @@ export const defects = pgTable("defects", {
   repairNotes: text("repair_notes"),
 });
 
+// Inspection Types table
+export const inspectionTypes = pgTable("inspection_types", {
+  inspectionTypeId: text("inspection_type_id").primaryKey(),
+  inspectionLayout: text("inspection_layout").notNull(),
+  status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+});
+
+// Inspection Type Form Fields table
+export const inspectionTypeFormFields = pgTable("inspection_type_form_fields", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  formFieldName: text("form_field_name").notNull(),
+  formFieldType: text("form_field_type").notNull().$type<"TEXT" | "NUM">(),
+  formFieldLength: text("form_field_length").notNull(),
+  inspectionTypeId: text("inspection_type_id").notNull().references(() => inspectionTypes.inspectionTypeId, { onDelete: "cascade" }),
+});
+
 // Define relations
 export const companiesRelations = relations(companies, ({ many }) => ({
   inspections: many(inspections),
   users: many(users),
   assets: many(assets),
+  inspectionTypes: many(inspectionTypes),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -90,6 +108,21 @@ export const defectsRelations = relations(defects, ({ one }) => ({
   }),
 }));
 
+export const inspectionTypesRelations = relations(inspectionTypes, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [inspectionTypes.companyId],
+    references: [companies.id],
+  }),
+  formFields: many(inspectionTypeFormFields),
+}));
+
+export const inspectionTypeFormFieldsRelations = relations(inspectionTypeFormFields, ({ one }) => ({
+  inspectionType: one(inspectionTypes, {
+    fields: [inspectionTypeFormFields.inspectionTypeId],
+    references: [inspectionTypes.inspectionTypeId],
+  }),
+}));
+
 // Insert schemas
 export const insertCompanySchema = createInsertSchema(companies);
 
@@ -112,6 +145,17 @@ export const insertDefectSchema = createInsertSchema(defects).omit({
   severity: z.number().min(0).max(100),
 });
 
+export const insertInspectionTypeSchema = createInsertSchema(inspectionTypes).extend({
+  status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+});
+
+export const insertInspectionTypeFormFieldSchema = createInsertSchema(inspectionTypeFormFields).omit({
+  id: true,
+}).extend({
+  formFieldType: z.enum(["TEXT", "NUM"]),
+  formFieldLength: z.string().regex(/^\d+-\d+$/, "Format must be like 0-64"),
+});
+
 // Types
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
@@ -124,8 +168,17 @@ export type Inspection = typeof inspections.$inferSelect;
 export type InsertInspection = z.infer<typeof insertInspectionSchema>;
 export type Defect = typeof defects.$inferSelect;
 export type InsertDefect = z.infer<typeof insertDefectSchema>;
+export type InspectionType = typeof inspectionTypes.$inferSelect;
+export type InsertInspectionType = z.infer<typeof insertInspectionTypeSchema>;
+export type InspectionTypeFormField = typeof inspectionTypeFormFields.$inferSelect;
+export type InsertInspectionTypeFormField = z.infer<typeof insertInspectionTypeFormFieldSchema>;
 
 // Extended type for inspection with defects
 export type InspectionWithDefects = Inspection & {
   defects: Defect[];
+};
+
+// Extended type for inspection type with form fields
+export type InspectionTypeWithFormFields = InspectionType & {
+  formFields: InspectionTypeFormField[];
 };
