@@ -19,7 +19,7 @@ Inspection Brick is a professional web application designed to help organization
 
 ### Completed Features (MVP v1.0)
 - ✅ **Authentication & Authorization:**
-  - Session-based authentication with bcrypt password hashing
+  - Session-based authentication with plain text passwords (pilot configuration for flexibility)
   - Users table with company foreign key for data isolation
   - Login/logout functionality with secure session management
   - Server-side authorization enforcing company scoping on all endpoints
@@ -27,6 +27,7 @@ Inspection Brick is a professional web application designed to help organization
   - Regular users restricted to their assigned company only
   - Protected API routes with authentication middleware
   - Authorization prevents cross-company data access attempts
+  - **Note:** Plain text passwords used for pilot to allow easy manual user management
 - ✅ **Multi-Company Support:**
   - Companies table with human-readable IDs (NEC, WALMART, FEDEX)
   - Company selector in top right corner of navigation
@@ -38,7 +39,8 @@ Inspection Brick is a professional web application designed to help organization
   - Full CRUD operations with company filtering
   - Server-side search, sorting, and pagination
   - Foreign key relationships with cascade delete
-  - Secure password storage with bcrypt
+  - Plain text password storage (pilot configuration)
+  - Comprehensive logging throughout backend (service startup, operations, decisions, errors)
 - ✅ **User Interface:**
   - Dark industrial theme with orange (#FF5722) primary accent
   - Professional navigation bar with 8-bit brick logo
@@ -77,7 +79,7 @@ Inspection Brick is a professional web application designed to help organization
 
 **Users Table:**
 - `userId`: text (primary key) - Unique user identifier (e.g., "avazquez", "john_nec")
-- `password`: text - Bcrypt hashed password (10 salt rounds)
+- `password`: text - Plain text password (pilot configuration for manual flexibility)
 - `companyId`: text (nullable, foreign key to companies.id) - null for superusers like avazquez, specific company ID for regular users
 
 **Companies Table:**

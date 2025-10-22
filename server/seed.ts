@@ -3,7 +3,7 @@ import { companies, inspections, defects, users } from "@shared/schema";
 import { storage } from "./storage";
 
 async function seed() {
-  console.log("🌱 Seeding database...");
+  console.log("🌱 Seeding database with plain text passwords (pilot configuration)...");
 
   try {
     // Clear existing data (in reverse order due to foreign keys)
@@ -15,6 +15,7 @@ async function seed() {
     console.log("✅ Cleared existing data");
 
     // Create sample companies
+    console.log("🏢 Creating companies...");
     await db.insert(companies).values([
       {
         id: "NEC",
@@ -38,18 +39,27 @@ async function seed() {
 
     console.log("✅ Created 3 companies");
 
-    // Create users
+    // Create users with plain text passwords (pilot configuration)
+    console.log("👥 Creating users...");
+    
     // avazquez - can view all companies (no companyId assignment)
     await storage.createUser("avazquez", "password123", null);
+    console.log("   ✅ Created superuser: avazquez (companyId: null)");
     
     // Company-specific users
     await storage.createUser("john_nec", "password123", "NEC");
-    await storage.createUser("sarah_walmart", "password123", "WALMART");
-    await storage.createUser("mike_fedex", "password123", "FEDEX");
+    console.log("   ✅ Created user: john_nec (companyId: NEC)");
     
-    console.log("✅ Created 4 users (avazquez + 3 company users)");
+    await storage.createUser("sarah_walmart", "password123", "WALMART");
+    console.log("   ✅ Created user: sarah_walmart (companyId: WALMART)");
+    
+    await storage.createUser("mike_fedex", "password123", "FEDEX");
+    console.log("   ✅ Created user: mike_fedex (companyId: FEDEX)");
+    
+    console.log("✅ Created 4 users (1 superuser + 3 company users)");
 
     // Create sample inspections for NEC
+    console.log("📋 Creating sample inspections...");
     const inspection1 = await db
       .insert(inspections)
       .values({

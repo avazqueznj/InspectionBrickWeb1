@@ -31,94 +31,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth: Login
   app.post("/api/auth/login", async (req, res) => {
+    console.log(`🔐 [Routes] POST /api/auth/login - Attempting login for user: ${req.body?.userId || 'UNKNOWN'}`);
+    
     try {
       const { userId, password } = loginSchema.parse(req.body);
+      console.log(`✅ [Routes] Login request validated - userId: ${userId}`);
+      
       const user = await storage.authenticateUser(userId, password);
       
       if (!user) {
+        console.log(`❌ [Routes] Login failed - Invalid credentials for user: ${userId}`);
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
       // Set session
       req.session.userId = user.userId;
       req.session.companyId = user.companyId;
+      console.log(`✅ [Routes] Session created - userId: ${user.userId}, companyId: ${user.companyId || 'null (superuser)'}`);
       
       // Return user info (without password)
       res.json({
         userId: user.userId,
         companyId: user.companyId,
       });
+      console.log(`✅ [Routes] Login successful for user: ${userId}`);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log(`❌ [Routes] Login validation error:`, error.errors);
         return res.status(400).json({ error: "Invalid input", details: error.errors });
       }
-      console.error("Error during login:", error);
+      console.error("❌ [Routes] Error during login:", error);
       res.status(500).json({ error: "Login failed" });
     }
   });
 
   // Auth: Logout
   app.post("/api/auth/logout", (req, res) => {
+    const userId = req.session.userId;
+    console.log(`🚪 [Routes] POST /api/auth/logout - User: ${userId || 'UNKNOWN'}`);
+    
     req.session.destroy((err) => {
       if (err) {
-        console.error("Error during logout:", err);
+        console.error("❌ [Routes] Error during logout:", err);
         return res.status(500).json({ error: "Logout failed" });
       }
+      console.log(`✅ [Routes] Logout successful for user: ${userId}`);
       res.json({ success: true });
     });
   });
 
   // Auth: Get current user
   app.get("/api/auth/me", async (req, res) => {
+    console.log(`👤 [Routes] GET /api/auth/me - Session userId: ${req.session.userId || 'NONE'}`);
+    
     if (!req.session.userId) {
+      console.log(`❌ [Routes] Not authenticated - No session`);
       return res.status(401).json({ error: "Not authenticated" });
     }
     
     try {
       const user = await storage.getUserById(req.session.userId);
       if (!user) {
+        console.log(`❌ [Routes] User not found in database - destroying session`);
         req.session.destroy(() => {});
         return res.status(401).json({ error: "User not found" });
       }
       
+      console.log(`✅ [Routes] Current user retrieved: ${user.userId}`);
       res.json({
         userId: user.userId,
         companyId: user.companyId,
       });
     } catch (error) {
-      console.error("Error fetching current user:", error);
+      console.error("❌ [Routes] Error fetching current user:", error);
       res.status(500).json({ error: "Failed to fetch user" });
     }
   });
 
   // Get all companies (protected)
   app.get("/api/companies", requireAuth, async (req, res) => {
+    console.log(`🏢 [Routes] GET /api/companies - User: ${req.session.userId}, CompanyId: ${req.session.companyId || 'null (superuser)'}`);
+    
     try {
       const companies = await storage.getCompanies();
       
       // If user has a specific company, only return that company
       if (req.session.companyId) {
+        console.log(`🔒 [Routes] Filtering to single company: ${req.session.companyId}`);
         const filteredCompanies = companies.filter(c => c.id === req.session.companyId);
         res.json(filteredCompanies);
       } else {
         // Superuser (avazquez) sees all companies
+        console.log(`👑 [Routes] Superuser - returning all ${companies.length} companies`);
         res.json(companies);
       }
     } catch (error) {
-      console.error("Error fetching companies:", error);
+      console.error("❌ [Routes] Error fetching companies:", error);
       res.status(500).json({ error: "Failed to fetch companies" });
     }
   });
 
   // Get all inspections with their defects (with query params for search, sort, pagination) (protected)
   app.get("/api/inspections", requireAuth, async (req, res) => {
+    console.log(`📋 [Routes] GET /api/inspections - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    
     try {
       const params = queryParamsSchema.parse(req.query);
       
       // Enforce company scoping: override companyId with session's companyId
       // unless user is superuser (companyId is null, like avazquez)
       if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
         params.companyId = req.session.companyId;
+      } else {
+        console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
       }
       
       const result = await storage.getInspections(params);

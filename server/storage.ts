@@ -2,7 +2,6 @@
 import { companies, inspections, defects, users, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
-import bcrypt from "bcrypt";
 
 export interface QueryParams {
   companyId?: string;
@@ -46,45 +45,63 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getCompanies(): Promise<Company[]> {
-    return await db.select().from(companies).orderBy(asc(companies.name));
+    console.log("📋 [Storage] Fetching all companies from database");
+    const result = await db.select().from(companies).orderBy(asc(companies.name));
+    console.log(`✅ [Storage] Retrieved ${result.length} companies`);
+    return result;
   }
 
   async getUserById(userId: string): Promise<User | undefined> {
+    console.log(`🔍 [Storage] Fetching user by ID: ${userId}`);
     const [user] = await db.select().from(users).where(eq(users.userId, userId));
+    if (user) {
+      console.log(`✅ [Storage] User found: ${userId}, companyId: ${user.companyId || 'null (superuser)'}`);
+    } else {
+      console.log(`❌ [Storage] User not found: ${userId}`);
+    }
     return user;
   }
 
   async createUser(userId: string, password: string, companyId: string | null): Promise<User> {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    console.log(`➕ [Storage] Creating user: ${userId}, companyId: ${companyId || 'null (superuser)'}`);
     
     const [user] = await db
       .insert(users)
       .values({
         userId,
-        password: hashedPassword,
+        password, // Plain text password for pilot flexibility
         companyId,
       })
       .returning();
+    
+    console.log(`✅ [Storage] User created successfully: ${userId}`);
     return user;
   }
 
   async authenticateUser(userId: string, password: string): Promise<User | null> {
+    console.log(`🔐 [Storage] Authenticating user: ${userId}`);
+    
     const user = await this.getUserById(userId);
     if (!user) {
+      console.log(`❌ [Storage] Authentication failed - user not found: ${userId}`);
       return null;
     }
     
-    const isValid = await bcrypt.compare(password, user.password);
+    // Plain text password comparison for pilot
+    const isValid = password === user.password;
     if (!isValid) {
+      console.log(`❌ [Storage] Authentication failed - invalid password for user: ${userId}`);
+      console.log(`   Expected: ${user.password}, Got: ${password}`);
       return null;
     }
     
+    console.log(`✅ [Storage] Authentication successful for user: ${userId}`);
     return user;
   }
 
   async getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>> {
     const { companyId, search, sortField = "datetime", sortDirection = "desc", page = 1, limit = 20 } = params || {};
+    console.log(`📊 [Storage] getInspections - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}`);
     
     // Build where conditions array
     const conditions = [];
@@ -138,6 +155,8 @@ export class DatabaseStorage implements IStorage {
       offset,
     });
 
+    console.log(`✅ [Storage] getInspections - Found ${data.length} of ${total} total inspections`);
+    
     return {
       data: data as InspectionWithDefects[],
       total,
@@ -147,20 +166,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getInspection(id: string): Promise<InspectionWithDefects | undefined> {
+    console.log(`🔍 [Storage] getInspection - id: ${id}`);
     const result = await db.query.inspections.findFirst({
       where: eq(inspections.id, id),
       with: {
         defects: true,
       },
     });
+    console.log(`${result ? '✅' : '❌'} [Storage] Inspection ${result ? 'found' : 'not found'}`);
     return result as InspectionWithDefects | undefined;
   }
 
   async createInspection(insertInspection: InsertInspection): Promise<Inspection> {
+    console.log(`➕ [Storage] createInspection - companyId: ${insertInspection.companyId}, assetId: ${insertInspection.assetId}`);
     const [inspection] = await db
       .insert(inspections)
       .values(insertInspection)
       .returning();
+    console.log(`✅ [Storage] Inspection created with id: ${inspection.id}`);
     return inspection;
   }
 
