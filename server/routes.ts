@@ -15,6 +15,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     limit: z.coerce.number().int().positive().max(100).optional(),
   });
 
+  // Login schema
+  const loginSchema = z.object({
+    userId: z.string().min(1),
+    password: z.string().min(1),
+  });
+
+  // Auth: Login
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { userId, password } = loginSchema.parse(req.body);
+      const user = await storage.authenticateUser(userId, password);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      // Set session
+      req.session.userId = user.userId;
+      req.session.companyId = user.companyId;
+      
+      // Return user info (without password)
+      res.json({
+        userId: user.userId,
+        companyId: user.companyId,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error during login:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Auth: Logout
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Error during logout:", err);
+        return res.status(500).json({ error: "Logout failed" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  // Auth: Get current user
+  app.get("/api/auth/me", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const user = await storage.getUserById(req.session.userId);
+      if (!user) {
+        req.session.destroy(() => {});
+        return res.status(401).json({ error: "User not found" });
+      }
+      
+      res.json({
+        userId: user.userId,
+        companyId: user.companyId,
+      });
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
   // Get all companies
   app.get("/api/companies", async (req, res) => {
     try {
