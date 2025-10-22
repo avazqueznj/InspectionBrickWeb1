@@ -15,6 +15,8 @@ export const companies = pgTable("companies", {
 export const users = pgTable("users", {
   userId: text("user_id").primaryKey(),
   password: text("password").notNull(),
+  userFullName: text("user_full_name").notNull(),
+  status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }),
 });
 
@@ -74,7 +76,9 @@ export const defectsRelations = relations(defects, ({ one }) => ({
 // Insert schemas
 export const insertCompanySchema = createInsertSchema(companies);
 
-export const insertUserSchema = createInsertSchema(users);
+export const insertUserSchema = createInsertSchema(users).extend({
+  status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+});
 
 export const insertInspectionSchema = createInsertSchema(inspections).omit({
   id: true,
@@ -92,6 +96,7 @@ export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UserWithoutPassword = Omit<User, 'password'>;
 export type Inspection = typeof inspections.$inferSelect;
 export type InsertInspection = z.infer<typeof insertInspectionSchema>;
 export type Defect = typeof defects.$inferSelect;

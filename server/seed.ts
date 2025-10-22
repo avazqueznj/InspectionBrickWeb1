@@ -43,24 +43,64 @@ async function seed() {
     console.log("👥 Creating users...");
     
     // avazquez - can view all companies (no companyId assignment)
-    await storage.createUser("avazquez", "password123", null);
+    await storage.createUser({
+      userId: "avazquez",
+      password: "password123",
+      userFullName: "Antonio Vazquez",
+      status: "ACTIVE",
+      companyId: null,
+    });
     console.log("   ✅ Created superuser: avazquez (companyId: null)");
     
     // Company-specific users
-    await storage.createUser("john_nec", "password123", "NEC");
+    await storage.createUser({
+      userId: "john_nec",
+      password: "password123",
+      userFullName: "John Smith",
+      status: "ACTIVE",
+      companyId: "NEC",
+    });
     console.log("   ✅ Created user: john_nec (companyId: NEC)");
     
-    await storage.createUser("sarah_walmart", "password123", "WALMART");
+    await storage.createUser({
+      userId: "sarah_walmart",
+      password: "password123",
+      userFullName: "Sarah Johnson",
+      status: "ACTIVE",
+      companyId: "WALMART",
+    });
     console.log("   ✅ Created user: sarah_walmart (companyId: WALMART)");
     
-    await storage.createUser("mike_fedex", "password123", "FEDEX");
+    await storage.createUser({
+      userId: "mike_fedex",
+      password: "password123",
+      userFullName: "Mike Davis",
+      status: "ACTIVE",
+      companyId: "FEDEX",
+    });
     console.log("   ✅ Created user: mike_fedex (companyId: FEDEX)");
     
     // Additional user to test login (adrianal from production logs)
-    await storage.createUser("adrianal", "password123", "WALMART");
+    await storage.createUser({
+      userId: "adrianal",
+      password: "password123",
+      userFullName: "Adriana Lopez",
+      status: "ACTIVE",
+      companyId: "WALMART",
+    });
     console.log("   ✅ Created user: adrianal (companyId: WALMART)");
     
-    console.log("✅ Created 5 users (1 superuser + 4 company users)");
+    // Add an inactive user for testing filters
+    await storage.createUser({
+      userId: "bob_inactive",
+      password: "password123",
+      userFullName: "Bob Inactive",
+      status: "INACTIVE",
+      companyId: "NEC",
+    });
+    console.log("   ✅ Created inactive user: bob_inactive (companyId: NEC)");
+    
+    console.log("✅ Created 6 users (1 superuser + 4 active company users + 1 inactive user)");
 
     // Create sample inspections - 45 per company with varied data
     console.log("📋 Creating sample inspections...");

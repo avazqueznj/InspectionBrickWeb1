@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertInspectionSchema, insertDefectSchema } from "@shared/schema";
+import { insertInspectionSchema, insertDefectSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 
 // Authentication middleware
@@ -28,6 +28,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     assetId: z.string().optional(),
     driverName: z.string().optional(),
     driverId: z.string().optional(),
+  });
+
+  // User query params validation schema
+  const userQueryParamsSchema = z.object({
+    companyId: z.string().optional(),
+    search: z.string().optional(),
+    sortField: z.enum(["userId", "userFullName", "status"]).optional(),
+    sortDirection: z.enum(["asc", "desc"]).optional(),
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+    status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   });
 
   // Login schema
@@ -137,6 +148,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch companies" });
     }
   });
+
+  // === USER ROUTES ===
+
+  // Get available filter values for users (protected)
+  app.get("/api/users/filter-values", requireAuth, async (req, res) => {
+    console.log(`🔍 [Routes] GET /api/users/filter-values - User: ${req.session.userId}`);
+    
+    try {
+      // Enforce company scoping: use session's companyId unless user is superuser
+      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for user filter values - Company: ${req.session.companyId}`);
+      } else {
+        console.log(`👑 [Routes] Superuser access - getting user filter values for company: ${companyId || 'ALL'}`);
+      }
+      
+      const filterValues = await storage.getUserFilterValues(companyId);
+      res.json(filterValues);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching user filter values:", error);
+      res.status(500).json({ error: "Failed to fetch user filter values" });
+    }
+  });
+
+  // Get all users (protected)
+  app.get("/api/users", requireAuth, async (req, res) => {
+    console.log(`👥 [Routes] GET /api/users - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    
+    try {
+      const params = userQueryParamsSchema.parse(req.query);
+      
+      // Enforce company scoping
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
+        params.companyId = req.session.companyId;
+      } else {
+        console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
+      }
+      
+      const result = await storage.getUsers(params);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid query parameters", details: error.errors });
+      }
+      console.error("❌ [Routes] Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Create a new user (protected)
+  app.post("/api/users", requireAuth, async (req, res) => {
+    console.log(`➕ [Routes] POST /api/users - Creating user: ${req.body?.userId || 'UNKNOWN'}`);
+    
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Enforce company scoping: non-superusers can only create users in their own company
+      if (req.session.companyId && userData.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - User can only create users in their own company`);
+        return res.status(403).json({ error: "Cannot create users in other companies" });
+      }
+      
+      const user = await storage.createUser(userData);
+      console.log(`✅ [Routes] User created successfully: ${user.userId}`);
+      
+      // Return user without password
+      res.json({
+        userId: user.userId,
+        userFullName: user.userFullName,
+        status: user.status,
+        companyId: user.companyId,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.log(`❌ [Routes] User validation error:`, error.errors);
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error creating user:", error);
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  // Update a user (protected)
+  app.patch("/api/users/:userId", requireAuth, async (req, res) => {
+    const { userId } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/users/${userId} - Updating user`);
+    
+    try {
+      const updateData = insertUserSchema.partial().parse(req.body);
+      
+      // Get the existing user to check authorization
+      const existingUser = await storage.getUserById(userId);
+      if (!existingUser) {
+        console.log(`❌ [Routes] User not found: ${userId}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Enforce company scoping
+      if (req.session.companyId && existingUser.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot update user from another company`);
+        return res.status(403).json({ error: "Cannot update users from other companies" });
+      }
+      
+      const updatedUser = await storage.updateUser(userId, updateData);
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      console.log(`✅ [Routes] User updated successfully: ${userId}`);
+      
+      // Return user without password
+      res.json({
+        userId: updatedUser.userId,
+        userFullName: updatedUser.userFullName,
+        status: updatedUser.status,
+        companyId: updatedUser.companyId,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating user:", error);
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+  // Delete a user (protected)
+  app.delete("/api/users/:userId", requireAuth, async (req, res) => {
+    const { userId } = req.params;
+    console.log(`🗑️ [Routes] DELETE /api/users/${userId}`);
+    
+    try {
+      // Get the existing user to check authorization
+      const existingUser = await storage.getUserById(userId);
+      if (!existingUser) {
+        console.log(`❌ [Routes] User not found: ${userId}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Enforce company scoping
+      if (req.session.companyId && existingUser.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot delete user from another company`);
+        return res.status(403).json({ error: "Cannot delete users from other companies" });
+      }
+      
+      // Prevent self-deletion
+      if (userId === req.session.userId) {
+        console.log(`❌ [Routes] Cannot delete own user account`);
+        return res.status(400).json({ error: "Cannot delete your own user account" });
+      }
+      
+      const success = await storage.deleteUser(userId);
+      if (!success) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      console.log(`✅ [Routes] User deleted successfully: ${userId}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Routes] Error deleting user:", error);
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // === INSPECTION ROUTES ===
 
   // Get available filter values for inspections (protected)
   app.get("/api/inspections/filter-values", requireAuth, async (req, res) => {

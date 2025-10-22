@@ -7,10 +7,11 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CompanyProvider } from "@/contexts/CompanyContext";
 import { TopBar } from "@/components/TopBar";
 import Inspections from "@/pages/Inspections";
+import Users from "@/pages/Users";
 import Login from "@/pages/Login";
 import ComingSoon from "@/pages/ComingSoon";
 import NotFound from "@/pages/not-found";
-import { Wrench, Box, Users, ClipboardList } from "lucide-react";
+import { Wrench, Box, Users as UsersIcon, ClipboardList } from "lucide-react";
 
 function ProtectedRouter() {
   return (
@@ -34,15 +35,7 @@ function ProtectedRouter() {
           />
         )}
       </Route>
-      <Route path="/users">
-        {() => (
-          <ComingSoon
-            title="Users"
-            description="Manage user accounts and permissions"
-            icon={Users}
-          />
-        )}
-      </Route>
+      <Route path="/users" component={Users} />
       <Route path="/inspection-types">
         {() => (
           <ComingSoon

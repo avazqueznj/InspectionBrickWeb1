@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser } from "@shared/schema";
+import { companies, inspections, defects, users, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
 
@@ -19,11 +19,26 @@ export interface QueryParams {
   driverId?: string;
 }
 
+export interface UserQueryParams {
+  companyId?: string;
+  search?: string;
+  sortField?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+  // Filter parameters
+  status?: "ACTIVE" | "INACTIVE";
+}
+
 export interface FilterValues {
   inspectionTypes: string[];
   assetIds: string[];
   driverNames: string[];
   driverIds: string[];
+}
+
+export interface UserFilterValues {
+  statuses: ("ACTIVE" | "INACTIVE")[];
 }
 
 export interface PaginatedResult<T> {
@@ -39,8 +54,12 @@ export interface IStorage {
   
   // Users & Auth
   getUserById(userId: string): Promise<User | undefined>;
-  createUser(userId: string, password: string, companyId: string | null): Promise<User>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(userId: string, user: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(userId: string): Promise<boolean>;
   authenticateUser(userId: string, password: string): Promise<User | null>;
+  getUsers(params?: UserQueryParams): Promise<PaginatedResult<UserWithoutPassword>>;
+  getUserFilterValues(companyId?: string): Promise<UserFilterValues>;
   
   // Inspections
   getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>>;
@@ -77,20 +96,136 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(userId: string, password: string, companyId: string | null): Promise<User> {
-    console.log(`➕ [Storage] Creating user: ${userId}, companyId: ${companyId || 'null (superuser)'}`);
+  async createUser(insertUser: InsertUser): Promise<User> {
+    console.log(`➕ [Storage] Creating user: ${insertUser.userId}, companyId: ${insertUser.companyId || 'null (superuser)'}`);
     
     const [user] = await db
       .insert(users)
-      .values({
-        userId,
-        password, // Plain text password for pilot flexibility
-        companyId,
-      })
+      .values(insertUser)
       .returning();
     
-    console.log(`✅ [Storage] User created successfully: ${userId}`);
+    console.log(`✅ [Storage] User created successfully: ${insertUser.userId}`);
     return user;
+  }
+
+  async updateUser(userId: string, updateData: Partial<InsertUser>): Promise<User | undefined> {
+    console.log(`🔄 [Storage] Updating user: ${userId}`);
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.userId, userId))
+      .returning();
+    console.log(`${user ? '✅' : '❌'} [Storage] User ${user ? 'updated' : 'not found'}`);
+    return user;
+  }
+
+  async deleteUser(userId: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting user: ${userId}`);
+    const result = await db
+      .delete(users)
+      .where(eq(users.userId, userId))
+      .returning();
+    console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] User ${result.length > 0 ? 'deleted' : 'not found'}`);
+    return result.length > 0;
+  }
+
+  async getUsers(params?: UserQueryParams): Promise<PaginatedResult<UserWithoutPassword>> {
+    const { 
+      companyId, 
+      search, 
+      sortField = "userId", 
+      sortDirection = "asc", 
+      page = 1, 
+      limit = 10,
+      status
+    } = params || {};
+    
+    console.log(`📊 [Storage] getUsers - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}`);
+    
+    // Build where conditions array
+    const conditions = [];
+    
+    // Filter by company (if specified)
+    if (companyId) {
+      conditions.push(eq(users.companyId, companyId));
+    }
+    
+    // Add search conditions
+    if (search) {
+      conditions.push(
+        or(
+          ilike(users.userId, `%${search}%`),
+          ilike(users.userFullName, `%${search}%`)
+        )!
+      );
+    }
+    
+    // Add status filter
+    if (status) {
+      conditions.push(eq(users.status, status));
+    }
+    
+    const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Determine sort order based on sortField
+    const sortColumnMap = {
+      userId: users.userId,
+      userFullName: users.userFullName,
+      status: users.status,
+    };
+    
+    const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || users.userId;
+    const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
+
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(users)
+      .where(whereConditions);
+    const total = countResult[0]?.count || 0;
+
+    // Get paginated data (excluding password field)
+    const offset = (page - 1) * limit;
+    const data = await db
+      .select({
+        userId: users.userId,
+        userFullName: users.userFullName,
+        status: users.status,
+        companyId: users.companyId,
+      })
+      .from(users)
+      .where(whereConditions)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    console.log(`✅ [Storage] getUsers - Found ${data.length} of ${total} total users`);
+    
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getUserFilterValues(companyId?: string): Promise<UserFilterValues> {
+    console.log(`🔍 [Storage] getUserFilterValues - companyId: ${companyId || 'ALL'}`);
+    
+    const whereCondition = companyId ? eq(users.companyId, companyId) : undefined;
+    
+    // Get distinct status values
+    const statusesResult = await db.selectDistinct({ value: users.status })
+      .from(users)
+      .where(whereCondition)
+      .orderBy(asc(users.status));
+    
+    const result = {
+      statuses: statusesResult.map(r => r.value).filter((v): v is "ACTIVE" | "INACTIVE" => v === "ACTIVE" || v === "INACTIVE"),
+    };
+    
+    console.log(`✅ [Storage] getUserFilterValues - Found ${result.statuses.length} statuses`);
+    return result;
   }
 
   async authenticateUser(userId: string, password: string): Promise<User | null> {
