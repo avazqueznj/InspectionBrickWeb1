@@ -5,6 +5,10 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
+console.log("🚀 Starting Inspection Brick Server");
+console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🔐 Session Secret: ${process.env.SESSION_SECRET ? 'SET (from env)' : 'USING DEFAULT (not secure for production)'}`);
+
 // Extend session data type
 declare module 'express-session' {
   interface SessionData {
