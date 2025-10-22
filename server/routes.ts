@@ -308,8 +308,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
       
       // Set response headers for PDF download
+      const dateStr = new Date(inspection.datetime).toISOString().split('T')[0];
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=inspection-${inspection.assetId}-${inspection.datetime.toISOString().split('T')[0]}.pdf`);
+      res.setHeader('Content-Disposition', `attachment; filename=inspection-${inspection.assetId}-${dateStr}.pdf`);
       
       // Pipe PDF to response
       doc.pipe(res);
