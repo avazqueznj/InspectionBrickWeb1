@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword } from "@shared/schema";
+import { companies, inspections, defects, users, assets, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
 
@@ -30,6 +30,17 @@ export interface UserQueryParams {
   status?: "ACTIVE" | "INACTIVE";
 }
 
+export interface AssetQueryParams {
+  companyId?: string;
+  search?: string;
+  sortField?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+  // Filter parameters
+  status?: "ACTIVE" | "INACTIVE";
+}
+
 export interface FilterValues {
   inspectionTypes: string[];
   assetIds: string[];
@@ -38,6 +49,10 @@ export interface FilterValues {
 }
 
 export interface UserFilterValues {
+  statuses: ("ACTIVE" | "INACTIVE")[];
+}
+
+export interface AssetFilterValues {
   statuses: ("ACTIVE" | "INACTIVE")[];
 }
 
@@ -60,6 +75,12 @@ export interface IStorage {
   authenticateUser(userId: string, password: string): Promise<User | null>;
   getUsers(params?: UserQueryParams): Promise<PaginatedResult<UserWithoutPassword>>;
   getUserFilterValues(companyId?: string): Promise<UserFilterValues>;
+  
+  // Assets
+  getAssets(params?: AssetQueryParams): Promise<PaginatedResult<Asset>>;
+  createAsset(asset: InsertAsset): Promise<Asset>;
+  updateAsset(assetId: string, asset: Partial<InsertAsset>): Promise<Asset | undefined>;
+  getAssetFilterValues(companyId?: string): Promise<AssetFilterValues>;
   
   // Inspections
   getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>>;
@@ -247,6 +268,125 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`✅ [Storage] Authentication successful for user: ${userId}`);
     return user;
+  }
+
+  async getAssets(params?: AssetQueryParams): Promise<PaginatedResult<Asset>> {
+    const { 
+      companyId, 
+      search, 
+      sortField = "assetId", 
+      sortDirection = "asc", 
+      page = 1, 
+      limit = 10,
+      status
+    } = params || {};
+    
+    console.log(`📊 [Storage] getAssets - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}`);
+    
+    // Build where conditions array
+    const conditions = [];
+    
+    // Filter by company (if specified)
+    if (companyId) {
+      conditions.push(eq(assets.companyId, companyId));
+    }
+    
+    // Add search conditions
+    if (search) {
+      conditions.push(
+        or(
+          ilike(assets.assetId, `%${search}%`),
+          ilike(assets.assetConfig, `%${search}%`),
+          ilike(assets.assetName, `%${search}%`)
+        )!
+      );
+    }
+    
+    // Add status filter
+    if (status) {
+      conditions.push(eq(assets.status, status));
+    }
+    
+    const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Determine sort order based on sortField
+    const sortColumnMap = {
+      assetId: assets.assetId,
+      assetConfig: assets.assetConfig,
+      assetName: assets.assetName,
+      status: assets.status,
+    };
+    
+    const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || assets.assetId;
+    const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
+
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(assets)
+      .where(whereConditions);
+    const total = countResult[0]?.count || 0;
+
+    // Get paginated data
+    const offset = (page - 1) * limit;
+    const data = await db
+      .select()
+      .from(assets)
+      .where(whereConditions)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    console.log(`✅ [Storage] getAssets - Found ${data.length} of ${total} total assets`);
+    
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async createAsset(insertAsset: InsertAsset): Promise<Asset> {
+    console.log(`➕ [Storage] Creating asset: ${insertAsset.assetId}, companyId: ${insertAsset.companyId}`);
+    
+    const [asset] = await db
+      .insert(assets)
+      .values(insertAsset)
+      .returning();
+    
+    console.log(`✅ [Storage] Asset created successfully: ${insertAsset.assetId}`);
+    return asset;
+  }
+
+  async updateAsset(assetId: string, updateData: Partial<InsertAsset>): Promise<Asset | undefined> {
+    console.log(`🔄 [Storage] Updating asset: ${assetId}`);
+    const [asset] = await db
+      .update(assets)
+      .set(updateData)
+      .where(eq(assets.assetId, assetId))
+      .returning();
+    console.log(`${asset ? '✅' : '❌'} [Storage] Asset ${asset ? 'updated' : 'not found'}`);
+    return asset;
+  }
+
+  async getAssetFilterValues(companyId?: string): Promise<AssetFilterValues> {
+    console.log(`🔍 [Storage] getAssetFilterValues - companyId: ${companyId || 'ALL'}`);
+    
+    const whereCondition = companyId ? eq(assets.companyId, companyId) : undefined;
+    
+    // Get distinct status values
+    const statusesResult = await db.selectDistinct({ value: assets.status })
+      .from(assets)
+      .where(whereCondition)
+      .orderBy(asc(assets.status));
+    
+    const result = {
+      statuses: statusesResult.map(r => r.value).filter((v): v is "ACTIVE" | "INACTIVE" => v === "ACTIVE" || v === "INACTIVE"),
+    };
+    
+    console.log(`✅ [Storage] getAssetFilterValues - Found ${result.statuses.length} statuses`);
+    return result;
   }
 
   async getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>> {
