@@ -139,7 +139,7 @@ async function seed() {
       { assetId: "LOADER-22", assetConfig: "LOADER", assetName: "Front Loader 22", status: "ACTIVE" as const, companyId: "WALMART" },
       { assetId: "FORKLIFT-W01", assetConfig: "FORKLIFT", assetName: "Warehouse Forklift W01", status: "ACTIVE" as const, companyId: "WALMART" },
       { assetId: "FORKLIFT-W02", assetConfig: "FORKLIFT", assetName: "Warehouse Forklift W02", status: "ACTIVE" as const, companyId: "WALMART" },
-      { assetId: "CONVEYOR-C3", assetConfig: "CONVEYOR", assetName: "Belt Conveyor C3", status: "ACTIVE" as const, companyId: "WALMART" },
+      { assetId: "CONVEYOR-W3", assetConfig: "CONVEYOR", assetName: "Belt Conveyor W3", status: "ACTIVE" as const, companyId: "WALMART" },
       { assetId: "PALLET-JACK-W10", assetConfig: "PALLET JACK", assetName: "Manual Jack W10", status: "ACTIVE" as const, companyId: "WALMART" },
     ];
     

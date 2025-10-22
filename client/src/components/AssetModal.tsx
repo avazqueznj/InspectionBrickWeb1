@@ -21,6 +21,7 @@ interface AssetModalProps {
 
 export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, companies, currentCompanyId }: AssetModalProps) {
   const isEdit = !!asset;
+  const isSuperuser = !currentCompanyId;
   
   const form = useForm<InsertAsset>({
     resolver: zodResolver(insertAssetSchema),
@@ -36,20 +37,31 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
   // Reset form when modal opens/closes or asset changes
   useEffect(() => {
     if (open && asset) {
+      // In edit mode, preserve the asset's company
       form.reset({
         assetId: asset.assetId,
         assetConfig: asset.assetConfig,
         assetName: asset.assetName,
         status: asset.status,
-        companyId: currentCompanyId || "", // Always use current company context in edit mode
+        companyId: asset.companyId,
       });
-    } else if (!open) {
+    } else if (open && !asset) {
+      // In create mode, use current company context (or empty for superusers)
       form.reset({
         assetId: "",
         assetConfig: "",
         assetName: "",
         status: "ACTIVE",
-        companyId: currentCompanyId || "", // Default to current company in create mode
+        companyId: currentCompanyId || "",
+      });
+    } else if (!open) {
+      // Reset form when modal closes
+      form.reset({
+        assetId: "",
+        assetConfig: "",
+        assetName: "",
+        status: "ACTIVE",
+        companyId: currentCompanyId || "",
       });
     }
   }, [open, asset, form, currentCompanyId]);
@@ -146,7 +158,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={isEdit}
+                    disabled={!isSuperuser}
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-companyId">

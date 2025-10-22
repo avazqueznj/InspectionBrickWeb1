@@ -382,10 +382,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const assetData = insertAssetSchema.parse(req.body);
       
-      // Enforce company scoping: non-superusers can only create assets in their own company
-      if (req.session.companyId && assetData.companyId !== req.session.companyId) {
-        console.log(`❌ [Routes] Authorization failed - User can only create assets in their own company`);
-        return res.status(403).json({ error: "Cannot create assets in other companies" });
+      // Enforce company scoping: non-superusers must create assets in their own company
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - Asset will be created in: ${req.session.companyId}`);
+        assetData.companyId = req.session.companyId;
+      }
+      
+      // Additional check: if no session company and submitted company is different, reject
+      if (!req.session.companyId && !assetData.companyId) {
+        console.log(`❌ [Routes] Cannot create asset without company ID`);
+        return res.status(400).json({ error: "Company ID is required" });
       }
       
       const asset = await storage.createAsset(assetData);
