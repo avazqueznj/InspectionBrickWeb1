@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { type UserWithoutPassword } from "@shared/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { type UserWithoutPassword, type InsertUser, type Company } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,6 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { UserModal } from "@/components/UserModal";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type SortField = "userId" | "userFullName" | "status";
 type SortDirection = "asc" | "desc";
@@ -31,11 +34,14 @@ interface UserFilterValues {
 
 export default function Users() {
   const { selectedCompany } = useCompany();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>("userId");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserWithoutPassword | null>(null);
   const itemsPerPage = 10;
 
   // Reset to page 1 when search query, status filter, or company changes
@@ -57,6 +63,57 @@ export default function Users() {
       return response.json();
     },
     enabled: !!selectedCompany,
+  });
+
+  // Fetch companies for the modal
+  const { data: companies = [] } = useQuery<Company[]>({
+    queryKey: ["/api/companies"],
+  });
+
+  // Create user mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: InsertUser) => {
+      return await apiRequest("POST", "/api/users", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      });
+      setModalOpen(false);
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update user mutation
+  const updateMutation = useMutation({
+    mutationFn: async (data: InsertUser) => {
+      return await apiRequest("PATCH", `/api/users/${data.userId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+      setModalOpen(false);
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user",
+        variant: "destructive",
+      });
+    },
   });
 
   const { data, isLoading } = useQuery<PaginatedResponse>({
@@ -100,6 +157,24 @@ export default function Users() {
     } else {
       setSortField(field);
       setSortDirection("asc");
+    }
+  };
+
+  const handleCreateUser = () => {
+    setSelectedUser(null);
+    setModalOpen(true);
+  };
+
+  const handleEditUser = (user: UserWithoutPassword) => {
+    setSelectedUser(user);
+    setModalOpen(true);
+  };
+
+  const handleModalSubmit = (data: InsertUser) => {
+    if (selectedUser) {
+      updateMutation.mutate(data);
+    } else {
+      createMutation.mutate(data);
     }
   };
 
@@ -156,6 +231,11 @@ export default function Users() {
               </SelectContent>
             </Select>
           </div>
+
+          <Button onClick={handleCreateUser} data-testid="button-create-user">
+            <Plus className="h-4 w-4 mr-2" />
+            Create User
+          </Button>
         </div>
 
         {/* Results count */}
@@ -199,7 +279,8 @@ export default function Users() {
                   users.map((user) => (
                     <tr 
                       key={user.userId} 
-                      className="hover-elevate"
+                      className="hover-elevate cursor-pointer"
+                      onClick={() => handleEditUser(user)}
                       data-testid={`row-user-${user.userId}`}
                     >
                       <td className="px-4 py-4">
@@ -259,6 +340,16 @@ export default function Users() {
           </div>
         )}
       </div>
+
+      {/* User Create/Edit Modal */}
+      <UserModal
+        user={selectedUser}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onSubmit={handleModalSubmit}
+        isPending={createMutation.isPending || updateMutation.isPending}
+        companies={companies}
+      />
     </div>
   );
 }
