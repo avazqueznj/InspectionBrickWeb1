@@ -62,6 +62,8 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **Users:** `userId`, `password`, `companyId` (FK)
 - **Companies:** `id`, `name`
 - **Assets:** `assetId`, `assetConfig`, `assetName`, `status`, `companyId` (FK)
+- **Inspection Types:** `inspectionTypeId` (PK), `inspectionLayout`, `status` (ACTIVE/INACTIVE), `companyId` (FK)
+- **Inspection Type Form Fields:** `id` (PK), `inspectionTypeId` (FK), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength`
 - **Inspections:** `id`, `companyId` (FK), `datetime`, `inspectionType`, `assetId`, `driverName`, `driverId`, `inspectionFormData`
   - Note: `assetId` is stored as text (not FK) to avoid stale data issues with permanent inspection records
 - **Defects:** `id`, `inspectionId` (FK), `zoneName`, `componentName`, `defect`, `severity`, `driverNotes`, `status`, `repairNotes`
@@ -70,13 +72,15 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **Authentication:** Login, Logout, Get current user.
 - **Companies:** Get accessible companies.
 - **Assets:** List (with search, filtering, sorting, pagination), Get filter values, Create, Update.
+- **Inspection Types:** List (with search, filtering, sorting, pagination), Get filter values, Get single inspection type, Create, Update.
+- **Inspection Type Form Fields:** Get form fields for inspection type, Create, Update, Delete.
 - **Inspections:** List (with extensive filtering, sorting, pagination), Get filter values, Print list, Get single inspection, Print single inspection, Create, Update, Delete.
 - **Defects:** Get defects for an inspection, Create, Update, Delete.
 
 ### Key Files
 - `shared/schema.ts`: Drizzle ORM schema, Zod validation, TypeScript types.
 - `server/`: Database setup, data access layer, API routes, seed data, Express server.
-- `client/src/`: React components for authentication, company context, UI elements (FilterBar, InspectionModal, AssetModal), and pages (Login, Inspections, Users, Assets).
+- `client/src/`: React components for authentication, company context, UI elements (FilterBar, InspectionModal, AssetModal, InspectionTypeModal), and pages (Login, Inspections, Users, Assets, InspectionTypes).
 
 ## External Dependencies
 
