@@ -255,7 +255,11 @@ The application has been end-to-end tested with Playwright covering:
 
 ## Known Considerations
 
-1. **Pagination:** Currently set to 20 items per page; can be adjusted in `client/src/pages/Inspections.tsx`
+1. **Pagination:** Currently set to 10 items per page; can be adjusted in `client/src/pages/Inspections.tsx`
+   - Each company has 45 test inspections (5 pages of data)
+   - Previous/Next navigation with disabled states at boundaries
+   - Auto-resets to page 1 when filters or search changes
+   - Item count displays current range (e.g., "Showing 1-10 of 45 inspections")
 2. **Search:** Searches across inspection type, asset ID, driver name, and driver ID (not UUID)
 3. **Mobile:** Optimized for desktop; mobile responsive design can be enhanced in future iterations
 4. **Real-time:** No WebSocket/real-time updates; uses polling via TanStack Query
