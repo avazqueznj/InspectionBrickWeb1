@@ -19,13 +19,14 @@ Inspection Brick is a professional web application designed to help organization
 
 ### Completed Features (MVP v1.0)
 - ✅ **Print Functionality:**
-  - Individual inspection reports via browser print (Ctrl+P/Cmd+P)
-  - Bulk inspection list printing (up to 100 records with filters applied)
-  - Clean HTML-based print layouts (no PDF generation)
-  - Print individual inspection button in each table row
+  - Individual inspection reports open in new browser tab for printing
+  - Bulk inspection list (up to 100 records) opens in new browser tab
+  - Simple, clean HTML with minimal styling for optimal browser print formatting
+  - Server-rendered HTML (no React, no modals) for maximum compatibility
+  - Print individual inspection button in each table row (📄 icon)
   - Print List button at top of inspections page
-  - Print-optimized CSS for professional document output
   - All filter, search, and sort settings respected in bulk print
+  - Users print with Ctrl+P/Cmd+P from the new tab
 - ✅ **Authentication & Authorization:**
   - Session-based authentication with plain text passwords (pilot configuration for flexibility)
   - Users table with company foreign key for data isolation
@@ -139,7 +140,9 @@ Inspection Brick is a professional web application designed to help organization
 **Inspections:**
 - `GET /api/inspections?companyId={id}&search={query}&sortField={field}&sortDirection={dir}&page={num}&limit={num}&dateFrom={YYYY-MM-DD}&dateTo={YYYY-MM-DD}&inspectionType={type}&assetId={id}&driverName={name}&driverId={id}` - List with company filter, search, sort, pagination, and advanced filters (all query params optional)
 - `GET /api/inspections/filter-values?companyId={id}` - Get distinct filter values for the company (returns: { inspectionTypes, assetIds, driverNames, driverIds })
+- `GET /api/inspections/print-list?companyId={id}&search={query}&...` - Server-rendered HTML for printing inspection list (max 100 records, opens in new tab)
 - `GET /api/inspections/:id` - Get single inspection with defects
+- `GET /api/inspections/:id/print` - Server-rendered HTML for printing single inspection (opens in new tab)
 - `POST /api/inspections` - Create new inspection
 - `PATCH /api/inspections/:id` - Update inspection
 - `DELETE /api/inspections/:id` - Delete inspection
