@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
 import { FilterBar } from "@/components/FilterBar";
-import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type SortField = "datetime" | "inspectionType" | "assetId" | "driverName";
@@ -110,6 +110,28 @@ export default function Inspections() {
     setIsModalOpen(true);
   };
 
+  const handlePrintPDF = async () => {
+    if (!selectedCompany) {
+      return;
+    }
+
+    const queryParams = new URLSearchParams();
+    
+    if (selectedCompany) queryParams.set("companyId", selectedCompany);
+    if (searchQuery) queryParams.set("search", searchQuery);
+    if (sortField) queryParams.set("sortField", sortField);
+    if (sortDirection) queryParams.set("sortDirection", sortDirection);
+    
+    if (filters.dateFrom) queryParams.set("dateFrom", filters.dateFrom);
+    if (filters.dateTo) queryParams.set("dateTo", filters.dateTo);
+    if (filters.inspectionType) queryParams.set("inspectionType", filters.inspectionType);
+    if (filters.assetId) queryParams.set("assetId", filters.assetId);
+    if (filters.driverName) queryParams.set("driverName", filters.driverName);
+    if (filters.driverId) queryParams.set("driverId", filters.driverId);
+
+    window.open(`/api/inspections/pdf?${queryParams.toString()}`, '_blank');
+  };
+
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <th className="px-4 py-3 text-left">
       <button
@@ -149,6 +171,15 @@ export default function Inspections() {
               data-testid="input-search"
             />
           </div>
+          <Button
+            variant="default"
+            onClick={handlePrintPDF}
+            disabled={!selectedCompany || total === 0}
+            data-testid="button-print-pdf"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Print PDF Report
+          </Button>
         </div>
 
         {/* Filter Bar */}
