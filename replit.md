@@ -47,13 +47,24 @@ Inspection Brick is a professional web application designed to help organization
   - Login page with form validation and error handling
   - User display and logout button in top bar
   - Inspections list page with real-time search, sortable columns, pagination
+  - Advanced filtering system with date range and dropdown filters
   - Inspection details modal with defects table and severity indicators
   - Color-coded status badges (open/pending/repaired)
   - Beautiful loading states and empty states
+- ✅ **Filtering System:**
+  - Date range filtering (date-level precision, no time)
+  - Dynamic dropdown filters for inspection type, asset ID, driver name, driver ID
+  - Company-scoped filter values (only show values relevant to selected company)
+  - Combined filter logic (AND operation - all selected filters must match)
+  - Reset button to clear all active filters
+  - Active filter indicator shows when filters are applied
+  - Pagination auto-resets to page 1 when filters change
+  - Optimized React Query cache stability (scalar values in queryKey)
 - ✅ **Quality & Testing:**
   - Responsive design optimized for desktop
-  - End-to-end tested with Playwright (authentication, multi-company switching, search, modals)
+  - End-to-end tested with Playwright (authentication, multi-company switching, search, filtering, modals)
   - Authorization security tested (cross-company access prevention)
+  - Filtering functionality fully tested (single filters, combined filters, date ranges, reset behavior)
   - Comprehensive design system documented
 
 ### Planned Future Features
@@ -118,7 +129,8 @@ Inspection Brick is a professional web application designed to help organization
 - `GET /api/companies` - Get companies (filtered by user's company for regular users, all companies for superusers)
 
 **Inspections:**
-- `GET /api/inspections?companyId={id}` - List with company filter, search, sort, pagination (query params: companyId, search, sortField, sortDirection, page, limit)
+- `GET /api/inspections?companyId={id}&search={query}&sortField={field}&sortDirection={dir}&page={num}&limit={num}&dateFrom={YYYY-MM-DD}&dateTo={YYYY-MM-DD}&inspectionType={type}&assetId={id}&driverName={name}&driverId={id}` - List with company filter, search, sort, pagination, and advanced filters (all query params optional)
+- `GET /api/inspections/filter-values?companyId={id}` - Get distinct filter values for the company (returns: { inspectionTypes, assetIds, driverNames, driverIds })
 - `GET /api/inspections/:id` - Get single inspection with defects
 - `POST /api/inspections` - Create new inspection
 - `PATCH /api/inspections/:id` - Update inspection
@@ -147,11 +159,12 @@ Inspection Brick is a professional web application designed to help organization
 - `client/src/contexts/CompanyContext.tsx` - Company state management
 - `client/src/components/TopBar.tsx` - Navigation header
 - `client/src/components/CompanySelector.tsx` - Company dropdown selector
+- `client/src/components/FilterBar.tsx` - Advanced filtering component with date range and dropdowns
 - `client/src/components/InspectionModal.tsx` - Inspection details modal
 - `client/src/components/StatusBadge.tsx` - Defect status indicator
 - `client/src/components/SeverityIndicator.tsx` - Severity visualization
 - `client/src/pages/Login.tsx` - Login page component
-- `client/src/pages/Inspections.tsx` - Main inspections list page
+- `client/src/pages/Inspections.tsx` - Main inspections list page with filtering
 - `client/src/pages/ComingSoon.tsx` - Placeholder for future pages
 
 **Configuration:**
