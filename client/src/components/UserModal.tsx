@@ -19,14 +19,19 @@ interface UserModalProps {
   companies: Array<{ id: string; name: string }>;
 }
 
-const userFormSchema = insertUserSchema.extend({
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-type UserFormData = z.infer<typeof userFormSchema>;
+type UserFormData = z.infer<typeof insertUserSchema> & {
+  password: string;
+};
 
 export function UserModal({ user, open, onOpenChange, onSubmit, isPending, companies }: UserModalProps) {
   const isEdit = !!user;
+
+  // Create dynamic schema based on mode
+  const userFormSchema = insertUserSchema.extend({
+    password: isEdit 
+      ? z.string().optional() // Optional for edit
+      : z.string().min(6, "Password must be at least 6 characters"), // Required for create
+  });
   
   const form = useForm<UserFormData>({
     resolver: zodResolver(userFormSchema),
@@ -61,7 +66,13 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
   }, [open, user, form]);
 
   const handleSubmit = (data: UserFormData) => {
-    onSubmit(data);
+    // For edit mode, if password is empty, don't send it
+    if (isEdit && !data.password) {
+      const { password, ...dataWithoutPassword } = data;
+      onSubmit(dataWithoutPassword as InsertUser);
+    } else {
+      onSubmit(data as InsertUser);
+    }
   };
 
   return (
