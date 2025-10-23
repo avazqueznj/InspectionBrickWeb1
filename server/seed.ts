@@ -132,83 +132,85 @@ async function seed() {
     const createdInspectionTypes = await db.insert(inspectionTypes).values([...necInspectionTypesData, ...walmartInspectionTypesData, ...fedexInspectionTypesData]).returning();
     console.log(`✅ Created ${necInspectionTypesData.length + walmartInspectionTypesData.length + fedexInspectionTypesData.length} inspection types`);
     
-    // Create a mapping from business inspectionTypeId to UUID id
+    // Create a mapping from (companyId + business inspectionTypeId) to UUID id
+    // Use composite key to handle multiple companies using same business ID
     const inspectionTypeIdMap = new Map<string, string>();
     for (const it of createdInspectionTypes) {
-      inspectionTypeIdMap.set(it.inspectionTypeId, it.id);
+      const compositeKey = `${it.companyId}:${it.inspectionTypeId}`;
+      inspectionTypeIdMap.set(compositeKey, it.id);
     }
     
     // Create form fields for inspection types
     console.log("📝 Creating form fields...");
     
     const formFieldsData = [
-      // Preflight inspection fields (ALL layouts)
-      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, businessInspectionTypeId: "preflight" },
-      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, businessInspectionTypeId: "preflight" },
-      { formFieldName: "route", formFieldType: "TEXT" as const, formFieldLength: 64, businessInspectionTypeId: "preflight" },
-      { formFieldName: "destination", formFieldType: "TEXT" as const, formFieldLength: 64, businessInspectionTypeId: "preflight" },
+      // Preflight inspection fields (ALL layouts) - NEC
+      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "NEC", businessInspectionTypeId: "preflight" },
+      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "preflight" },
+      { formFieldName: "route", formFieldType: "TEXT" as const, formFieldLength: 64, companyId: "NEC", businessInspectionTypeId: "preflight" },
+      { formFieldName: "destination", formFieldType: "TEXT" as const, formFieldLength: 64, companyId: "NEC", businessInspectionTypeId: "preflight" },
       
-      // Pre-trip inspection fields (TRUCK layout)
-      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, businessInspectionTypeId: "pre-trip" },
-      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, businessInspectionTypeId: "pre-trip" },
-      { formFieldName: "tire-pressure-fl", formFieldType: "NUM" as const, formFieldLength: 3, businessInspectionTypeId: "pre-trip" },
-      { formFieldName: "tire-pressure-fr", formFieldType: "NUM" as const, formFieldLength: 3, businessInspectionTypeId: "pre-trip" },
-      { formFieldName: "tire-pressure-rl", formFieldType: "NUM" as const, formFieldLength: 3, businessInspectionTypeId: "pre-trip" },
-      { formFieldName: "tire-pressure-rr", formFieldType: "NUM" as const, formFieldLength: 3, businessInspectionTypeId: "pre-trip" },
-      { formFieldName: "cargo-weight", formFieldType: "NUM" as const, formFieldLength: 6, businessInspectionTypeId: "pre-trip" },
+      // Pre-trip inspection fields (TRUCK layout) - NEC
+      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+      { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-fl", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-fr", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-rl", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+      { formFieldName: "tire-pressure-rr", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+      { formFieldName: "cargo-weight", formFieldType: "NUM" as const, formFieldLength: 6, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
       
-      // Post-trip inspection fields
-      { formFieldName: "ending-odometer", formFieldType: "NUM" as const, formFieldLength: 10, businessInspectionTypeId: "post-trip" },
-      { formFieldName: "fuel-remaining", formFieldType: "NUM" as const, formFieldLength: 3, businessInspectionTypeId: "post-trip" },
-      { formFieldName: "issues-noted", formFieldType: "TEXT" as const, formFieldLength: 64, businessInspectionTypeId: "post-trip" },
+      // Post-trip inspection fields - NEC
+      { formFieldName: "ending-odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "NEC", businessInspectionTypeId: "post-trip" },
+      { formFieldName: "fuel-remaining", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "post-trip" },
+      { formFieldName: "issues-noted", formFieldType: "TEXT" as const, formFieldLength: 64, companyId: "NEC", businessInspectionTypeId: "post-trip" },
       
-      // 10,000 mile check fields
-      { formFieldName: "oil-level", formFieldType: "TEXT" as const, formFieldLength: 20, businessInspectionTypeId: "10000-mile-check" },
-      { formFieldName: "brake-wear", formFieldType: "NUM" as const, formFieldLength: 3, businessInspectionTypeId: "10000-mile-check" },
-      { formFieldName: "coolant-level", formFieldType: "TEXT" as const, formFieldLength: 20, businessInspectionTypeId: "10000-mile-check" },
+      // 10,000 mile check fields - NEC
+      { formFieldName: "oil-level", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "NEC", businessInspectionTypeId: "10000-mile-check" },
+      { formFieldName: "brake-wear", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "10000-mile-check" },
+      { formFieldName: "coolant-level", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "NEC", businessInspectionTypeId: "10000-mile-check" },
       
-      // Crane daily inspection fields
-      { formFieldName: "load-capacity", formFieldType: "NUM" as const, formFieldLength: 6, businessInspectionTypeId: "crane-daily" },
-      { formFieldName: "hydraulic-pressure", formFieldType: "NUM" as const, formFieldLength: 4, businessInspectionTypeId: "crane-daily" },
-      { formFieldName: "cable-condition", formFieldType: "TEXT" as const, formFieldLength: 32, businessInspectionTypeId: "crane-daily" },
+      // Crane daily inspection fields - NEC
+      { formFieldName: "load-capacity", formFieldType: "NUM" as const, formFieldLength: 6, companyId: "NEC", businessInspectionTypeId: "crane-daily" },
+      { formFieldName: "hydraulic-pressure", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "NEC", businessInspectionTypeId: "crane-daily" },
+      { formFieldName: "cable-condition", formFieldType: "TEXT" as const, formFieldLength: 32, companyId: "NEC", businessInspectionTypeId: "crane-daily" },
       
-      // Warehouse safety fields
-      { formFieldName: "walkway-clear", formFieldType: "TEXT" as const, formFieldLength: 10, businessInspectionTypeId: "warehouse-safety" },
-      { formFieldName: "emergency-exit", formFieldType: "TEXT" as const, formFieldLength: 10, businessInspectionTypeId: "warehouse-safety" },
-      { formFieldName: "fire-extinguisher", formFieldType: "TEXT" as const, formFieldLength: 20, businessInspectionTypeId: "warehouse-safety" },
+      // Warehouse safety fields - WALMART
+      { formFieldName: "walkway-clear", formFieldType: "TEXT" as const, formFieldLength: 10, companyId: "WALMART", businessInspectionTypeId: "warehouse-safety" },
+      { formFieldName: "emergency-exit", formFieldType: "TEXT" as const, formFieldLength: 10, companyId: "WALMART", businessInspectionTypeId: "warehouse-safety" },
+      { formFieldName: "fire-extinguisher", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "WALMART", businessInspectionTypeId: "warehouse-safety" },
       
-      // Forklift daily fields
-      { formFieldName: "battery-charge", formFieldType: "NUM" as const, formFieldLength: 3, businessInspectionTypeId: "forklift-daily" },
-      { formFieldName: "forks-condition", formFieldType: "TEXT" as const, formFieldLength: 32, businessInspectionTypeId: "forklift-daily" },
-      { formFieldName: "hours-meter", formFieldType: "NUM" as const, formFieldLength: 8, businessInspectionTypeId: "forklift-daily" },
+      // Forklift daily fields - WALMART
+      { formFieldName: "battery-charge", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "WALMART", businessInspectionTypeId: "forklift-daily" },
+      { formFieldName: "forks-condition", formFieldType: "TEXT" as const, formFieldLength: 32, companyId: "WALMART", businessInspectionTypeId: "forklift-daily" },
+      { formFieldName: "hours-meter", formFieldType: "NUM" as const, formFieldLength: 8, companyId: "WALMART", businessInspectionTypeId: "forklift-daily" },
       
       // Delivery pre-trip fields (WALMART VAN)
-      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, businessInspectionTypeId: "delivery-pre-trip" },
-      { formFieldName: "packages-loaded", formFieldType: "NUM" as const, formFieldLength: 4, businessInspectionTypeId: "delivery-pre-trip" },
-      { formFieldName: "route-number", formFieldType: "TEXT" as const, formFieldLength: 16, businessInspectionTypeId: "delivery-pre-trip" },
+      { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "WALMART", businessInspectionTypeId: "delivery-pre-trip" },
+      { formFieldName: "packages-loaded", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "WALMART", businessInspectionTypeId: "delivery-pre-trip" },
+      { formFieldName: "route-number", formFieldType: "TEXT" as const, formFieldLength: 16, companyId: "WALMART", businessInspectionTypeId: "delivery-pre-trip" },
       
-      // Sortation check fields
-      { formFieldName: "throughput-rate", formFieldType: "NUM" as const, formFieldLength: 6, businessInspectionTypeId: "sortation-check" },
-      { formFieldName: "error-rate", formFieldType: "NUM" as const, formFieldLength: 4, businessInspectionTypeId: "sortation-check" },
-      { formFieldName: "scanner-status", formFieldType: "TEXT" as const, formFieldLength: 20, businessInspectionTypeId: "sortation-check" },
+      // Sortation check fields - FEDEX
+      { formFieldName: "throughput-rate", formFieldType: "NUM" as const, formFieldLength: 6, companyId: "FEDEX", businessInspectionTypeId: "sortation-check" },
+      { formFieldName: "error-rate", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "sortation-check" },
+      { formFieldName: "scanner-status", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "FEDEX", businessInspectionTypeId: "sortation-check" },
       
       // Van pre-route fields (FEDEX)
-      { formFieldName: "odometer-start", formFieldType: "NUM" as const, formFieldLength: 10, businessInspectionTypeId: "van-pre-route" },
-      { formFieldName: "route-id", formFieldType: "TEXT" as const, formFieldLength: 16, businessInspectionTypeId: "van-pre-route" },
-      { formFieldName: "package-count", formFieldType: "NUM" as const, formFieldLength: 4, businessInspectionTypeId: "van-pre-route" },
+      { formFieldName: "odometer-start", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "FEDEX", businessInspectionTypeId: "van-pre-route" },
+      { formFieldName: "route-id", formFieldType: "TEXT" as const, formFieldLength: 16, companyId: "FEDEX", businessInspectionTypeId: "van-pre-route" },
+      { formFieldName: "package-count", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "van-pre-route" },
       
-      // Conveyor weekly fields
-      { formFieldName: "belt-tension", formFieldType: "NUM" as const, formFieldLength: 4, businessInspectionTypeId: "conveyor-weekly" },
-      { formFieldName: "motor-temp", formFieldType: "NUM" as const, formFieldLength: 4, businessInspectionTypeId: "conveyor-weekly" },
-      { formFieldName: "alignment-check", formFieldType: "TEXT" as const, formFieldLength: 20, businessInspectionTypeId: "conveyor-weekly" },
+      // Conveyor weekly fields - FEDEX
+      { formFieldName: "belt-tension", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
+      { formFieldName: "motor-temp", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
+      { formFieldName: "alignment-check", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
     ];
     
-    // Map business IDs to UUID FKs
+    // Map business IDs to UUID FKs using composite key (companyId:inspectionTypeId)
     const formFields = formFieldsData.map(ff => ({
       formFieldName: ff.formFieldName,
       formFieldType: ff.formFieldType,
       formFieldLength: ff.formFieldLength,
-      inspectionTypeId: inspectionTypeIdMap.get(ff.businessInspectionTypeId)!,
+      inspectionTypeId: inspectionTypeIdMap.get(`${ff.companyId}:${ff.businessInspectionTypeId}`)!,
     }));
     
     await db.insert(inspectionTypeFormFields).values(formFields);
