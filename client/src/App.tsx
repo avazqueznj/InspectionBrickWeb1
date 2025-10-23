@@ -10,24 +10,15 @@ import Inspections from "@/pages/Inspections";
 import Users from "@/pages/Users";
 import Assets from "@/pages/Assets";
 import InspectionTypes from "@/pages/InspectionTypes";
+import Defects from "@/pages/Defects";
 import Login from "@/pages/Login";
-import ComingSoon from "@/pages/ComingSoon";
 import NotFound from "@/pages/not-found";
-import { Wrench } from "lucide-react";
 
 function ProtectedRouter() {
   return (
     <Switch>
       <Route path="/" component={Inspections} />
-      <Route path="/defects">
-        {() => (
-          <ComingSoon
-            title="Defects/Repairs"
-            description="Manage and track all defects and repair records"
-            icon={Wrench}
-          />
-        )}
-      </Route>
+      <Route path="/defects" component={Defects} />
       <Route path="/assets" component={Assets} />
       <Route path="/users" component={Users} />
       <Route path="/inspection-types" component={InspectionTypes} />

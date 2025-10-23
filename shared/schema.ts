@@ -200,3 +200,12 @@ export type InspectionWithDefects = Inspection & {
 export type InspectionTypeWithFormFields = InspectionType & {
   formFields: InspectionTypeFormField[];
 };
+
+// Extended type for defect with inspection details
+export type DefectWithInspection = Defect & {
+  inspection?: {
+    assetId: string;
+    driverName: string;
+    datetime: Date;
+  };
+};

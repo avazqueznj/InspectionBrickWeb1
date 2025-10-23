@@ -1,0 +1,459 @@
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { type DefectWithInspection } from "@shared/schema";
+import { useCompany } from "@/contexts/CompanyContext";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type SortField = "datetime" | "assetId" | "driverName" | "zoneName" | "componentName" | "defect" | "severity" | "status";
+type SortDirection = "asc" | "desc";
+
+interface PaginatedResponse {
+  data: DefectWithInspection[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+interface Filters {
+  dateFrom?: string;
+  dateTo?: string;
+  assetId?: string;
+  driverName?: string;
+  zoneName?: string;
+  componentName?: string;
+  severity?: number;
+  status?: "open" | "pending" | "repaired";
+}
+
+interface FilterValues {
+  assetIds: string[];
+  driverNames: string[];
+  zoneNames: string[];
+  componentNames: string[];
+  severities: number[];
+  statuses: ("open" | "pending" | "repaired")[];
+}
+
+export default function Defects() {
+  const { selectedCompany } = useCompany();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<SortField>("datetime");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [filters, setFilters] = useState<Filters>({});
+  const itemsPerPage = 10;
+
+  // Reset to page 1 when search query, filters, or company changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchQuery,
+    selectedCompany,
+    filters.dateFrom,
+    filters.dateTo,
+    filters.assetId,
+    filters.driverName,
+    filters.zoneName,
+    filters.componentName,
+    filters.severity,
+    filters.status
+  ]);
+
+  // Fetch filter values
+  const { data: filterValues } = useQuery<FilterValues>({
+    queryKey: ["/api/defects/filter-values", selectedCompany],
+    enabled: !!selectedCompany,
+  });
+
+  // Fetch defects
+  const { data, isLoading } = useQuery<PaginatedResponse>({
+    queryKey: [
+      "/api/defects",
+      selectedCompany,
+      searchQuery,
+      sortField,
+      sortDirection,
+      currentPage,
+      itemsPerPage,
+      filters.dateFrom,
+      filters.dateTo,
+      filters.assetId,
+      filters.driverName,
+      filters.zoneName,
+      filters.componentName,
+      filters.severity,
+      filters.status
+    ],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams();
+
+      if (selectedCompany) queryParams.set("companyId", selectedCompany);
+      if (searchQuery) queryParams.set("search", searchQuery);
+      if (sortField) queryParams.set("sortField", sortField);
+      if (sortDirection) queryParams.set("sortDirection", sortDirection);
+      queryParams.set("page", currentPage.toString());
+      queryParams.set("limit", itemsPerPage.toString());
+
+      // Add filter parameters
+      if (filters.dateFrom) queryParams.set("dateFrom", filters.dateFrom);
+      if (filters.dateTo) queryParams.set("dateTo", filters.dateTo);
+      if (filters.assetId) queryParams.set("assetId", filters.assetId);
+      if (filters.driverName) queryParams.set("driverName", filters.driverName);
+      if (filters.zoneName) queryParams.set("zoneName", filters.zoneName);
+      if (filters.componentName) queryParams.set("componentName", filters.componentName);
+      if (filters.severity !== undefined) queryParams.set("severity", filters.severity.toString());
+      if (filters.status) queryParams.set("status", filters.status);
+
+      const response = await fetch(`/api/defects?${queryParams.toString()}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch defects");
+      }
+      return response.json();
+    },
+    enabled: !!selectedCompany,
+  });
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const handleFilterChange = (field: keyof Filters, value: string | number | undefined) => {
+    setFilters(prev => ({ ...prev, [field]: value || undefined }));
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+  };
+
+  const hasActiveFilters = Object.values(filters).some(v => v !== undefined);
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <th className="px-4 py-3 text-left">
+      <button
+        onClick={() => handleSort(field)}
+        className="flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide hover-elevate active-elevate-2 px-2 py-1 -ml-2 rounded"
+        data-testid={`button-sort-${field}`}
+      >
+        {children}
+        <ArrowUpDown className="h-3 w-3" />
+      </button>
+    </th>
+  );
+
+  const getSeverityBadge = (severity: number) => {
+    if (severity >= 75) {
+      return <Badge variant="destructive" data-testid={`badge-severity-${severity}`}>{severity}</Badge>;
+    } else if (severity >= 50) {
+      return <Badge className="bg-orange-600 hover:bg-orange-700" data-testid={`badge-severity-${severity}`}>{severity}</Badge>;
+    } else if (severity >= 25) {
+      return <Badge className="bg-yellow-600 hover:bg-yellow-700" data-testid={`badge-severity-${severity}`}>{severity}</Badge>;
+    } else {
+      return <Badge variant="secondary" data-testid={`badge-severity-${severity}`}>{severity}</Badge>;
+    }
+  };
+
+  const getStatusBadge = (status: "open" | "pending" | "repaired") => {
+    const variants = {
+      open: <Badge variant="destructive" data-testid={`badge-status-${status}`}>Open</Badge>,
+      pending: <Badge className="bg-orange-600 hover:bg-orange-700" data-testid={`badge-status-${status}`}>Pending</Badge>,
+      repaired: <Badge className="bg-green-600 hover:bg-green-700" data-testid={`badge-status-${status}`}>Repaired</Badge>,
+    };
+    return variants[status];
+  };
+
+  const defects = data?.data || [];
+  const total = data?.total || 0;
+  const totalPages = data?.totalPages || 1;
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold mb-2">Defects & Repairs</h1>
+          <p className="text-sm text-muted-foreground">
+            View and manage equipment defects and repair status
+          </p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search defects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+              data-testid="input-search"
+            />
+          </div>
+        </div>
+
+        {/* Filter Bar */}
+        <div className="flex flex-wrap items-center gap-3 p-4 bg-card border rounded-lg">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Date From:</label>
+            <Input
+              type="date"
+              value={filters.dateFrom || ""}
+              onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+              className="w-40"
+              data-testid="filter-date-from"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Date To:</label>
+            <Input
+              type="date"
+              value={filters.dateTo || ""}
+              onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+              className="w-40"
+              data-testid="filter-date-to"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Asset:</label>
+            <Select
+              value={filters.assetId || "all"}
+              onValueChange={(value) => handleFilterChange("assetId", value === "all" ? undefined : value)}
+            >
+              <SelectTrigger className="w-40" data-testid="filter-asset">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {filterValues?.assetIds.map((assetId) => (
+                  <SelectItem key={assetId} value={assetId}>
+                    {assetId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Driver:</label>
+            <Select
+              value={filters.driverName || "all"}
+              onValueChange={(value) => handleFilterChange("driverName", value === "all" ? undefined : value)}
+            >
+              <SelectTrigger className="w-40" data-testid="filter-driver">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {filterValues?.driverNames.map((driverName) => (
+                  <SelectItem key={driverName} value={driverName}>
+                    {driverName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Zone:</label>
+            <Select
+              value={filters.zoneName || "all"}
+              onValueChange={(value) => handleFilterChange("zoneName", value === "all" ? undefined : value)}
+            >
+              <SelectTrigger className="w-40" data-testid="filter-zone">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {filterValues?.zoneNames.map((zoneName) => (
+                  <SelectItem key={zoneName} value={zoneName}>
+                    {zoneName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Component:</label>
+            <Select
+              value={filters.componentName || "all"}
+              onValueChange={(value) => handleFilterChange("componentName", value === "all" ? undefined : value)}
+            >
+              <SelectTrigger className="w-40" data-testid="filter-component">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {filterValues?.componentNames.map((componentName) => (
+                  <SelectItem key={componentName} value={componentName}>
+                    {componentName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Status:</label>
+            <Select
+              value={filters.status || "all"}
+              onValueChange={(value) => handleFilterChange("status", value === "all" ? undefined : value as "open" | "pending" | "repaired")}
+            >
+              <SelectTrigger className="w-32" data-testid="filter-status">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {filterValues?.statuses.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              onClick={clearFilters}
+              className="ml-auto"
+              data-testid="button-clear-filters"
+            >
+              Clear Filters
+            </Button>
+          )}
+        </div>
+
+        {/* Table */}
+        <div className="border rounded-lg overflow-hidden bg-card">
+          {isLoading ? (
+            <div className="p-4 space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : defects.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-muted-foreground">
+                {searchQuery || hasActiveFilters ? "No defects found matching your search" : "No defects yet"}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <SortableHeader field="datetime">Date & Time</SortableHeader>
+                      <SortableHeader field="assetId">Asset ID</SortableHeader>
+                      <SortableHeader field="driverName">Driver Name</SortableHeader>
+                      <SortableHeader field="zoneName">Zone</SortableHeader>
+                      <SortableHeader field="componentName">Component</SortableHeader>
+                      <SortableHeader field="defect">Defect</SortableHeader>
+                      <SortableHeader field="severity">Severity</SortableHeader>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Driver Notes
+                      </th>
+                      <SortableHeader field="status">Status</SortableHeader>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Repair Notes
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {defects.map((defect) => {
+                      const date = defect.inspection?.datetime ? new Date(defect.inspection.datetime) : null;
+                      const formattedDate = date ? date.toLocaleDateString() : "N/A";
+                      const formattedTime = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+
+                      return (
+                        <tr
+                          key={defect.id}
+                          className="hover-elevate cursor-pointer"
+                          data-testid={`row-defect-${defect.id}`}
+                        >
+                          <td className="px-4 py-3 text-sm" data-testid={`text-datetime-${defect.id}`}>
+                            <div>{formattedDate}</div>
+                            <div className="text-xs text-muted-foreground">{formattedTime}</div>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium" data-testid={`text-assetId-${defect.id}`}>
+                            {defect.inspection?.assetId || "N/A"}
+                          </td>
+                          <td className="px-4 py-3 text-sm" data-testid={`text-driverName-${defect.id}`}>
+                            {defect.inspection?.driverName || "N/A"}
+                          </td>
+                          <td className="px-4 py-3 text-sm" data-testid={`text-zoneName-${defect.id}`}>
+                            {defect.zoneName}
+                          </td>
+                          <td className="px-4 py-3 text-sm" data-testid={`text-componentName-${defect.id}`}>
+                            {defect.componentName}
+                          </td>
+                          <td className="px-4 py-3 text-sm" data-testid={`text-defect-${defect.id}`}>
+                            {defect.defect}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {getSeverityBadge(defect.severity)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground" data-testid={`text-driverNotes-${defect.id}`}>
+                            {defect.driverNotes || "-"}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {getStatusBadge(defect.status)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground" data-testid={`text-repairNotes-${defect.id}`}>
+                            {defect.repairNotes || "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/50">
+                <div className="text-sm text-muted-foreground">
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, total)} of {total} results
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    data-testid="button-prev-page"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="text-sm">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    data-testid="button-next-page"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
