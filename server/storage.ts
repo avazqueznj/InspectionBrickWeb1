@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, inspectionTypeLayouts, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
 
@@ -480,10 +480,7 @@ export class DatabaseStorage implements IStorage {
     // Add search conditions
     if (search) {
       conditions.push(
-        or(
-          ilike(inspectionTypes.inspectionTypeId, `%${search}%`),
-          ilike(inspectionTypes.inspectionLayout, `%${search}%`)
-        )!
+        ilike(inspectionTypes.inspectionTypeId, `%${search}%`)
       );
     }
     
@@ -497,7 +494,6 @@ export class DatabaseStorage implements IStorage {
     // Determine sort order based on sortField
     const sortColumnMap = {
       inspectionTypeId: inspectionTypes.inspectionTypeId,
-      inspectionLayout: inspectionTypes.inspectionLayout,
       status: inspectionTypes.status,
     };
     
@@ -548,8 +544,22 @@ export class DatabaseStorage implements IStorage {
         formFields: true,
       },
     });
-    console.log(`${result ? '✅' : '❌'} [Storage] Inspection type ${result ? 'found' : 'not found'}`);
-    return result as InspectionTypeWithFormFields | undefined;
+    
+    if (!result) {
+      console.log(`❌ [Storage] Inspection type not found`);
+      return undefined;
+    }
+    
+    // Get associated layout IDs (empty array means "all layouts")
+    const layoutIds = await this.getInspectionTypeLayouts(result.id);
+    
+    console.log(`✅ [Storage] Inspection type found with ${result.formFields.length} form fields and ${layoutIds.length === 0 ? 'ALL' : layoutIds.length} layout(s)`);
+    
+    return {
+      ...result,
+      layoutIds,
+      allLayouts: layoutIds.length === 0,
+    } as InspectionTypeWithFormFields;
   }
 
   async getInspectionTypeByUUID(id: string): Promise<InspectionTypeWithFormFields | undefined> {
@@ -1064,6 +1074,56 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`✅ [Storage] getDefectFilterValues - Found ${result.assetIds.length} assets, ${result.zoneNames.length} zones, ${result.componentNames.length} components`);
     return result;
+  }
+
+  // === LAYOUT METHODS ===
+
+  async getLayouts(companyId: string): Promise<Layout[]> {
+    console.log(`📊 [Storage] getLayouts - companyId: ${companyId}`);
+    
+    const result = await db.query.layouts.findMany({
+      where: eq(layouts.companyId, companyId),
+      orderBy: [asc(layouts.layoutName)],
+    });
+    
+    console.log(`✅ [Storage] Found ${result.length} layouts`);
+    return result as Layout[];
+  }
+
+  async getInspectionTypeLayouts(inspectionTypeId: string): Promise<string[]> {
+    console.log(`🔍 [Storage] getInspectionTypeLayouts - inspectionTypeId: ${inspectionTypeId}`);
+    
+    const result = await db.query.inspectionTypeLayouts.findMany({
+      where: eq(inspectionTypeLayouts.inspectionTypeId, inspectionTypeId),
+    });
+    
+    const layoutIds = result.map(r => r.layoutId);
+    console.log(`✅ [Storage] Found ${layoutIds.length} layout associations (empty = all layouts)`);
+    return layoutIds;
+  }
+
+  async setInspectionTypeLayouts(inspectionTypeId: string, layoutIds: string[]): Promise<void> {
+    console.log(`🔄 [Storage] setInspectionTypeLayouts - inspectionTypeId: ${inspectionTypeId}, layoutIds: ${layoutIds.length > 0 ? layoutIds.join(', ') : 'ALL (empty)'}`);
+    
+    // Delete existing associations
+    await db
+      .delete(inspectionTypeLayouts)
+      .where(eq(inspectionTypeLayouts.inspectionTypeId, inspectionTypeId));
+    
+    // If layoutIds is empty, we're done (empty = all layouts apply)
+    if (layoutIds.length === 0) {
+      console.log(`✅ [Storage] Set to ALL layouts (no junction records)`);
+      return;
+    }
+    
+    // Insert new associations
+    const values = layoutIds.map(layoutId => ({
+      inspectionTypeId,
+      layoutId,
+    }));
+    
+    await db.insert(inspectionTypeLayouts).values(values);
+    console.log(`✅ [Storage] Created ${values.length} layout associations`);
   }
 }
 
