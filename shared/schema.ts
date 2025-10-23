@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, unique, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -22,6 +22,8 @@ export const users = pgTable("users", {
 }, (table) => ({
   // Unique constraint: same userId can exist across companies, but not within same company
   uniqueUserPerCompany: unique().on(table.companyId, table.userId),
+  // Check constraint: userId cannot be empty string
+  userIdNotEmpty: check("user_id_not_empty", sql`LENGTH(TRIM(${table.userId})) > 0`),
 }));
 
 // Assets table
@@ -35,6 +37,8 @@ export const assets = pgTable("assets", {
 }, (table) => ({
   // Unique constraint: same assetId can exist across companies, but not within same company
   uniqueAssetPerCompany: unique().on(table.companyId, table.assetId),
+  // Check constraint: assetId cannot be empty string
+  assetIdNotEmpty: check("asset_id_not_empty", sql`LENGTH(TRIM(${table.assetId})) > 0`),
 }));
 
 // Inspections table
@@ -72,6 +76,8 @@ export const inspectionTypes = pgTable("inspection_types", {
 }, (table) => ({
   // Unique constraint: same inspectionTypeId can exist across companies, but not within same company
   uniqueInspectionTypePerCompany: unique().on(table.companyId, table.inspectionTypeId),
+  // Check constraint: inspectionTypeId cannot be empty string
+  inspectionTypeIdNotEmpty: check("inspection_type_id_not_empty", sql`LENGTH(TRIM(${table.inspectionTypeId})) > 0`),
 }));
 
 // Inspection Type Form Fields table
