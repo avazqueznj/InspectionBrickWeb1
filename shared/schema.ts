@@ -70,7 +70,6 @@ export const defects = pgTable("defects", {
 export const inspectionTypes = pgTable("inspection_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   inspectionTypeId: text("inspection_type_id").notNull(),
-  inspectionLayout: text("inspection_layout").notNull(),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
@@ -89,12 +88,36 @@ export const inspectionTypeFormFields = pgTable("inspection_type_form_fields", {
   inspectionTypeId: varchar("inspection_type_id").notNull().references(() => inspectionTypes.id, { onDelete: "cascade" }),
 });
 
+// Layouts table - stores EDI format layout data
+export const layouts = pgTable("layouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  layoutName: text("layout_name").notNull(),
+  layoutData: text("layout_data").notNull(),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+}, (table) => ({
+  // Unique constraint: same layoutName can exist across companies, but not within same company
+  uniqueLayoutPerCompany: unique().on(table.companyId, table.layoutName),
+}));
+
+// Inspection Type Layouts junction table - many-to-many relationship
+// NOTE: If no records exist for an inspection_type, it means "ALL LAYOUTS" apply
+export const inspectionTypeLayouts = pgTable("inspection_type_layouts", {
+  inspectionTypeId: varchar("inspection_type_id").notNull().references(() => inspectionTypes.id, { onDelete: "cascade" }),
+  layoutId: varchar("layout_id").notNull().references(() => layouts.id, { onDelete: "cascade" }),
+}, (table) => ({
+  // Compound primary key
+  pk: {
+    columns: [table.inspectionTypeId, table.layoutId],
+  },
+}));
+
 // Define relations
 export const companiesRelations = relations(companies, ({ many }) => ({
   inspections: many(inspections),
   users: many(users),
   assets: many(assets),
   inspectionTypes: many(inspectionTypes),
+  layouts: many(layouts),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -132,12 +155,32 @@ export const inspectionTypesRelations = relations(inspectionTypes, ({ one, many 
     references: [companies.id],
   }),
   formFields: many(inspectionTypeFormFields),
+  layouts: many(inspectionTypeLayouts),
 }));
 
 export const inspectionTypeFormFieldsRelations = relations(inspectionTypeFormFields, ({ one }) => ({
   inspectionType: one(inspectionTypes, {
     fields: [inspectionTypeFormFields.inspectionTypeId],
     references: [inspectionTypes.id],
+  }),
+}));
+
+export const layoutsRelations = relations(layouts, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [layouts.companyId],
+    references: [companies.id],
+  }),
+  inspectionTypes: many(inspectionTypeLayouts),
+}));
+
+export const inspectionTypeLayoutsRelations = relations(inspectionTypeLayouts, ({ one }) => ({
+  inspectionType: one(inspectionTypes, {
+    fields: [inspectionTypeLayouts.inspectionTypeId],
+    references: [inspectionTypes.id],
+  }),
+  layout: one(layouts, {
+    fields: [inspectionTypeLayouts.layoutId],
+    references: [layouts.id],
   }),
 }));
 
@@ -180,6 +223,12 @@ export const insertInspectionTypeFormFieldSchema = createInsertSchema(inspection
   formFieldLength: z.number().int().min(0).max(64),
 });
 
+export const insertLayoutSchema = createInsertSchema(layouts).omit({
+  id: true,
+});
+
+export const insertInspectionTypeLayoutSchema = createInsertSchema(inspectionTypeLayouts);
+
 // Types
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
@@ -196,15 +245,21 @@ export type InspectionType = typeof inspectionTypes.$inferSelect;
 export type InsertInspectionType = z.infer<typeof insertInspectionTypeSchema>;
 export type InspectionTypeFormField = typeof inspectionTypeFormFields.$inferSelect;
 export type InsertInspectionTypeFormField = z.infer<typeof insertInspectionTypeFormFieldSchema>;
+export type Layout = typeof layouts.$inferSelect;
+export type InsertLayout = z.infer<typeof insertLayoutSchema>;
+export type InspectionTypeLayout = typeof inspectionTypeLayouts.$inferSelect;
+export type InsertInspectionTypeLayout = z.infer<typeof insertInspectionTypeLayoutSchema>;
 
 // Extended type for inspection with defects
 export type InspectionWithDefects = Inspection & {
   defects: Defect[];
 };
 
-// Extended type for inspection type with form fields
+// Extended type for inspection type with form fields and layouts
 export type InspectionTypeWithFormFields = InspectionType & {
   formFields: InspectionTypeFormField[];
+  layoutIds?: string[]; // Array of layout IDs, empty array means "All Layouts"
+  allLayouts?: boolean; // Flag indicating if all layouts are selected
 };
 
 // Extended type for defect with inspection details
