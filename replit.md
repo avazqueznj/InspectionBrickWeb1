@@ -58,6 +58,14 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 **Printing:**
 - Both individual inspection reports and bulk lists are generated as server-rendered HTML and opened in new browser tabs for optimal printing via the browser's native print function (Ctrl+P/Cmd+P).
 
+**Recent Improvements:**
+- **Defects Page Smart Defaults:** Page loads with severity DESC sorting and status filter set to "open" for immediate focus on critical open issues.
+- **Severity Filter with Ranges:** New dropdown filter with color-coded severity ranges - Critical (≥75), High (50-74), Medium (25-49), Low (0-24).
+- **Form Field Length Input:** Converted from number input to plain text field with 0-64 validation, preventing spinner arrows and improving UX.
+- **Database Constraints:** CHECK constraints prevent empty string surrogate IDs (user_id, asset_id, inspection_type_id must not be empty/whitespace).
+- **Asset Update Bug Fix:** PATCH /api/assets/:assetId now uses limit: 10000 to fetch all assets for authorization check, fixing 404 errors when updating assets beyond first pagination page.
+- **Page Scrolling Fix:** Main container changed from overflow-hidden to overflow-auto, enabling proper scrolling on all pages and making content below the fold accessible.
+
 ### Database Schema
 
 **Multi-Tenant ID Architecture:**
