@@ -1083,7 +1083,7 @@ export class DatabaseStorage implements IStorage {
     
     const result = await db.query.layouts.findMany({
       where: eq(layouts.companyId, companyId),
-      orderBy: [asc(layouts.layoutName)],
+      orderBy: [asc(layouts.layoutId)],
     });
     
     console.log(`✅ [Storage] Found ${result.length} layouts`);
