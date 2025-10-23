@@ -237,6 +237,20 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
     enabled: !!currentCompanyId && open,
   });
 
+  // Fetch full inspection type details (including layoutIds) when editing
+  const { data: fullInspectionType } = useQuery({
+    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeId],
+    queryFn: async () => {
+      if (!inspectionType?.inspectionTypeId) return null;
+      const response = await fetch(`/api/inspection-types/${inspectionType.inspectionTypeId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch inspection type");
+      }
+      return response.json();
+    },
+    enabled: !!inspectionType?.inspectionTypeId && open && isEdit,
+  });
+
   // Fetch form fields for this inspection type
   const { data: formFields = [], refetch: refetchFormFields } = useQuery<InspectionTypeFormField[]>({
     queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeId, "form-fields"],
@@ -274,17 +288,34 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
   // Reset form when modal opens/closes or inspection type changes
   useEffect(() => {
     if (open && inspectionType) {
+      // Editing existing inspection type
       form.reset({
         inspectionTypeId: inspectionType.inspectionTypeId,
         status: inspectionType.status,
         companyId: currentCompanyId || "",
       });
       
-      // Set layout selections (empty array means "all layouts")
-      const layoutIds = (inspectionType as any).layoutIds || [];
-      setSelectedLayoutIds(layoutIds);
-      setAllLayoutsChecked(layoutIds.length === 0);
+      // Use fullInspectionType if available (includes layoutIds), otherwise default to all layouts
+      if (fullInspectionType && fullInspectionType.layoutIds !== undefined) {
+        const layoutIds = fullInspectionType.layoutIds || [];
+        setSelectedLayoutIds(layoutIds);
+        setAllLayoutsChecked(layoutIds.length === 0);
+      } else {
+        // Fallback while loading or if layoutIds not available
+        setSelectedLayoutIds([]);
+        setAllLayoutsChecked(true);
+      }
+    } else if (open && !inspectionType) {
+      // Creating new inspection type - default to "All Layouts"
+      form.reset({
+        inspectionTypeId: "",
+        status: "ACTIVE",
+        companyId: currentCompanyId || "",
+      });
+      setSelectedLayoutIds([]);
+      setAllLayoutsChecked(true); // Default to "All Layouts" for new inspection types
     } else if (!open) {
+      // Modal closed - reset everything
       form.reset({
         inspectionTypeId: "",
         status: "ACTIVE",
@@ -293,7 +324,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
       setSelectedLayoutIds([]);
       setAllLayoutsChecked(false);
     }
-  }, [open, inspectionType, form, currentCompanyId]);
+  }, [open, inspectionType, fullInspectionType, form, currentCompanyId]);
 
   const handleSubmit = (data: InsertInspectionType) => {
     // Include layoutIds in submission (empty array = all layouts)
