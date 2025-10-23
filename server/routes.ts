@@ -480,6 +480,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // === LAYOUT ROUTES ===
+
+  // Get all layouts for a company (protected)
+  app.get("/api/layouts", requireAuth, async (req, res) => {
+    console.log(`📋 [Routes] GET /api/layouts - User: ${req.session.userId}`);
+    
+    try {
+      const companyId = req.session.companyId || (req.query.companyId as string);
+      
+      if (!companyId) {
+        console.log(`❌ [Routes] Company ID is required`);
+        return res.status(400).json({ error: "Company ID is required" });
+      }
+      
+      // Enforce company scoping for non-superusers
+      if (req.session.companyId && req.session.companyId !== companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot access layouts from another company`);
+        return res.status(403).json({ error: "Cannot access layouts from other companies" });
+      }
+      
+      const layouts = await storage.getLayouts(companyId);
+      console.log(`✅ [Routes] Returning ${layouts.length} layouts`);
+      res.json(layouts);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching layouts:", error);
+      res.status(500).json({ error: "Failed to fetch layouts" });
+    }
+  });
+
   // === INSPECTION TYPE ROUTES ===
 
   // Get available filter values for inspection types (protected)
@@ -563,7 +592,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`➕ [Routes] POST /api/inspection-types - Creating inspection type: ${req.body?.inspectionTypeId || 'UNKNOWN'}`);
     
     try {
-      const inspectionTypeData = insertInspectionTypeSchema.parse(req.body);
+      const { layoutIds, ...inspectionTypeBody } = req.body;
+      const inspectionTypeData = insertInspectionTypeSchema.parse(inspectionTypeBody);
       
       // Enforce company scoping: non-superusers must create inspection types in their own company
       if (req.session.companyId) {
@@ -578,6 +608,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const inspectionType = await storage.createInspectionType(inspectionTypeData);
       console.log(`✅ [Routes] Inspection type created successfully: ${inspectionType.inspectionTypeId}`);
+      
+      // Handle layout associations (empty array = all layouts)
+      if (layoutIds !== undefined) {
+        const layoutIdsArray = Array.isArray(layoutIds) ? layoutIds : [];
+        await storage.setInspectionTypeLayouts(inspectionType.id, layoutIdsArray);
+        console.log(`✅ [Routes] Layout associations set: ${layoutIdsArray.length === 0 ? 'ALL' : layoutIdsArray.length} layout(s)`);
+      }
       
       res.json(inspectionType);
     } catch (error) {
@@ -596,7 +633,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🔄 [Routes] PATCH /api/inspection-types/${inspectionTypeId} - Updating inspection type`);
     
     try {
-      const updateData = insertInspectionTypeSchema.partial().parse(req.body);
+      const { layoutIds, ...inspectionTypeBody } = req.body;
+      const updateData = insertInspectionTypeSchema.partial().parse(inspectionTypeBody);
       
       // Get the existing inspection type to check authorization (use companyId for proper scoping)
       const companyId = req.session.companyId || undefined;
@@ -616,6 +654,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedInspectionType = await storage.updateInspectionType(inspectionTypeId, updateData);
       if (!updatedInspectionType) {
         return res.status(404).json({ error: "Inspection type not found" });
+      }
+      
+      // Handle layout associations (empty array = all layouts)
+      if (layoutIds !== undefined) {
+        const layoutIdsArray = Array.isArray(layoutIds) ? layoutIds : [];
+        await storage.setInspectionTypeLayouts(existingInspectionType.id, layoutIdsArray);
+        console.log(`✅ [Routes] Layout associations updated: ${layoutIdsArray.length === 0 ? 'ALL' : layoutIdsArray.length} layout(s)`);
       }
       
       console.log(`✅ [Routes] Inspection type updated successfully: ${inspectionTypeId}`);
