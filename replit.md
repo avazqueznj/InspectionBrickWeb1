@@ -85,12 +85,12 @@ The system uses UUID surrogate primary keys with human-readable business IDs to 
 - **Inspection Types:** List (with search, filtering, sorting, pagination), Get filter values, Get single inspection type, Create, Update.
 - **Inspection Type Form Fields:** Get form fields for inspection type, Create, Update, Delete.
 - **Inspections:** List (with extensive filtering, sorting, pagination), Get filter values, Print list, Get single inspection, Print single inspection, Create, Update, Delete.
-- **Defects:** Get defects for an inspection, Create, Update, Delete.
+- **Defects:** List (with search, filtering by date/asset/driver/zone/component/status, sorting, pagination), Get filter values, Get defects for an inspection, Create, Update, Delete.
 
 ### Key Files
 - `shared/schema.ts`: Drizzle ORM schema, Zod validation, TypeScript types.
 - `server/`: Database setup, data access layer, API routes, seed data, Express server.
-- `client/src/`: React components for authentication, company context, UI elements (FilterBar, InspectionModal, AssetModal, InspectionTypeModal), and pages (Login, Inspections, Users, Assets, InspectionTypes).
+- `client/src/`: React components for authentication, company context, UI elements (FilterBar, InspectionModal, AssetModal, InspectionTypeModal), and pages (Login, Inspections, Defects, Users, Assets, InspectionTypes).
 
 ## External Dependencies
 

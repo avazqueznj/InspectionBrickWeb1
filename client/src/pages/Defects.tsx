@@ -67,6 +67,16 @@ export default function Defects() {
   // Fetch filter values
   const { data: filterValues } = useQuery<FilterValues>({
     queryKey: ["/api/defects/filter-values", selectedCompany],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams();
+      if (selectedCompany) queryParams.set("companyId", selectedCompany);
+      
+      const response = await fetch(`/api/defects/filter-values?${queryParams.toString()}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch filter values");
+      }
+      return response.json();
+    },
     enabled: !!selectedCompany,
   });
 
