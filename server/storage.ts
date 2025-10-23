@@ -358,12 +358,12 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(assets.companyId, companyId));
     }
     
-    // Add search conditions
+    // Add search conditions - search in assetId, assetName, and layout.layoutId
     if (search) {
       conditions.push(
         or(
           ilike(assets.assetId, `%${search}%`),
-          ilike(assets.assetConfig, `%${search}%`),
+          ilike(layouts.layoutId, `%${search}%`),
           ilike(assets.assetName, `%${search}%`)
         )!
       );
@@ -379,7 +379,7 @@ export class DatabaseStorage implements IStorage {
     // Determine sort order based on sortField
     const sortColumnMap = {
       assetId: assets.assetId,
-      assetConfig: assets.assetConfig,
+      assetConfig: layouts.layoutId,
       assetName: assets.assetName,
       status: assets.status,
     };
@@ -391,20 +391,41 @@ export class DatabaseStorage implements IStorage {
     const countResult = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(assets)
+      .innerJoin(layouts, eq(assets.layout, layouts.id))
       .where(whereConditions);
     const total = countResult[0]?.count || 0;
 
-    // Get paginated data
+    // Get paginated data with layout information
     const offset = (page - 1) * limit;
-    const data = await db
-      .select()
+    const results = await db
+      .select({
+        id: assets.id,
+        assetId: assets.assetId,
+        layout: assets.layout,
+        layoutId: layouts.layoutId,
+        assetName: assets.assetName,
+        status: assets.status,
+        companyId: assets.companyId,
+      })
       .from(assets)
+      .innerJoin(layouts, eq(assets.layout, layouts.id))
       .where(whereConditions)
       .orderBy(orderBy)
       .limit(limit)
       .offset(offset);
 
-    console.log(`✅ [Storage] getAssets - Found ${data.length} of ${total} total assets`);
+    // Map results to Asset type with layoutId added
+    const data = results.map(r => ({
+      id: r.id,
+      assetId: r.assetId,
+      layout: r.layout,
+      assetName: r.assetName,
+      status: r.status,
+      companyId: r.companyId,
+      layoutId: r.layoutId,
+    })) as any;
+
+    console.log(`✅ [Storage] getAssets - Found ${results.length} of ${total} total assets`);
     
     return {
       data,

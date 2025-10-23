@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertAssetSchema, type InsertAsset, type Asset } from "@shared/schema";
+import { insertAssetSchema, type InsertAsset, type Asset, type Layout } from "@shared/schema";
 import { X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 interface AssetModalProps {
   asset: Asset | null;
@@ -27,12 +28,52 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
     resolver: zodResolver(insertAssetSchema),
     defaultValues: {
       assetId: "",
-      assetConfig: "",
+      layout: "",
       assetName: "",
       status: "ACTIVE",
       companyId: currentCompanyId || "",
     },
   });
+
+  // Watch the selected companyId to fetch layouts for that company
+  const selectedCompanyId = form.watch("companyId");
+  
+  // Track previous companyId to detect actual changes
+  const prevCompanyIdRef = useRef<string | undefined>();
+  
+  // Fetch layouts for the selected company
+  const { data: layouts = [] } = useQuery<Layout[]>({
+    queryKey: ["/api/layouts", selectedCompanyId],
+    queryFn: async () => {
+      const response = await fetch(`/api/layouts?companyId=${selectedCompanyId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch layouts");
+      }
+      return response.json();
+    },
+    enabled: !!selectedCompanyId && open,
+  });
+
+  // Reset layout field when company actually changes to prevent cross-tenant layout selection
+  useEffect(() => {
+    // Only reset if:
+    // 1. Modal is open
+    // 2. Previous company was set (not initial render/open)
+    // 3. Company has actually changed
+    // 4. Both old and new company IDs are non-empty (user has made a selection)
+    if (open && 
+        prevCompanyIdRef.current !== undefined && 
+        prevCompanyIdRef.current !== "" &&
+        selectedCompanyId !== "" &&
+        prevCompanyIdRef.current !== selectedCompanyId) {
+      // Company has genuinely changed - reset layout to prevent stale cross-tenant selection
+      form.setValue("layout", "");
+    }
+    // Only update the ref if we have a meaningful value
+    if (selectedCompanyId) {
+      prevCompanyIdRef.current = selectedCompanyId;
+    }
+  }, [selectedCompanyId, form, open]);
 
   // Reset form when modal opens/closes or asset changes
   useEffect(() => {
@@ -40,29 +81,35 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
       // In edit mode, preserve the asset's company
       form.reset({
         assetId: asset.assetId,
-        assetConfig: asset.assetConfig,
+        layout: asset.layout,
         assetName: asset.assetName,
         status: asset.status,
         companyId: asset.companyId,
       });
+      // Initialize the ref with the asset's company to prevent false change detection
+      prevCompanyIdRef.current = asset.companyId;
     } else if (open && !asset) {
       // In create mode, use user's company (or empty for superusers to select)
       form.reset({
         assetId: "",
-        assetConfig: "",
+        layout: "",
         assetName: "",
         status: "ACTIVE",
         companyId: currentCompanyId || "",
       });
+      // Initialize the ref with the current company
+      prevCompanyIdRef.current = currentCompanyId || "";
     } else if (!open) {
       // Reset form when modal closes
       form.reset({
         assetId: "",
-        assetConfig: "",
+        layout: "",
         assetName: "",
         status: "ACTIVE",
         companyId: "",
       });
+      // Reset the ref when modal closes
+      prevCompanyIdRef.current = undefined;
     }
   }, [open, asset, form, currentCompanyId]);
 
@@ -115,17 +162,28 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
 
             <FormField
               control={form.control}
-              name="assetConfig"
+              name="layout"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Configuration</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="e.g., TRUCK, VAN, BOX CAR"
-                      data-testid="input-assetConfig"
-                    />
-                  </FormControl>
+                  <FormLabel>Layout</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={!selectedCompanyId}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-layout">
+                        <SelectValue placeholder={selectedCompanyId ? "Select layout" : "Select a company first"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {layouts.map((layout) => (
+                        <SelectItem key={layout.id} value={layout.id}>
+                          {layout.layoutId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

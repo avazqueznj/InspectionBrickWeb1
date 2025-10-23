@@ -30,7 +30,7 @@ export const users = pgTable("users", {
 export const assets = pgTable("assets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   assetId: text("asset_id").notNull(),
-  assetConfig: text("asset_config").notNull(),
+  layout: varchar("layout").notNull().references(() => layouts.id, { onDelete: "restrict" }),
   assetName: text("asset_name").notNull(),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -134,6 +134,10 @@ export const assetsRelations = relations(assets, ({ one }) => ({
     fields: [assets.companyId],
     references: [companies.id],
   }),
+  layoutRelation: one(layouts, {
+    fields: [assets.layout],
+    references: [layouts.id],
+  }),
 }));
 
 export const inspectionsRelations = relations(inspections, ({ many, one }) => ({
@@ -173,6 +177,7 @@ export const layoutsRelations = relations(layouts, ({ one, many }) => ({
     references: [companies.id],
   }),
   inspectionTypes: many(inspectionTypeLayouts),
+  assets: many(assets),
 }));
 
 export const inspectionTypeLayoutsRelations = relations(inspectionTypeLayouts, ({ one }) => ({

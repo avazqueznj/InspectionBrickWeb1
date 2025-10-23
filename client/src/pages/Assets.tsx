@@ -19,10 +19,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type SortField = "assetId" | "assetConfig" | "assetName" | "status";
+
+// Extended asset type with layoutId for display
+type AssetWithLayout = Asset & { layoutId?: string };
 type SortDirection = "asc" | "desc";
 
 interface PaginatedResponse {
-  data: Asset[];
+  data: AssetWithLayout[];
   total: number;
   page: number;
   totalPages: number;
@@ -170,7 +173,7 @@ export default function Assets() {
     setModalOpen(true);
   };
 
-  const handleEditAsset = (asset: Asset) => {
+  const handleEditAsset = (asset: AssetWithLayout) => {
     setSelectedAsset(asset);
     setModalOpen(true);
   };
@@ -258,7 +261,7 @@ export default function Assets() {
               <thead className="bg-muted/50 border-b">
                 <tr>
                   <SortableHeader field="assetId">Asset ID</SortableHeader>
-                  <SortableHeader field="assetConfig">Configuration</SortableHeader>
+                  <SortableHeader field="assetConfig">Layout</SortableHeader>
                   <SortableHeader field="assetName">Name</SortableHeader>
                   <SortableHeader field="status">Status</SortableHeader>
                   <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -297,8 +300,8 @@ export default function Assets() {
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-sm" data-testid={`text-assetConfig-${asset.assetId}`}>
-                          {asset.assetConfig}
+                        <div className="text-sm font-mono" data-testid={`text-layout-${asset.assetId}`}>
+                          {asset.layoutId || asset.layout}
                         </div>
                       </td>
                       <td className="px-4 py-4">
