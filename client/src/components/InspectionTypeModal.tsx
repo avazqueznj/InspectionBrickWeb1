@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertInspectionTypeSchema, type InsertInspectionType, type InspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField } from "@shared/schema";
+import { insertInspectionTypeSchema, type InsertInspectionType, type InspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type Layout } from "@shared/schema";
 import { X, Plus, Pencil, Trash2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -210,15 +211,30 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
   const isEdit = !!inspectionType;
   const [formFieldDialogOpen, setFormFieldDialogOpen] = useState(false);
   const [selectedFormField, setSelectedFormField] = useState<InspectionTypeFormField | null>(null);
+  const [selectedLayoutIds, setSelectedLayoutIds] = useState<string[]>([]);
+  const [allLayoutsChecked, setAllLayoutsChecked] = useState(false);
 
   const form = useForm<InsertInspectionType>({
     resolver: zodResolver(insertInspectionTypeSchema),
     defaultValues: {
       inspectionTypeId: "",
-      inspectionLayout: "",
       status: "ACTIVE",
       companyId: currentCompanyId || "",
     },
+  });
+
+  // Fetch available layouts for the company
+  const { data: layouts = [] } = useQuery<Layout[]>({
+    queryKey: ["/api/layouts", currentCompanyId],
+    queryFn: async () => {
+      if (!currentCompanyId) return [];
+      const response = await fetch(`/api/layouts?companyId=${currentCompanyId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch layouts");
+      }
+      return response.json();
+    },
+    enabled: !!currentCompanyId && open,
   });
 
   // Fetch form fields for this inspection type
@@ -260,22 +276,48 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
     if (open && inspectionType) {
       form.reset({
         inspectionTypeId: inspectionType.inspectionTypeId,
-        inspectionLayout: inspectionType.inspectionLayout,
         status: inspectionType.status,
         companyId: currentCompanyId || "",
       });
+      
+      // Set layout selections (empty array means "all layouts")
+      const layoutIds = (inspectionType as any).layoutIds || [];
+      setSelectedLayoutIds(layoutIds);
+      setAllLayoutsChecked(layoutIds.length === 0);
     } else if (!open) {
       form.reset({
         inspectionTypeId: "",
-        inspectionLayout: "",
         status: "ACTIVE",
         companyId: currentCompanyId || "",
       });
+      setSelectedLayoutIds([]);
+      setAllLayoutsChecked(false);
     }
   }, [open, inspectionType, form, currentCompanyId]);
 
   const handleSubmit = (data: InsertInspectionType) => {
-    onSubmit(data);
+    // Include layoutIds in submission (empty array = all layouts)
+    const submitData = {
+      ...data,
+      layoutIds: allLayoutsChecked ? [] : selectedLayoutIds,
+    };
+    onSubmit(submitData as any);
+  };
+
+  const handleAllLayoutsToggle = (checked: boolean) => {
+    setAllLayoutsChecked(checked);
+    if (checked) {
+      setSelectedLayoutIds([]);
+    }
+  };
+
+  const handleLayoutToggle = (layoutId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLayoutIds(prev => [...prev, layoutId]);
+    } else {
+      setSelectedLayoutIds(prev => prev.filter(id => id !== layoutId));
+      setAllLayoutsChecked(false);
+    }
   };
 
   const handleAddFormField = () => {
@@ -345,24 +387,6 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
 
                 <FormField
                   control={form.control}
-                  name="inspectionLayout"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Inspection Layout</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Enter inspection layout"
-                          data-testid="input-inspectionLayout"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="companyId"
                   render={({ field }) => (
                     <FormItem>
@@ -411,6 +435,60 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Layouts Section */}
+              <div className="border rounded-md p-4 space-y-3">
+                <div>
+                  <h3 className="text-sm font-medium mb-2">EDI Layouts</h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Select which layouts this inspection type applies to. If no layouts are selected, it will apply to all layouts.
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2 p-2 rounded border bg-muted/30">
+                  <Checkbox
+                    id="all-layouts"
+                    checked={allLayoutsChecked}
+                    onCheckedChange={(checked) => handleAllLayoutsToggle(checked as boolean)}
+                    data-testid="checkbox-all-layouts"
+                  />
+                  <label
+                    htmlFor="all-layouts"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                  >
+                    All Layouts
+                  </label>
+                  <Badge variant="secondary" className="text-xs">Default</Badge>
+                </div>
+
+                {layouts.length > 0 && (
+                  <div className="space-y-2">
+                    {layouts.map((layout) => (
+                      <div key={layout.id} className="flex items-center space-x-2 p-2 rounded border">
+                        <Checkbox
+                          id={`layout-${layout.id}`}
+                          checked={selectedLayoutIds.includes(layout.id)}
+                          onCheckedChange={(checked) => handleLayoutToggle(layout.id, checked as boolean)}
+                          disabled={allLayoutsChecked}
+                          data-testid={`checkbox-layout-${layout.layoutId}`}
+                        />
+                        <label
+                          htmlFor={`layout-${layout.id}`}
+                          className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                        >
+                          {layout.layoutId}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {layouts.length === 0 && !allLayoutsChecked && (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    No layouts available for this company
+                  </p>
+                )}
               </div>
 
               {/* Form Fields Section - Only show in edit mode */}
