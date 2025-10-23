@@ -91,12 +91,14 @@ export const inspectionTypeFormFields = pgTable("inspection_type_form_fields", {
 // Layouts table - stores EDI format layout data
 export const layouts = pgTable("layouts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  layoutName: text("layout_name").notNull(),
+  layoutId: text("layout_id").notNull(),
   layoutData: text("layout_data").notNull(),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
-  // Unique constraint: same layoutName can exist across companies, but not within same company
-  uniqueLayoutPerCompany: unique().on(table.companyId, table.layoutName),
+  // Unique constraint: same layoutId can exist across companies, but not within same company
+  uniqueLayoutPerCompany: unique().on(table.companyId, table.layoutId),
+  // Check constraint: layoutId cannot be empty string
+  layoutIdNotEmpty: check("layout_id_not_empty", sql`LENGTH(TRIM(${table.layoutId})) > 0`),
 }));
 
 // Inspection Type Layouts junction table - many-to-many relationship
