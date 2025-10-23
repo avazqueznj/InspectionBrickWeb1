@@ -159,11 +159,21 @@ function FormFieldDialog({ open, onOpenChange, formField, inspectionTypeId, onSu
           <div>
             <label className="text-sm font-medium mb-2 block">Field Length (0-64)</label>
             <Input
-              type="number"
-              min={0}
-              max={64}
+              type="text"
               value={formFieldLength}
-              onChange={(e) => setFormFieldLength(parseInt(e.target.value) || 0)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow empty string for typing
+                if (value === '') {
+                  setFormFieldLength(0);
+                  return;
+                }
+                // Only allow numeric input
+                const numValue = parseInt(value);
+                if (!isNaN(numValue) && numValue >= 0 && numValue <= 64) {
+                  setFormFieldLength(numValue);
+                }
+              }}
               placeholder="Enter length (0-64)"
               required
               data-testid="input-formFieldLength"
