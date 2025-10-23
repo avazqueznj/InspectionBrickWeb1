@@ -446,8 +446,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updateData = insertAssetSchema.partial().parse(req.body);
       
-      // Get the existing asset to check authorization
-      const existingAssets = await storage.getAssets({ companyId: req.session.companyId || undefined });
+      // Get the existing asset to check authorization (fetch all assets to avoid pagination issues)
+      const existingAssets = await storage.getAssets({ 
+        companyId: req.session.companyId || undefined,
+        limit: 10000 // Large limit to get all assets for authorization check
+      });
       const existingAsset = existingAssets.data.find(a => a.assetId === assetId);
       
       if (!existingAsset) {
