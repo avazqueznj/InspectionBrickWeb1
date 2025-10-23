@@ -59,14 +59,24 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - Both individual inspection reports and bulk lists are generated as server-rendered HTML and opened in new browser tabs for optimal printing via the browser's native print function (Ctrl+P/Cmd+P).
 
 ### Database Schema
-- **Users:** `userId`, `password`, `companyId` (FK)
-- **Companies:** `id`, `name`
-- **Assets:** `assetId`, `assetConfig`, `assetName`, `status`, `companyId` (FK)
-- **Inspection Types:** `inspectionTypeId` (PK), `inspectionLayout`, `status` (ACTIVE/INACTIVE), `companyId` (FK)
-- **Inspection Type Form Fields:** `id` (PK), `inspectionTypeId` (FK), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength` (integer 0-64)
-- **Inspections:** `id`, `companyId` (FK), `datetime`, `inspectionType`, `assetId`, `driverName`, `driverId`, `inspectionFormData`
-  - Note: `assetId` is stored as text (not FK) to avoid stale data issues with permanent inspection records
-- **Defects:** `id`, `inspectionId` (FK), `zoneName`, `componentName`, `defect`, `severity`, `driverNotes`, `status`, `repairNotes`
+
+**Multi-Tenant ID Architecture:**
+The system uses UUID surrogate primary keys with human-readable business IDs to support multiple companies using identical identifiers. This allows, for example, both NEC and WALMART to have a "pre-trip" inspection type without conflicts.
+
+- **UUID Primary Keys:** All major entities (users, assets, inspection_types) use UUID `id` as the primary key
+- **Business IDs:** Human-readable identifiers (userId, assetId, inspectionTypeId) are unique per company via `UNIQUE(company_id, business_id)` constraints
+- **API Surface:** External APIs continue using business IDs; internal resolution to UUIDs is transparent
+- **Foreign Keys:** All relationships use UUID foreign keys for referential integrity
+
+**Tables:**
+- **Companies:** `id` (PK), `name`
+- **Users:** `id` (UUID PK), `userId` (business ID, unique per company), `password`, `companyId` (FK), `UNIQUE(companyId, userId)`
+- **Assets:** `id` (UUID PK), `assetId` (business ID, unique per company), `assetConfig`, `assetName`, `status`, `companyId` (FK), `UNIQUE(companyId, assetId)`
+- **Inspection Types:** `id` (UUID PK), `inspectionTypeId` (business ID, unique per company), `inspectionLayout`, `status` (ACTIVE/INACTIVE), `companyId` (FK), `UNIQUE(companyId, inspectionTypeId)`
+- **Inspection Type Form Fields:** `id` (UUID PK), `inspectionTypeId` (UUID FK → inspection_types.id), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength` (integer 0-64)
+- **Inspections:** `id` (UUID PK), `companyId` (FK), `datetime`, `inspectionType` (text, not FK), `assetId` (text, not FK), `driverName`, `driverId`, `inspectionFormData`
+  - Note: `assetId` and `inspectionType` are stored as text (not FKs) to avoid stale data issues with permanent inspection records
+- **Defects:** `id` (UUID PK), `inspectionId` (UUID FK), `zoneName`, `componentName`, `defect`, `severity`, `driverNotes`, `status`, `repairNotes`
 
 ### API Endpoints
 - **Authentication:** Login, Logout, Get current user.
