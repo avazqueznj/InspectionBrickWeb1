@@ -26,7 +26,7 @@ interface Filters {
   driverName?: string;
   zoneName?: string;
   componentName?: string;
-  severity?: number;
+  severityLevel?: "critical" | "high" | "medium" | "low";
   status?: "open" | "pending" | "repaired";
 }
 
@@ -35,7 +35,7 @@ interface FilterValues {
   driverNames: string[];
   zoneNames: string[];
   componentNames: string[];
-  severities: number[];
+  severityLevels: ("critical" | "high" | "medium" | "low")[];
   statuses: ("open" | "pending" | "repaired")[];
 }
 
@@ -43,9 +43,9 @@ export default function Defects() {
   const { selectedCompany } = useCompany();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState<SortField>("datetime");
+  const [sortField, setSortField] = useState<SortField>("severity");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [filters, setFilters] = useState<Filters>({});
+  const [filters, setFilters] = useState<Filters>({ status: "open" });
   const itemsPerPage = 10;
 
   // Reset to page 1 when search query, filters, or company changes
@@ -60,7 +60,7 @@ export default function Defects() {
     filters.driverName,
     filters.zoneName,
     filters.componentName,
-    filters.severity,
+    filters.severityLevel,
     filters.status
   ]);
 
@@ -96,7 +96,7 @@ export default function Defects() {
       filters.driverName,
       filters.zoneName,
       filters.componentName,
-      filters.severity,
+      filters.severityLevel,
       filters.status
     ],
     queryFn: async () => {
@@ -116,7 +116,7 @@ export default function Defects() {
       if (filters.driverName) queryParams.set("driverName", filters.driverName);
       if (filters.zoneName) queryParams.set("zoneName", filters.zoneName);
       if (filters.componentName) queryParams.set("componentName", filters.componentName);
-      if (filters.severity !== undefined) queryParams.set("severity", filters.severity.toString());
+      if (filters.severityLevel) queryParams.set("severityLevel", filters.severityLevel);
       if (filters.status) queryParams.set("status", filters.status);
 
       const response = await fetch(`/api/defects?${queryParams.toString()}`);
@@ -309,6 +309,25 @@ export default function Defects() {
                     {componentName}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Severity:</label>
+            <Select
+              value={filters.severityLevel || "all"}
+              onValueChange={(value) => handleFilterChange("severityLevel", value === "all" ? undefined : value as "critical" | "high" | "medium" | "low")}
+            >
+              <SelectTrigger className="w-32" data-testid="filter-severity">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="critical">Critical (75-100)</SelectItem>
+                <SelectItem value="high">High (50-74)</SelectItem>
+                <SelectItem value="medium">Medium (25-49)</SelectItem>
+                <SelectItem value="low">Low (0-24)</SelectItem>
               </SelectContent>
             </Select>
           </div>

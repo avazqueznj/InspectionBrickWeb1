@@ -85,7 +85,7 @@ export interface DefectQueryParams {
   driverName?: string;
   zoneName?: string;
   componentName?: string;
-  severity?: number;
+  severityLevel?: "critical" | "high" | "medium" | "low";
   status?: "open" | "pending" | "repaired";
 }
 
@@ -94,7 +94,7 @@ export interface DefectFilterValues {
   driverNames: string[];
   zoneNames: string[];
   componentNames: string[];
-  severities: number[];
+  severityLevels: ("critical" | "high" | "medium" | "low")[];
   statuses: ("open" | "pending" | "repaired")[];
 }
 
@@ -875,7 +875,7 @@ export class DatabaseStorage implements IStorage {
       driverName,
       zoneName,
       componentName,
-      severity,
+      severityLevel,
       status
     } = params || {};
     
@@ -921,8 +921,21 @@ export class DatabaseStorage implements IStorage {
     if (componentName) {
       conditions.push(eq(defects.componentName, componentName));
     }
-    if (severity !== undefined) {
-      conditions.push(eq(defects.severity, severity));
+    if (severityLevel) {
+      // Map severity levels to numeric ranges (aligned with UI badge thresholds)
+      const severityRanges = {
+        critical: { min: 75, max: 100 },
+        high: { min: 50, max: 74 },
+        medium: { min: 25, max: 49 },
+        low: { min: 0, max: 24 },
+      };
+      const range = severityRanges[severityLevel];
+      conditions.push(
+        and(
+          sql`${defects.severity} >= ${range.min}`,
+          sql`${defects.severity} <= ${range.max}`
+        )!
+      );
     }
     if (status) {
       conditions.push(eq(defects.status, status));
@@ -1012,7 +1025,7 @@ export class DatabaseStorage implements IStorage {
     const whereCondition = companyId ? eq(inspections.companyId, companyId) : undefined;
     
     // Get distinct values for each filterable column (join with inspections for company scoping)
-    const [assetIdsResult, driverNamesResult, zoneNamesResult, componentNamesResult, severitiesResult, statusesResult] = await Promise.all([
+    const [assetIdsResult, driverNamesResult, zoneNamesResult, componentNamesResult, statusesResult] = await Promise.all([
       db.selectDistinct({ value: inspections.assetId })
         .from(defects)
         .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
@@ -1033,11 +1046,6 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
         .where(whereCondition)
         .orderBy(asc(defects.componentName)),
-      db.selectDistinct({ value: defects.severity })
-        .from(defects)
-        .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
-        .where(whereCondition)
-        .orderBy(asc(defects.severity)),
       db.selectDistinct({ value: defects.status })
         .from(defects)
         .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
@@ -1050,7 +1058,7 @@ export class DatabaseStorage implements IStorage {
       driverNames: driverNamesResult.map(r => r.value),
       zoneNames: zoneNamesResult.map(r => r.value),
       componentNames: componentNamesResult.map(r => r.value),
-      severities: severitiesResult.map(r => r.value),
+      severityLevels: ["critical", "high", "medium", "low"] as ("critical" | "high" | "medium" | "low")[],
       statuses: statusesResult.map(r => r.value) as ("open" | "pending" | "repaired")[],
     };
     

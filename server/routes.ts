@@ -78,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     driverName: z.string().optional(),
     zoneName: z.string().optional(),
     componentName: z.string().optional(),
-    severity: z.coerce.number().int().optional(),
+    severityLevel: z.enum(["critical", "high", "medium", "low"]).optional(),
     status: z.enum(["open", "pending", "repaired"]).optional(),
   });
 
