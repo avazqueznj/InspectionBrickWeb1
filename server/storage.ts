@@ -71,6 +71,41 @@ export interface InspectionTypeFilterValues {
   statuses: ("ACTIVE" | "INACTIVE")[];
 }
 
+export interface DefectQueryParams {
+  companyId?: string;
+  search?: string;
+  sortField?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+  // Filter parameters
+  dateFrom?: string;
+  dateTo?: string;
+  assetId?: string;
+  driverName?: string;
+  zoneName?: string;
+  componentName?: string;
+  severity?: number;
+  status?: "open" | "pending" | "repaired";
+}
+
+export interface DefectFilterValues {
+  assetIds: string[];
+  driverNames: string[];
+  zoneNames: string[];
+  componentNames: string[];
+  severities: number[];
+  statuses: ("open" | "pending" | "repaired")[];
+}
+
+export interface DefectWithInspection extends Defect {
+  inspection?: {
+    assetId: string;
+    driverName: string;
+    datetime: Date;
+  };
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -122,6 +157,8 @@ export interface IStorage {
   // Defects
   getDefectById(id: string): Promise<Defect | undefined>;
   getDefectsByInspectionId(inspectionId: string): Promise<Defect[]>;
+  getDefects(params?: DefectQueryParams): Promise<PaginatedResult<DefectWithInspection>>;
+  getDefectFilterValues(companyId?: string): Promise<DefectFilterValues>;
   createDefect(defect: InsertDefect): Promise<Defect>;
   updateDefect(id: string, defect: Partial<InsertDefect>): Promise<Defect | undefined>;
   deleteDefect(id: string): Promise<boolean>;
@@ -822,6 +859,203 @@ export class DatabaseStorage implements IStorage {
       .where(eq(defects.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  async getDefects(params?: DefectQueryParams): Promise<PaginatedResult<DefectWithInspection>> {
+    const { 
+      companyId, 
+      search, 
+      sortField = "datetime", 
+      sortDirection = "desc", 
+      page = 1, 
+      limit = 20,
+      dateFrom,
+      dateTo,
+      assetId,
+      driverName,
+      zoneName,
+      componentName,
+      severity,
+      status
+    } = params || {};
+    
+    console.log(`📊 [Storage] getDefects - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}`);
+    
+    // Build where conditions array
+    const conditions = [];
+    
+    // Filter by company (required) - join with inspections to get companyId
+    if (companyId) {
+      conditions.push(eq(inspections.companyId, companyId));
+    }
+    
+    // Add search conditions (search across defect and inspection fields)
+    if (search) {
+      conditions.push(
+        or(
+          ilike(defects.zoneName, `%${search}%`),
+          ilike(defects.componentName, `%${search}%`),
+          ilike(defects.defect, `%${search}%`),
+          ilike(inspections.assetId, `%${search}%`),
+          ilike(inspections.driverName, `%${search}%`)
+        )!
+      );
+    }
+    
+    // Add filter conditions
+    if (dateFrom) {
+      conditions.push(sql`${inspections.datetime}::date >= ${dateFrom}::date`);
+    }
+    if (dateTo) {
+      conditions.push(sql`${inspections.datetime}::date <= ${dateTo}::date`);
+    }
+    if (assetId) {
+      conditions.push(eq(inspections.assetId, assetId));
+    }
+    if (driverName) {
+      conditions.push(eq(inspections.driverName, driverName));
+    }
+    if (zoneName) {
+      conditions.push(eq(defects.zoneName, zoneName));
+    }
+    if (componentName) {
+      conditions.push(eq(defects.componentName, componentName));
+    }
+    if (severity !== undefined) {
+      conditions.push(eq(defects.severity, severity));
+    }
+    if (status) {
+      conditions.push(eq(defects.status, status));
+    }
+    
+    const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Determine sort order based on sortField
+    const sortColumnMap = {
+      datetime: inspections.datetime,
+      assetId: inspections.assetId,
+      driverName: inspections.driverName,
+      zoneName: defects.zoneName,
+      componentName: defects.componentName,
+      defect: defects.defect,
+      severity: defects.severity,
+      status: defects.status,
+    };
+    
+    const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspections.datetime;
+    const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
+
+    // Get total count using join
+    const countResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(whereConditions);
+    const total = countResult[0]?.count || 0;
+
+    // Get paginated data with inspection details
+    const offset = (page - 1) * limit;
+    const data = await db
+      .select({
+        id: defects.id,
+        inspectionId: defects.inspectionId,
+        zoneName: defects.zoneName,
+        componentName: defects.componentName,
+        defect: defects.defect,
+        severity: defects.severity,
+        driverNotes: defects.driverNotes,
+        status: defects.status,
+        repairNotes: defects.repairNotes,
+        // Inspection details
+        assetId: inspections.assetId,
+        driverName: inspections.driverName,
+        datetime: inspections.datetime,
+      })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(whereConditions)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    console.log(`✅ [Storage] getDefects - Found ${data.length} of ${total} total defects`);
+    
+    // Map to DefectWithInspection format
+    const defectsWithInspection: DefectWithInspection[] = data.map(row => ({
+      id: row.id,
+      inspectionId: row.inspectionId,
+      zoneName: row.zoneName,
+      componentName: row.componentName,
+      defect: row.defect,
+      severity: row.severity,
+      driverNotes: row.driverNotes,
+      status: row.status,
+      repairNotes: row.repairNotes,
+      inspection: {
+        assetId: row.assetId,
+        driverName: row.driverName,
+        datetime: row.datetime,
+      }
+    }));
+    
+    return {
+      data: defectsWithInspection,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getDefectFilterValues(companyId?: string): Promise<DefectFilterValues> {
+    console.log(`🔍 [Storage] getDefectFilterValues - companyId: ${companyId || 'ALL'}`);
+    
+    const whereCondition = companyId ? eq(inspections.companyId, companyId) : undefined;
+    
+    // Get distinct values for each filterable column (join with inspections for company scoping)
+    const [assetIdsResult, driverNamesResult, zoneNamesResult, componentNamesResult, severitiesResult, statusesResult] = await Promise.all([
+      db.selectDistinct({ value: inspections.assetId })
+        .from(defects)
+        .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+        .where(whereCondition)
+        .orderBy(asc(inspections.assetId)),
+      db.selectDistinct({ value: inspections.driverName })
+        .from(defects)
+        .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+        .where(whereCondition)
+        .orderBy(asc(inspections.driverName)),
+      db.selectDistinct({ value: defects.zoneName })
+        .from(defects)
+        .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+        .where(whereCondition)
+        .orderBy(asc(defects.zoneName)),
+      db.selectDistinct({ value: defects.componentName })
+        .from(defects)
+        .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+        .where(whereCondition)
+        .orderBy(asc(defects.componentName)),
+      db.selectDistinct({ value: defects.severity })
+        .from(defects)
+        .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+        .where(whereCondition)
+        .orderBy(asc(defects.severity)),
+      db.selectDistinct({ value: defects.status })
+        .from(defects)
+        .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+        .where(whereCondition)
+        .orderBy(asc(defects.status)),
+    ]);
+    
+    const result = {
+      assetIds: assetIdsResult.map(r => r.value),
+      driverNames: driverNamesResult.map(r => r.value),
+      zoneNames: zoneNamesResult.map(r => r.value),
+      componentNames: componentNamesResult.map(r => r.value),
+      severities: severitiesResult.map(r => r.value),
+      statuses: statusesResult.map(r => r.value) as ("open" | "pending" | "repaired")[],
+    };
+    
+    console.log(`✅ [Storage] getDefectFilterValues - Found ${result.assetIds.length} assets, ${result.zoneNames.length} zones, ${result.componentNames.length} components`);
+    return result;
   }
 }
 

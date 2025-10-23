@@ -63,6 +63,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   });
 
+  // Defect query params validation schema
+  const defectQueryParamsSchema = z.object({
+    companyId: z.string().optional(),
+    search: z.string().optional(),
+    sortField: z.enum(["datetime", "assetId", "driverName", "zoneName", "componentName", "defect", "severity", "status"]).optional(),
+    sortDirection: z.enum(["asc", "desc"]).optional(),
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+    // Filter parameters
+    dateFrom: z.string().optional(),
+    dateTo: z.string().optional(),
+    assetId: z.string().optional(),
+    driverName: z.string().optional(),
+    zoneName: z.string().optional(),
+    componentName: z.string().optional(),
+    severity: z.coerce.number().int().optional(),
+    status: z.enum(["open", "pending", "repaired"]).optional(),
+  });
+
   // Login schema
   const loginSchema = z.object({
     userId: z.string().min(1),
@@ -1084,6 +1103,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting inspection:", error);
       res.status(500).json({ error: "Failed to delete inspection" });
+    }
+  });
+
+  // === DEFECT ROUTES ===
+
+  // Get available filter values for defects (protected)
+  app.get("/api/defects/filter-values", requireAuth, async (req, res) => {
+    console.log(`🔍 [Routes] GET /api/defects/filter-values - User: ${req.session.userId}, CompanyId: ${req.session.companyId || 'null (superuser)'}`);
+    
+    try {
+      // Enforce company scoping: use session's companyId unless user is superuser
+      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for filter values - Company: ${req.session.companyId}`);
+      } else {
+        console.log(`👑 [Routes] Superuser access - getting filter values for company: ${companyId || 'ALL'}`);
+      }
+      
+      const filterValues = await storage.getDefectFilterValues(companyId);
+      res.json(filterValues);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching defect filter values:", error);
+      res.status(500).json({ error: "Failed to fetch filter values" });
+    }
+  });
+
+  // Get all defects with pagination, search, and filters (protected)
+  app.get("/api/defects", requireAuth, async (req, res) => {
+    console.log(`📋 [Routes] GET /api/defects - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    
+    try {
+      const params = defectQueryParamsSchema.parse(req.query);
+      
+      // Enforce company scoping: override companyId with session's companyId
+      // unless user is superuser (companyId is null, like avazquez)
+      if (req.session.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
+        params.companyId = req.session.companyId;
+      } else {
+        console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
+      }
+      
+      const result = await storage.getDefects(params);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid query parameters", details: error.errors });
+      }
+      console.error("Error fetching defects:", error);
+      res.status(500).json({ error: "Failed to fetch defects" });
     }
   });
 
