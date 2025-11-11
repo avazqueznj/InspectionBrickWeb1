@@ -152,7 +152,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inspectionData = {
         id: parsed.inspectionId,
         companyId: parsed.companyId,
-        datetime: parsed.inspSubmitTimeUtc,
         inspectionType: parsed.inspectionType,
         assetId: primaryAssetId,
         driverName: parsed.driverName,
