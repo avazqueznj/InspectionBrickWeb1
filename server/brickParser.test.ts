@@ -97,14 +97,6 @@ function runTests() {
       throw new Error(`Expected inspTimeDst to be 0, got ${result.inspTimeDst}`);
     }
     
-    if (!(result.inspStartTime instanceof Date)) {
-      throw new Error("inspStartTime should be a Date object");
-    }
-    
-    if (!(result.inspSubmitTime instanceof Date)) {
-      throw new Error("inspSubmitTime should be a Date object");
-    }
-    
     if (!(result.inspStartTimeUtc instanceof Date)) {
       throw new Error("inspStartTimeUtc should be a Date object");
     }

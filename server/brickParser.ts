@@ -5,8 +5,6 @@ export interface ParsedInspection {
   companyId: string;
   driverName: string;
   driverId: string;
-  inspStartTime: Date;
-  inspSubmitTime: Date;
   inspStartTimeUtc: Date;
   inspSubmitTimeUtc: Date;
   inspTimeOffset: number;
@@ -24,7 +22,6 @@ export interface ParsedInspection {
     componentName: string;
     defectType: string;
     severity: number;
-    inspectedAt: Date;
     inspectedAtUtc: Date;
     notes: string;
   }[];
@@ -34,7 +31,6 @@ export interface ParsedInspection {
     componentName: string;
     defectType: string;
     severity: number;
-    inspectedAt: Date;
     inspectedAtUtc: Date;
     notes: string;
   }[];
@@ -63,7 +59,7 @@ function parseDateTime(dateTimeStr: string): Date {
   return date;
 }
 
-function parseDateTimeAndConvertToUtc(dateTimeStr: string, offsetMinutes: number): { local: Date; utc: Date; localStr: string } {
+function parseDateTimeAndConvertToUtc(dateTimeStr: string, offsetMinutes: number): Date {
   const parts = dateTimeStr.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
   
   if (!parts) {
@@ -84,12 +80,7 @@ function parseDateTimeAndConvertToUtc(dateTimeStr: string, offsetMinutes: number
   }
   
   const actualUtcMs = utcMs - (offsetMinutes * 60 * 1000);
-  const utcDate = new Date(actualUtcMs);
-  
-  const localMs = actualUtcMs + (offsetMinutes * 60 * 1000);
-  const localDate = new Date(localMs);
-  
-  return { local: localDate, utc: utcDate, localStr: dateTimeStr };
+  return new Date(actualUtcMs);
 }
 
 export function parseBrickInspection(data: string): ParsedInspection {
@@ -178,8 +169,8 @@ export function parseBrickInspection(data: string): ParsedInspection {
   }
   currentLine++;
 
-  const inspStartTimeResult = parseDateTimeAndConvertToUtc(inspStartTimeStr, inspTimeOffset);
-  const inspSubmitTimeResult = parseDateTimeAndConvertToUtc(inspSubmitTimeStr, inspTimeOffset);
+  const inspStartTimeUtc = parseDateTimeAndConvertToUtc(inspStartTimeStr, inspTimeOffset);
+  const inspSubmitTimeUtc = parseDateTimeAndConvertToUtc(inspSubmitTimeStr, inspTimeOffset);
 
   if (currentLine >= lines.length || lines[currentLine] !== "ASSETS") {
     throw new Error(`Expected ASSETS, got: ${lines[currentLine] || 'EOF'}`);
@@ -252,7 +243,7 @@ export function parseBrickInspection(data: string): ParsedInspection {
     const componentName = checkParts[3];
     const defectType = checkParts[4];
     const severity = parseInt(checkParts[5]);
-    const inspectedAtResult = parseDateTimeAndConvertToUtc(checkParts[6], inspTimeOffset);
+    const inspectedAtUtc = parseDateTimeAndConvertToUtc(checkParts[6], inspTimeOffset);
     const notes = checkParts[7] || "";
 
     if (isNaN(zoneId)) {
@@ -268,8 +259,7 @@ export function parseBrickInspection(data: string): ParsedInspection {
       componentName,
       defectType,
       severity,
-      inspectedAt: inspectedAtResult.local,
-      inspectedAtUtc: inspectedAtResult.utc,
+      inspectedAtUtc,
       notes,
     });
     currentLine++;
@@ -292,7 +282,7 @@ export function parseBrickInspection(data: string): ParsedInspection {
     const componentName = defectParts[3];
     const defectType = defectParts[4];
     const severity = parseInt(defectParts[5]);
-    const inspectedAtResult = parseDateTimeAndConvertToUtc(defectParts[6], inspTimeOffset);
+    const inspectedAtUtc = parseDateTimeAndConvertToUtc(defectParts[6], inspTimeOffset);
     const notes = defectParts[7] || "";
 
     if (isNaN(zoneId)) {
@@ -308,8 +298,7 @@ export function parseBrickInspection(data: string): ParsedInspection {
       componentName,
       defectType,
       severity,
-      inspectedAt: inspectedAtResult.local,
-      inspectedAtUtc: inspectedAtResult.utc,
+      inspectedAtUtc,
       notes,
     });
     currentLine++;
@@ -324,10 +313,8 @@ export function parseBrickInspection(data: string): ParsedInspection {
     companyId,
     driverName,
     driverId,
-    inspStartTime: inspStartTimeResult.local,
-    inspSubmitTime: inspSubmitTimeResult.local,
-    inspStartTimeUtc: inspStartTimeResult.utc,
-    inspSubmitTimeUtc: inspSubmitTimeResult.utc,
+    inspStartTimeUtc,
+    inspSubmitTimeUtc,
     inspTimeOffset,
     inspTimeDst,
     assets,
