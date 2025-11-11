@@ -1,0 +1,187 @@
+
+
+Hey replit,
+Make sure to recover context by
+1) reading the replit.md
+2) checking DOT regulations on inspections
+3) look at the database schema
+
+In summary, we are developing a system to help companies comply with inspections, not necessarily DOT inspections. The system has a device and this web app. Operators use the device to perform inspections and submit records.
+
+So finally the device is ready.
+
+today we will make the endpoints to configure and upload inspections.
+
+Lets start with the endpoit to upload inspections.
+
+The device is not Android or anything fancy; the competitive advantage is that it is super cheap and maintenance-free. It runs in an STM32 chip, an ARM m7 core, so it is very simple.
+
+So specs:
+
+We need a REST endpoint where the device can simply open a socket and make a post. No SSL, no security for now, the device will use a server address and make a POST like this:
+
+POST /brickServer1/inspections?company=NEC HTTP/1.1
+Host: 10.0.0.32
+Content-Type: text/plain
+Content-Length: 476
+Connection: close
+
+BRICKINSPECTION*1 .. and more data follows.
+
+
+2 You can choose the path.
+
+3 So below is the data format.
+4 Note that some fields are missing in the web app, and you will need to add them in the corresponding entities. 
+
+full Data sample:
+
+POST /brickServer1/inspections?company=NEC HTTP/1.1
+Host: 10.0.0.32
+Content-Type: text/plain
+Content-Length: 476
+Connection: close
+
+BRICKINSPECTION*1
+DISPLAYHEADER*92aa2*2025-11-10 18:18:20*123*127: TRUCK
+INSPHEADER
+INSPID*1236888f-5fbd-44a0-8127-16807e492aa2
+COMPANYID*NEC
+DRIVER*Alejandro Vazquez*123
+INSPSTARTTIME*2025-11-10 18:17:18
+INSPSUBTIME*2025-11-10 18:18:20
+INSPTIMEOFFSET*-480
+INSPTIMEDST*0
+ASSETS
+ASSET*127*TRUCK*123456
+ASSET*131*MIXER*123
+INSPTYPE
+INSPTYPENAME*pre-trip
+FORMFIELDS
+FF*Odometer*123
+FF*Fuel level*456
+FF*Route*
+FF*Cost*
+FF*Test2*
+CHECKS
+CHECK*127*1*light left*GOOD*0*2025-11-10 18:17:30*
+CHECK*127*1*light right*GOOD*0*2025-11-10 18:17:30*
+CHECK*127*2*oil*GOOD*0*2025-11-10 18:17:32*
+CHECK*127*3*license*GOOD*0*2025-11-10 18:17:33*
+CHECK*127*3*wind shield*GOOD*0*2025-11-10 18:17:33*
+CHECK*127*3*seat*GOOD*0*2025-11-10 18:17:33*
+CHECK*127*3*wind shield1*GOOD*0*2025-11-10 18:17:33*
+CHECK*127*4*cargo*GOOD*0*2025-11-10 18:17:35*
+CHECK*127*5*cargo*GOOD*0*2025-11-10 18:17:36*
+CHECK*127*6*light left*GOOD*0*2025-11-10 18:17:37*
+CHECK*127*6*light right*GOOD*0*2025-11-10 18:17:37*
+CHECK*131*1*light left*GOOD*0*2025-11-10 18:17:39*
+CHECK*131*1*light right*GOOD*0*2025-11-10 18:17:39*
+CHECK*131*4*mixer container*GOOD*0*2025-11-10 18:17:54*
+CHECK*131*4*mixer control*GOOD*0*2025-11-10 18:17:54*
+CHECK*131*5*light left*GOOD*0*2025-11-10 18:17:56*
+CHECK*131*5*light right*GOOD*0*2025-11-10 18:17:56*
+CHECK*131*3*wind shield*GOOD*0*2025-11-10 18:17:58*
+CHECK*131*3*seat*GOOD*0*2025-11-10 18:17:58*
+DEFECTS
+DEFECT*131*2*oil*low*10*2025-11-10 18:17:42*
+DEFECT*131*2*break fluid*leaking*10*2025-11-10 18:17:47*jhj
+DEFECT*131*3*license*missing*1*2025-11-10 18:17:51*
+DEFECT*127*2*break fluid*leaking*1*2025-11-10 18:18:17*ggggjj
+END***
+
+
+explanation:
+
+So the data is inspired in EDI, but of course it is not edi, its my format and we can tune it if we need to.
+
+Basically, it is a collection of rows. Each row has a prefix indicating the data type, and fields are separated by "*".
+Fields will always come in the same order or it is an error. As mentioned, we might need to add fields to the db, and if there are heavy discrepancies, let me know before making complex fixes.
+
+BRICKINSPECTION*1
+just the format name and version.
+
+
+DISPLAYHEADER*92aa2*2025-11-10 18:18:20*123*127: TRUCK
+this is internal to the device, please ignore it
+
+INSPHEADER
+just announcing the inspection header follows
+
+INSPID*1236888f-5fbd-44a0-8127-16807e492aa2
+-this is the UUID of the inspection. Our inspection table creates UUIDs; we need to change that to use this  UUID , it is created on the device, not the webapp. That is the point of UUIDs right ? So maybe just make the inspection table UUID a simple text field, not auto, or something like that.
+
+COMPANYID*NEC
+the company
+DRIVER*Alejandro Vazquez*123
+driver and driver id
+INSPSTARTTIME*2025-11-10 18:17:18
+inspection start time, i think we need to add it 
+INSPSUBTIME*2025-11-10 18:18:20
+	-inspection start end time, also need add it i think
+INSPTIMEOFFSET*-480
+times are not UTC , this is the offset in use. so when displaying times please translate to human readable TZ
+INSPTIMEDST*0
+whether DST was assumed 1 or not 0
+ASSETS
+next are the asset or assets, remember these could be tractor and trailer, for example.
+ASSET*127*TRUCK*123456
+ASSET*131*MIXER*123
+asset id, layout and tag id
+
+
+INSPTYPE
+inspection type data
+INSPTYPENAME*pre-trip
+inspection type name
+FORMFIELDS
+form fields follow
+FF*Odometer*123
+FF*Fuel level*456
+FF*Route*
+FF*Cost*
+FF*Test2*
+ff form fields, just the name and value. Remember that we need not map them to the db, as this can use an obsoleted configuration. So just take what you got as free text, save it in the inspection, and display it. Whether they match the inspection type fields in the db is of no concern.
+CHECKS
+checks performed. Remember each asset has a layout of zones and components that need to be inspected.
+The first set is the checks performed, which are almost identical to the defects below. If you perform a check, the app makes a defect but it has severity 0.
+CHECK*127*1*light left*GOOD*0*2025-11-10 18:17:30*
+CHECK*127*1*light right*GOOD*0*2025-11-10 18:17:30*
+CHECK*127*2*oil*GOOD*0*2025-11-10 18:17:32*
+CHECK*127*3*license*GOOD*0*2025-11-10 18:17:33*
+CHECK*127*3*wind shield*GOOD*0*2025-11-10 18:17:33*
+CHECK*127*3*seat*GOOD*0*2025-11-10 18:17:33*
+CHECK*127*3*wind shield1*GOOD*0*2025-11-10 18:17:33*
+CHECK*127*4*cargo*GOOD*0*2025-11-10 18:17:35*
+CHECK*127*5*cargo*GOOD*0*2025-11-10 18:17:36*
+CHECK*127*6*light left*GOOD*0*2025-11-10 18:17:37*
+CHECK*127*6*light right*GOOD*0*2025-11-10 18:17:37*
+CHECK*131*1*light left*GOOD*0*2025-11-10 18:17:39*
+CHECK*131*1*light right*GOOD*0*2025-11-10 18:17:39*
+CHECK*131*4*mixer container*GOOD*0*2025-11-10 18:17:54*
+CHECK*131*4*mixer control*GOOD*0*2025-11-10 18:17:54*
+CHECK*131*5*light left*GOOD*0*2025-11-10 18:17:56*
+CHECK*131*5*light right*GOOD*0*2025-11-10 18:17:56*
+CHECK*131*3*wind shield*GOOD*0*2025-11-10 18:17:58*
+CHECK*131*3*seat*GOOD*0*2025-11-10 18:17:58*
+
+-asset id, zone id, component name, defect type, severity, time inspected, notes -> never for these checks
+
+DEFECTS
+DEFECT*131*2*oil*low*10*2025-11-10 18:17:42*
+DEFECT*131*2*break fluid*leaking*10*2025-11-10 18:17:47*jhj
+DEFECT*131*3*license*missing*1*2025-11-10 18:17:51*
+DEFECT*127*2*break fluid*leaking*1*2025-11-10 18:18:17*ggggjj
+
+
+-asset id, zone id, component name, defect type, severity, time inspected, notes( optional for defects)
+
+END***
+
+end marker if you do not see it, throw an error and do not upload.
+
+Remember my philosophy, fail early. I want to see exceptions thrown __immediately__, don't return null for impossible situations, and then make things break much later.  As you parse, if you see errors, like  no assets ? then show errors!!! NO inspection type? error!!!  etc. For things that are obviously not optional. Again DO NOT EAT errors. ok ??
+
+Finally, take this sample and use it to mak a  unit test.
+
+Ok let me know if i missed something.
