@@ -58,6 +58,14 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 **Printing:**
 - Both individual inspection reports and bulk lists are generated as server-rendered HTML and opened in new browser tabs for optimal printing via the browser's native print function (Ctrl+P/Cmd+P).
 
+**Device Integration:**
+- **STM32 Device Upload Endpoint:** POST /api/device/inspections accepts BRICKINSPECTION EDI format from simple devices (no authentication required for device uploads)
+- **UUID-based Inspection IDs:** Devices generate UUIDs for inspections, not database auto-generation
+- **UTC Timestamp Storage:** All timestamps stored in UTC with timezone offset/DST metadata for accurate reconstruction
+- **Comprehensive Error Logging:** Failed uploads logged to upload_errors table with raw payload and full stack traces
+- **Device-Friendly Debugging:** HTTP responses include complete error stack traces for device integration troubleshooting
+- **Duplicate Detection:** Rejects duplicate inspection IDs with 409 Conflict status
+
 **Recent Improvements:**
 - **EDI Layout Management System:** Inspection types can now be associated with one or more EDI layouts stored as large text blobs. Special "all layouts" logic: when no specific associations exist (empty junction table), the inspection type applies to ALL layouts automatically. This allows dynamic layout additions without remapping existing inspection types.
 - **Defects Page Smart Defaults:** Page loads with severity DESC sorting and status filter set to "open" for immediate focus on critical open issues.
@@ -85,9 +93,12 @@ The system uses UUID surrogate primary keys with human-readable business IDs to 
 - **Inspection Type Form Fields:** `id` (UUID PK), `inspectionTypeId` (UUID FK → inspection_types.id), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength` (integer 0-64)
 - **Layouts:** `id` (UUID PK), `layoutId` (business ID, unique per company), `layoutData` (large text blob), `companyId` (FK), `UNIQUE(companyId, layoutId)`
 - **Inspection Type Layouts:** Junction table for many-to-many relationship between inspection types and layouts. `inspectionTypeId` (UUID FK → inspection_types.id), `layoutId` (UUID FK → layouts.id). Empty junction = "ALL LAYOUTS" logic.
-- **Inspections:** `id` (UUID PK), `companyId` (FK), `datetime`, `inspectionType` (text, not FK), `assetId` (text, not FK), `driverName`, `driverId`, `inspectionFormData`
+- **Inspections:** `id` (UUID PK), `companyId` (FK), `datetime` (auto-populated by DB), `inspectionType` (text, not FK), `assetId` (text, not FK), `driverName`, `driverId`, `inspectionFormData`, `inspStartTimeUtc`, `inspSubmitTimeUtc`, `inspTimeOffset`, `inspTimeDst`
   - Note: `assetId` and `inspectionType` are stored as text (not FKs) to avoid stale data issues with permanent inspection records
-- **Defects:** `id` (UUID PK), `inspectionId` (UUID FK), `zoneName`, `componentName`, `defect`, `severity`, `driverNotes`, `status`, `repairNotes`
+  - Note: UTC timestamps with timezone metadata preserve device-local times for accurate reconstruction
+- **Defects:** `id` (UUID PK), `inspectionId` (UUID FK), `zoneId`, `zoneName`, `componentName`, `defect`, `severity`, `inspectedAtUtc`, `driverNotes`, `status`, `repairNotes`
+- **Upload Errors:** `id` (UUID PK), `timestamp`, `companyId`, `driverId`, `driverName`, `assetId`, `rawData`, `errorTrace`
+  - Logs all failed device upload attempts with full context for debugging
 
 ### API Endpoints
 - **Authentication:** Login, Logout, Get current user.
@@ -98,9 +109,12 @@ The system uses UUID surrogate primary keys with human-readable business IDs to 
 - **Inspection Type Form Fields:** Get form fields for inspection type, Create, Update, Delete.
 - **Inspections:** List (with extensive filtering, sorting, pagination), Get filter values, Print list, Get single inspection, Print single inspection, Create, Update, Delete.
 - **Defects:** List (with search, filtering by date/asset/driver/zone/component/status, sorting, pagination), Get filter values, Get defects for an inspection, Create, Update, Delete.
+- **Device Integration:** POST /api/device/inspections - Unauthenticated endpoint for STM32 devices to upload BRICKINSPECTION EDI format data.
 
 ### Key Files
 - `shared/schema.ts`: Drizzle ORM schema, Zod validation, TypeScript types.
+- `server/brickParser.ts`: BRICKINSPECTION EDI format parser with UTC timezone conversion.
+- `server/brickParser.test.ts`: Comprehensive unit tests for EDI parser (11 tests).
 - `server/`: Database setup, data access layer, API routes, seed data, Express server.
 - `client/src/`: React components for authentication, company context, UI elements (FilterBar, InspectionModal, AssetModal, InspectionTypeModal), and pages (Login, Inspections, Defects, Users, Assets, InspectionTypes).
 
