@@ -178,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ [Routes] Inspection created: ${inspection.id}`);
 
       const allDefectsToCreate = [
-        ...parsed.checks.map(check => ({
+        ...parsed.checks.map((check: any) => ({
           inspectionId: inspection.id,
           zoneId: check.zoneId,
           zoneName: `Zone ${check.zoneId}`,
@@ -190,7 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "open" as const,
           repairNotes: null,
         })),
-        ...parsed.defects.map(defect => ({
+        ...parsed.defects.map((defect: any) => ({
           inspectionId: inspection.id,
           zoneId: defect.zoneId,
           zoneName: `Zone ${defect.zoneId}`,
