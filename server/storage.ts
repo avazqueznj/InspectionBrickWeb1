@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, inspectionTypeLayouts, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, inspectionTypeLayouts, uploadErrors, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
 
@@ -162,6 +162,9 @@ export interface IStorage {
   createDefect(defect: InsertDefect): Promise<Defect>;
   updateDefect(id: string, defect: Partial<InsertDefect>): Promise<Defect | undefined>;
   deleteDefect(id: string): Promise<boolean>;
+  
+  // Upload Errors
+  createUploadError(error: { companyId: string | null; driverId: string | null; driverName: string | null; assetId: string | null; rawData: string; errorTrace: string }): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1145,6 +1148,21 @@ export class DatabaseStorage implements IStorage {
     
     await db.insert(inspectionTypeLayouts).values(values);
     console.log(`✅ [Storage] Created ${values.length} layout associations`);
+  }
+
+  async createUploadError(error: { companyId: string | null; driverId: string | null; driverName: string | null; assetId: string | null; rawData: string; errorTrace: string }): Promise<void> {
+    console.log(`📝 [Storage] Creating upload error log - company: ${error.companyId}, driver: ${error.driverId}`);
+    
+    await db.insert(uploadErrors).values({
+      companyId: error.companyId,
+      driverId: error.driverId,
+      driverName: error.driverName,
+      assetId: error.assetId,
+      rawData: error.rawData,
+      errorTrace: error.errorTrace,
+    });
+    
+    console.log(`✅ [Storage] Upload error logged to database`);
   }
 }
 

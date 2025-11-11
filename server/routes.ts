@@ -129,9 +129,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/device/inspections", async (req, res) => {
     console.log(`📱 [Routes] POST /api/device/inspections - Receiving inspection data from device`);
     
+    let rawData: string = '';
+    let parsed: any = null;
+    
     try {
-      let rawData: string;
-      
       if (typeof req.body === 'string') {
         rawData = req.body;
       } else if (Buffer.isBuffer(req.body)) {
@@ -142,24 +143,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`📋 [Routes] Parsing BRICKINSPECTION data (${rawData.length} bytes)`);
-      const parsed = parseBrickInspection(rawData);
+      parsed = parseBrickInspection(rawData);
       console.log(`✅ [Routes] Parsed inspection: ${parsed.inspectionId} for company ${parsed.companyId}`);
 
       const formFieldsJson = JSON.stringify(parsed.formFields);
-
       const primaryAssetId = parsed.assets.length > 0 ? parsed.assets[0].assetId : "UNKNOWN";
 
       const inspectionData = {
         id: parsed.inspectionId,
         companyId: parsed.companyId,
-        datetime: parsed.inspSubmitTime,
+        datetime: parsed.inspSubmitTimeUtc,
         inspectionType: parsed.inspectionType,
         assetId: primaryAssetId,
         driverName: parsed.driverName,
         driverId: parsed.driverId,
         inspectionFormData: formFieldsJson,
-        inspStartTime: parsed.inspStartTime,
-        inspSubmitTime: parsed.inspSubmitTime,
         inspStartTimeUtc: parsed.inspStartTimeUtc,
         inspSubmitTimeUtc: parsed.inspSubmitTimeUtc,
         inspTimeOffset: parsed.inspTimeOffset,
@@ -187,7 +185,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           componentName: check.componentName,
           defect: check.defectType,
           severity: check.severity,
-          inspectedAt: check.inspectedAt,
           inspectedAtUtc: check.inspectedAtUtc,
           driverNotes: check.notes,
           status: "open" as const,
@@ -200,7 +197,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           componentName: defect.componentName,
           defect: defect.defectType,
           severity: defect.severity,
-          inspectedAt: defect.inspectedAt,
           inspectedAtUtc: defect.inspectedAtUtc,
           driverNotes: defect.notes,
           status: "open" as const,
@@ -223,14 +219,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Routes] Error uploading device inspection:", error);
       
-      if (error instanceof Error) {
-        return res.status(400).json({ 
-          error: "Failed to parse or store inspection data",
-          message: error.message 
+      const errorStack = error instanceof Error ? error.stack || error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      try {
+        await storage.createUploadError({
+          companyId: parsed?.companyId || null,
+          driverId: parsed?.driverId || null,
+          driverName: parsed?.driverName || null,
+          assetId: parsed?.assets?.[0]?.assetId || null,
+          rawData: rawData.substring(0, 10000),
+          errorTrace: errorStack,
         });
+        console.log(`📝 [Routes] Error logged to upload_errors table`);
+      } catch (logError) {
+        console.error("❌ [Routes] Failed to log upload error to database:", logError);
       }
       
-      res.status(500).json({ error: "Failed to upload inspection" });
+      return res.status(400).json({ 
+        error: "Failed to parse or store inspection data",
+        message: errorMessage,
+        stack: errorStack
+      });
     }
   });
 
