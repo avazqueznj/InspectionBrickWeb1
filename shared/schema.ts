@@ -51,8 +51,6 @@ export const inspections = pgTable("inspections", {
   driverName: text("driver_name").notNull(),
   driverId: text("driver_id").notNull(),
   inspectionFormData: text("inspection_form_data"),
-  inspStartTime: timestamp("insp_start_time"),
-  inspSubmitTime: timestamp("insp_submit_time"),
   inspStartTimeUtc: timestamp("insp_start_time_utc"),
   inspSubmitTimeUtc: timestamp("insp_submit_time_utc"),
   inspTimeOffset: integer("insp_time_offset"),
@@ -68,7 +66,6 @@ export const defects = pgTable("defects", {
   componentName: text("component_name").notNull(),
   defect: text("defect").notNull(),
   severity: integer("severity").notNull(),
-  inspectedAt: timestamp("inspected_at"),
   inspectedAtUtc: timestamp("inspected_at_utc"),
   driverNotes: text("driver_notes"),
   status: text("status").notNull().$type<"open" | "pending" | "repaired">(),
@@ -121,6 +118,18 @@ export const inspectionTypeLayouts = pgTable("inspection_type_layouts", {
     columns: [table.inspectionTypeId, table.layoutId],
   },
 }));
+
+// Upload Errors table - logs failed device upload attempts for debugging
+export const uploadErrors = pgTable("upload_errors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  companyId: text("company_id"),
+  driverId: text("driver_id"),
+  driverName: text("driver_name"),
+  assetId: text("asset_id"),
+  rawData: text("raw_data").notNull(),
+  errorTrace: text("error_trace").notNull(),
+});
 
 // Define relations
 export const companiesRelations = relations(companies, ({ many }) => ({
@@ -245,6 +254,11 @@ export const insertLayoutSchema = createInsertSchema(layouts).omit({
 
 export const insertInspectionTypeLayoutSchema = createInsertSchema(inspectionTypeLayouts);
 
+export const insertUploadErrorSchema = createInsertSchema(uploadErrors).omit({
+  id: true,
+  timestamp: true,
+});
+
 // Types
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
@@ -265,6 +279,8 @@ export type Layout = typeof layouts.$inferSelect;
 export type InsertLayout = z.infer<typeof insertLayoutSchema>;
 export type InspectionTypeLayout = typeof inspectionTypeLayouts.$inferSelect;
 export type InsertInspectionTypeLayout = z.infer<typeof insertInspectionTypeLayoutSchema>;
+export type UploadError = typeof uploadErrors.$inferSelect;
+export type InsertUploadError = z.infer<typeof insertUploadErrorSchema>;
 
 // Extended type for inspection with defects
 export type InspectionWithDefects = Inspection & {
