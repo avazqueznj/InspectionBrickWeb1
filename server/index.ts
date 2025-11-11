@@ -44,6 +44,7 @@ app.use(session({
 
 console.log(`🍪 Session configured - secure: ${isProduction}, sameSite: ${isProduction ? 'none' : 'lax'}, maxAge: 24h`);
 
+app.use(express.text({ type: 'text/plain', limit: '10mb' }));
 app.use(express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;

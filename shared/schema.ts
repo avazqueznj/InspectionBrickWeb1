@@ -43,7 +43,7 @@ export const assets = pgTable("assets", {
 
 // Inspections table
 export const inspections = pgTable("inspections", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   datetime: timestamp("datetime").notNull().defaultNow(),
   inspectionType: text("inspection_type").notNull(),
@@ -51,16 +51,25 @@ export const inspections = pgTable("inspections", {
   driverName: text("driver_name").notNull(),
   driverId: text("driver_id").notNull(),
   inspectionFormData: text("inspection_form_data"),
+  inspStartTime: timestamp("insp_start_time"),
+  inspSubmitTime: timestamp("insp_submit_time"),
+  inspStartTimeUtc: timestamp("insp_start_time_utc"),
+  inspSubmitTimeUtc: timestamp("insp_submit_time_utc"),
+  inspTimeOffset: integer("insp_time_offset"),
+  inspTimeDst: integer("insp_time_dst"),
 });
 
 // Defects table
 export const defects = pgTable("defects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   inspectionId: varchar("inspection_id").notNull().references(() => inspections.id, { onDelete: "cascade" }),
+  zoneId: integer("zone_id"),
   zoneName: text("zone_name").notNull(),
   componentName: text("component_name").notNull(),
   defect: text("defect").notNull(),
   severity: integer("severity").notNull(),
+  inspectedAt: timestamp("inspected_at"),
+  inspectedAtUtc: timestamp("inspected_at_utc"),
   driverNotes: text("driver_notes"),
   status: text("status").notNull().$type<"open" | "pending" | "repaired">(),
   repairNotes: text("repair_notes"),
@@ -206,8 +215,8 @@ export const insertAssetSchema = createInsertSchema(assets).omit({
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
 });
 
-export const insertInspectionSchema = createInsertSchema(inspections).omit({
-  id: true,
+export const insertInspectionSchema = createInsertSchema(inspections).extend({
+  id: z.string().uuid(),
 });
 
 export const insertDefectSchema = createInsertSchema(defects).omit({

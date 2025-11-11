@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema } from "@shared/schema";
 import { z } from "zod";
+import { parseBrickInspection } from "./brickParser";
 
 // Authentication middleware
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -121,6 +122,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("❌ [Routes] Error during login:", error);
       res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Device: Upload inspection (no authentication required for device)
+  app.post("/api/device/inspections", async (req, res) => {
+    console.log(`📱 [Routes] POST /api/device/inspections - Receiving inspection data from device`);
+    
+    try {
+      let rawData: string;
+      
+      if (typeof req.body === 'string') {
+        rawData = req.body;
+      } else if (Buffer.isBuffer(req.body)) {
+        rawData = req.body.toString('utf-8');
+      } else {
+        console.error("❌ [Routes] Invalid request body type:", typeof req.body);
+        return res.status(400).json({ error: "Request body must be plain text" });
+      }
+
+      console.log(`📋 [Routes] Parsing BRICKINSPECTION data (${rawData.length} bytes)`);
+      const parsed = parseBrickInspection(rawData);
+      console.log(`✅ [Routes] Parsed inspection: ${parsed.inspectionId} for company ${parsed.companyId}`);
+
+      const formFieldsJson = JSON.stringify(parsed.formFields);
+
+      const primaryAssetId = parsed.assets.length > 0 ? parsed.assets[0].assetId : "UNKNOWN";
+
+      const inspectionData = {
+        id: parsed.inspectionId,
+        companyId: parsed.companyId,
+        datetime: parsed.inspSubmitTime,
+        inspectionType: parsed.inspectionType,
+        assetId: primaryAssetId,
+        driverName: parsed.driverName,
+        driverId: parsed.driverId,
+        inspectionFormData: formFieldsJson,
+        inspStartTime: parsed.inspStartTime,
+        inspSubmitTime: parsed.inspSubmitTime,
+        inspStartTimeUtc: parsed.inspStartTimeUtc,
+        inspSubmitTimeUtc: parsed.inspSubmitTimeUtc,
+        inspTimeOffset: parsed.inspTimeOffset,
+        inspTimeDst: parsed.inspTimeDst,
+      };
+
+      const existingInspection = await storage.getInspection(parsed.inspectionId);
+      if (existingInspection) {
+        console.log(`⚠️  [Routes] Inspection ${parsed.inspectionId} already exists, rejecting duplicate`);
+        return res.status(409).json({ 
+          error: "Duplicate inspection ID",
+          message: `Inspection with ID ${parsed.inspectionId} already exists` 
+        });
+      }
+
+      console.log(`💾 [Routes] Creating inspection record`);
+      const inspection = await storage.createInspection(inspectionData);
+      console.log(`✅ [Routes] Inspection created: ${inspection.id}`);
+
+      const allDefectsToCreate = [
+        ...parsed.checks.map(check => ({
+          inspectionId: inspection.id,
+          zoneId: check.zoneId,
+          zoneName: `Zone ${check.zoneId}`,
+          componentName: check.componentName,
+          defect: check.defectType,
+          severity: check.severity,
+          inspectedAt: check.inspectedAt,
+          inspectedAtUtc: check.inspectedAtUtc,
+          driverNotes: check.notes,
+          status: "open" as const,
+          repairNotes: null,
+        })),
+        ...parsed.defects.map(defect => ({
+          inspectionId: inspection.id,
+          zoneId: defect.zoneId,
+          zoneName: `Zone ${defect.zoneId}`,
+          componentName: defect.componentName,
+          defect: defect.defectType,
+          severity: defect.severity,
+          inspectedAt: defect.inspectedAt,
+          inspectedAtUtc: defect.inspectedAtUtc,
+          driverNotes: defect.notes,
+          status: "open" as const,
+          repairNotes: null,
+        })),
+      ];
+
+      console.log(`💾 [Routes] Creating ${allDefectsToCreate.length} defect/check records`);
+      for (const defectData of allDefectsToCreate) {
+        await storage.createDefect(defectData);
+      }
+      console.log(`✅ [Routes] All defects/checks created`);
+
+      res.status(201).json({
+        success: true,
+        inspectionId: inspection.id,
+        defectsCreated: allDefectsToCreate.length,
+      });
+      console.log(`✅ [Routes] Device inspection upload complete: ${inspection.id}`);
+    } catch (error) {
+      console.error("❌ [Routes] Error uploading device inspection:", error);
+      
+      if (error instanceof Error) {
+        return res.status(400).json({ 
+          error: "Failed to parse or store inspection data",
+          message: error.message 
+        });
+      }
+      
+      res.status(500).json({ error: "Failed to upload inspection" });
     }
   });
 
