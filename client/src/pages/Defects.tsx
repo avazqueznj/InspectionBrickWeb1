@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { type DefectWithInspection } from "@shared/schema";
+import { type DefectWithInspection, type InspectionWithDefects } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Eye } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { InspectionModal } from "@/components/InspectionModal";
 
 type SortField = "datetime" | "assetId" | "driverName" | "zoneName" | "componentName" | "defect" | "severity" | "status";
 type SortDirection = "asc" | "desc";
@@ -46,6 +47,8 @@ export default function Defects() {
   const [sortField, setSortField] = useState<SortField>("severity");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [filters, setFilters] = useState<Filters>({ status: "open" });
+  const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const itemsPerPage = 10;
 
   // Reset to page 1 when search query, filters, or company changes
@@ -78,6 +81,19 @@ export default function Defects() {
       return response.json();
     },
     enabled: !!selectedCompany,
+  });
+
+  // Fetch selected inspection for modal
+  const { data: selectedInspection } = useQuery<InspectionWithDefects>({
+    queryKey: ["/api/inspections", selectedInspectionId],
+    queryFn: async () => {
+      const response = await fetch(`/api/inspections/${selectedInspectionId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch inspection");
+      }
+      return response.json();
+    },
+    enabled: !!selectedInspectionId,
   });
 
   // Fetch defects
@@ -398,6 +414,9 @@ export default function Defects() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Repair Notes
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -409,7 +428,7 @@ export default function Defects() {
                       return (
                         <tr
                           key={defect.id}
-                          className="hover-elevate cursor-pointer"
+                          className="hover-elevate"
                           data-testid={`row-defect-${defect.id}`}
                         >
                           <td className="px-4 py-3 text-sm" data-testid={`text-datetime-${defect.id}`}>
@@ -442,6 +461,21 @@ export default function Defects() {
                           </td>
                           <td className="px-4 py-3 text-sm text-muted-foreground" data-testid={`text-repairNotes-${defect.id}`}>
                             {defect.repairNotes || "-"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedInspectionId(defect.inspectionId);
+                                setIsModalOpen(true);
+                              }}
+                              data-testid={`button-view-inspection-${defect.id}`}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
                           </td>
                         </tr>
                       );
@@ -483,6 +517,13 @@ export default function Defects() {
           )}
         </div>
       </div>
+
+      {/* Inspection Detail Modal */}
+      <InspectionModal
+        inspection={selectedInspection || null}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+      />
     </div>
   );
 }
