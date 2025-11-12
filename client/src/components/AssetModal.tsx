@@ -30,6 +30,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
       assetId: "",
       layout: "",
       assetName: "",
+      licensePlate: "",
       status: "ACTIVE",
       companyId: currentCompanyId || "",
     },
@@ -83,6 +84,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         assetId: asset.assetId,
         layout: asset.layout,
         assetName: asset.assetName,
+        licensePlate: asset.licensePlate || "",
         status: asset.status,
         companyId: asset.companyId,
       });
@@ -94,6 +96,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         assetId: "",
         layout: "",
         assetName: "",
+        licensePlate: "",
         status: "ACTIVE",
         companyId: currentCompanyId || "",
       });
@@ -105,6 +108,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         assetId: "",
         layout: "",
         assetName: "",
+        licensePlate: "",
         status: "ACTIVE",
         companyId: "",
       });
@@ -200,6 +204,25 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
                       {...field}
                       placeholder="e.g., BUS 1"
                       data-testid="input-assetName"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="licensePlate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>License Plate</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      placeholder="e.g., ABC-1234"
+                      data-testid="input-licensePlate"
                     />
                   </FormControl>
                   <FormMessage />
