@@ -417,7 +417,7 @@ export default function Defects() {
                             <div className="text-xs text-muted-foreground">{formattedTime}</div>
                           </td>
                           <td className="px-4 py-3 text-sm font-medium" data-testid={`text-assetId-${defect.id}`}>
-                            {defect.inspection?.assetId || "N/A"}
+                            {defect.assetId}
                           </td>
                           <td className="px-4 py-3 text-sm" data-testid={`text-driverName-${defect.id}`}>
                             {defect.inspection?.driverName || "N/A"}

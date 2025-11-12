@@ -177,9 +177,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inspection = await storage.createInspection(inspectionData);
       console.log(`✅ [Routes] Inspection created: ${inspection.id}`);
 
+      // Store all inspection assets in the junction table
+      console.log(`💾 [Routes] Creating ${parsed.assets.length} inspection-asset associations`);
+      for (const asset of parsed.assets) {
+        await storage.createInspectionAsset({
+          inspectionId: inspection.id,
+          assetId: asset.assetId,
+        });
+      }
+      console.log(`✅ [Routes] All inspection-asset associations created`);
+
       const allDefectsToCreate = [
         ...parsed.checks.map((check: any) => ({
           inspectionId: inspection.id,
+          assetId: check.assetId,
           zoneId: check.zoneId,
           zoneName: `Zone ${check.zoneId}`,
           componentName: check.componentName,
@@ -192,6 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })),
         ...parsed.defects.map((defect: any) => ({
           inspectionId: inspection.id,
+          assetId: defect.assetId,
           zoneId: defect.zoneId,
           zoneName: `Zone ${defect.zoneId}`,
           componentName: defect.componentName,
@@ -1158,12 +1170,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companies = await storage.getCompanies();
       const company = companies.find(c => c.id === inspection.companyId);
       
-      // Get asset details for license plate
+      // Get asset details for license plates
       const assetsResult = await storage.getAssets({ 
         companyId: inspection.companyId, 
         limit: 10000 
       });
-      const asset = assetsResult.data.find(a => a.assetId === inspection.assetId);
+      
+      // Build asset info string
+      const assetIds = inspection.assets && inspection.assets.length > 0 
+        ? inspection.assets 
+        : [inspection.assetId];
+      const assetInfo = assetIds.map(assetId => {
+        const asset = assetsResult.data.find(a => a.assetId === assetId);
+        const licensePlate = asset?.licensePlate ? ` (${asset.licensePlate})` : '';
+        return `${assetId}${licensePlate}`;
+      }).join(', ');
       
       // Format date
       const date = new Date(inspection.datetime);
@@ -1192,7 +1213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Inspection Report - ${inspection.assetId}</title>
+  <title>Inspection Report - ${assetIds.join(', ')}</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
     h1 { font-size: 24px; margin-bottom: 20px; }
@@ -1214,8 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <div class="info-row"><span class="label">Date:</span> ${formattedDate}</div>
   <div class="info-row"><span class="label">Time:</span> ${formattedTime}</div>
   <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
-  <div class="info-row"><span class="label">Asset ID:</span> ${inspection.assetId}</div>
-  ${asset?.licensePlate ? `<div class="info-row"><span class="label">License Plate:</span> ${asset.licensePlate}</div>` : ''}
+  <div class="info-row"><span class="label">Asset${assetIds.length > 1 ? 's' : ''}:</span> ${assetInfo}</div>
   <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName}</div>
   <div class="info-row"><span class="label">Driver ID:</span> ${inspection.driverId}</div>
   

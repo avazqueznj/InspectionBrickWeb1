@@ -73,11 +73,19 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                  Asset ID
+                  Asset{inspection.assets && inspection.assets.length > 1 ? 's' : ''} ({inspection.assets?.length || 0})
                 </p>
-                <p className="text-sm font-medium font-mono" data-testid="text-asset-id">
-                  {inspection.assetId}
-                </p>
+                <div className="flex flex-wrap gap-1" data-testid="text-asset-ids">
+                  {inspection.assets && inspection.assets.length > 0 ? (
+                    inspection.assets.map((assetId, index) => (
+                      <span key={index} className="text-xs font-medium font-mono bg-accent px-2 py-0.5 rounded">
+                        {assetId}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm font-medium font-mono">{inspection.assetId}</span>
+                  )}
+                </div>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">

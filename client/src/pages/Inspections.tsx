@@ -233,8 +233,18 @@ export default function Inspections() {
                         <td className="px-4 py-3 text-sm font-medium">
                           {inspection.inspectionType}
                         </td>
-                        <td className="px-4 py-3 text-sm font-mono">
-                          {inspection.assetId}
+                        <td className="px-4 py-3 text-sm" data-testid={`text-assetId-${inspection.id}`}>
+                          {inspection.assets && inspection.assets.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {inspection.assets.map((assetId, index) => (
+                                <span key={index} className="text-xs font-medium font-mono bg-accent px-2 py-0.5 rounded">
+                                  {assetId}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="font-mono font-medium">{inspection.assetId}</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           {inspection.driverName}

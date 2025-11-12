@@ -64,6 +64,7 @@ export const inspections = pgTable("inspections", {
 export const defects = pgTable("defects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   inspectionId: varchar("inspection_id").notNull().references(() => inspections.id, { onDelete: "cascade" }),
+  assetId: text("asset_id").notNull(),
   zoneId: integer("zone_id"),
   zoneName: text("zone_name").notNull(),
   componentName: text("component_name").notNull(),
@@ -122,6 +123,17 @@ export const inspectionTypeLayouts = pgTable("inspection_type_layouts", {
   },
 }));
 
+// Inspection Assets junction table - many-to-many relationship between inspections and assets
+export const inspectionAssets = pgTable("inspection_assets", {
+  inspectionId: varchar("inspection_id").notNull().references(() => inspections.id, { onDelete: "cascade" }),
+  assetId: text("asset_id").notNull(),
+}, (table) => ({
+  // Compound primary key
+  pk: {
+    columns: [table.inspectionId, table.assetId],
+  },
+}));
+
 // Upload Errors table - logs failed device upload attempts for debugging
 export const uploadErrors = pgTable("upload_errors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -163,9 +175,17 @@ export const assetsRelations = relations(assets, ({ one }) => ({
 
 export const inspectionsRelations = relations(inspections, ({ many, one }) => ({
   defects: many(defects),
+  inspectionAssets: many(inspectionAssets),
   company: one(companies, {
     fields: [inspections.companyId],
     references: [companies.id],
+  }),
+}));
+
+export const inspectionAssetsRelations = relations(inspectionAssets, ({ one }) => ({
+  inspection: one(inspections, {
+    fields: [inspectionAssets.inspectionId],
+    references: [inspections.id],
   }),
 }));
 
@@ -257,6 +277,8 @@ export const insertLayoutSchema = createInsertSchema(layouts).omit({
 
 export const insertInspectionTypeLayoutSchema = createInsertSchema(inspectionTypeLayouts);
 
+export const insertInspectionAssetSchema = createInsertSchema(inspectionAssets);
+
 export const insertUploadErrorSchema = createInsertSchema(uploadErrors).omit({
   id: true,
   timestamp: true,
@@ -282,12 +304,15 @@ export type Layout = typeof layouts.$inferSelect;
 export type InsertLayout = z.infer<typeof insertLayoutSchema>;
 export type InspectionTypeLayout = typeof inspectionTypeLayouts.$inferSelect;
 export type InsertInspectionTypeLayout = z.infer<typeof insertInspectionTypeLayoutSchema>;
+export type InspectionAsset = typeof inspectionAssets.$inferSelect;
+export type InsertInspectionAsset = z.infer<typeof insertInspectionAssetSchema>;
 export type UploadError = typeof uploadErrors.$inferSelect;
 export type InsertUploadError = z.infer<typeof insertUploadErrorSchema>;
 
-// Extended type for inspection with defects
+// Extended type for inspection with defects and assets
 export type InspectionWithDefects = Inspection & {
   defects: Defect[];
+  assets?: string[]; // Array of asset IDs involved in this inspection
 };
 
 // Extended type for inspection type with form fields and layouts
@@ -300,7 +325,6 @@ export type InspectionTypeWithFormFields = InspectionType & {
 // Extended type for defect with inspection details
 export type DefectWithInspection = Defect & {
   inspection?: {
-    assetId: string;
     driverName: string;
     datetime: Date;
   };

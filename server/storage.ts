@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, inspectionTypeLayouts, uploadErrors, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, inspectionTypeLayouts, inspectionAssets, uploadErrors, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertInspectionAsset } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
 
@@ -100,7 +100,6 @@ export interface DefectFilterValues {
 
 export interface DefectWithInspection extends Defect {
   inspection?: {
-    assetId: string;
     driverName: string;
     datetime: Date;
   };
@@ -153,6 +152,10 @@ export interface IStorage {
   createInspection(inspection: InsertInspection): Promise<Inspection>;
   updateInspection(id: string, inspection: Partial<InsertInspection>): Promise<Inspection | undefined>;
   deleteInspection(id: string): Promise<boolean>;
+  
+  // Inspection Assets
+  createInspectionAsset(inspectionAsset: InsertInspectionAsset): Promise<void>;
+  getInspectionAssets(inspectionId: string): Promise<string[]>;
   
   // Defects
   getDefectById(id: string): Promise<Defect | undefined>;
@@ -778,8 +781,19 @@ export class DatabaseStorage implements IStorage {
 
     console.log(`✅ [Storage] getInspections - Found ${data.length} of ${total} total inspections`);
     
+    // Fetch associated assets for each inspection
+    const dataWithAssets = await Promise.all(
+      data.map(async (inspection) => {
+        const assets = await this.getInspectionAssets(inspection.id);
+        return {
+          ...inspection,
+          assets,
+        };
+      })
+    );
+    
     return {
-      data: data as InspectionWithDefects[],
+      data: dataWithAssets as InspectionWithDefects[],
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -794,8 +808,20 @@ export class DatabaseStorage implements IStorage {
         defects: true,
       },
     });
-    console.log(`${result ? '✅' : '❌'} [Storage] Inspection ${result ? 'found' : 'not found'}`);
-    return result as InspectionWithDefects | undefined;
+    
+    if (!result) {
+      console.log(`❌ [Storage] Inspection not found`);
+      return undefined;
+    }
+    
+    // Fetch associated assets
+    const assets = await this.getInspectionAssets(id);
+    console.log(`✅ [Storage] Inspection found with ${assets.length} associated assets`);
+    
+    return {
+      ...result,
+      assets,
+    } as InspectionWithDefects;
   }
 
   async getFilterValues(companyId?: string): Promise<FilterValues> {
@@ -859,6 +885,22 @@ export class DatabaseStorage implements IStorage {
       .where(eq(inspections.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  async createInspectionAsset(insertInspectionAsset: InsertInspectionAsset): Promise<void> {
+    await db
+      .insert(inspectionAssets)
+      .values(insertInspectionAsset)
+      .onConflictDoNothing();
+  }
+
+  async getInspectionAssets(inspectionId: string): Promise<string[]> {
+    const result = await db
+      .select({ assetId: inspectionAssets.assetId })
+      .from(inspectionAssets)
+      .where(eq(inspectionAssets.inspectionId, inspectionId))
+      .orderBy(asc(inspectionAssets.assetId));
+    return result.map(r => r.assetId);
   }
 
   async getDefectById(id: string): Promise<Defect | undefined> {
@@ -930,7 +972,7 @@ export class DatabaseStorage implements IStorage {
           ilike(defects.zoneName, `%${search}%`),
           ilike(defects.componentName, `%${search}%`),
           ilike(defects.defect, `%${search}%`),
-          ilike(inspections.assetId, `%${search}%`),
+          ilike(defects.assetId, `%${search}%`),
           ilike(inspections.driverName, `%${search}%`)
         )!
       );
@@ -944,7 +986,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${inspections.datetime}::date <= ${dateTo}::date`);
     }
     if (assetId) {
-      conditions.push(eq(inspections.assetId, assetId));
+      conditions.push(eq(defects.assetId, assetId));
     }
     if (driverName) {
       conditions.push(eq(inspections.driverName, driverName));
@@ -980,7 +1022,7 @@ export class DatabaseStorage implements IStorage {
     // Determine sort order based on sortField
     const sortColumnMap = {
       datetime: inspections.datetime,
-      assetId: inspections.assetId,
+      assetId: defects.assetId,
       driverName: inspections.driverName,
       zoneName: defects.zoneName,
       componentName: defects.componentName,
@@ -990,7 +1032,10 @@ export class DatabaseStorage implements IStorage {
     };
     
     const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspections.datetime;
-    const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
+    // Secondary sort: if sorting by assetId, also sort by zoneId
+    const orderByArray = sortField === "assetId" 
+      ? [sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn), asc(defects.zoneId)]
+      : [sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn)];
 
     // Get total count using join
     const countResult = await db
@@ -1006,6 +1051,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: defects.id,
         inspectionId: defects.inspectionId,
+        assetId: defects.assetId,
         zoneId: defects.zoneId,
         zoneName: defects.zoneName,
         componentName: defects.componentName,
@@ -1016,14 +1062,13 @@ export class DatabaseStorage implements IStorage {
         status: defects.status,
         repairNotes: defects.repairNotes,
         // Inspection details
-        assetId: inspections.assetId,
         driverName: inspections.driverName,
         datetime: inspections.datetime,
       })
       .from(defects)
       .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
       .where(whereConditions)
-      .orderBy(orderBy)
+      .orderBy(...orderByArray)
       .limit(limit)
       .offset(offset);
 
@@ -1033,6 +1078,7 @@ export class DatabaseStorage implements IStorage {
     const defectsWithInspection: DefectWithInspection[] = data.map(row => ({
       id: row.id,
       inspectionId: row.inspectionId,
+      assetId: row.assetId,
       zoneId: row.zoneId,
       zoneName: row.zoneName,
       componentName: row.componentName,
@@ -1043,7 +1089,6 @@ export class DatabaseStorage implements IStorage {
       status: row.status,
       repairNotes: row.repairNotes,
       inspection: {
-        assetId: row.assetId,
         driverName: row.driverName,
         datetime: row.datetime,
       }
@@ -1064,11 +1109,11 @@ export class DatabaseStorage implements IStorage {
     
     // Get distinct values for each filterable column (join with inspections for company scoping)
     const [assetIdsResult, driverNamesResult, zoneNamesResult, componentNamesResult, statusesResult] = await Promise.all([
-      db.selectDistinct({ value: inspections.assetId })
+      db.selectDistinct({ value: defects.assetId })
         .from(defects)
         .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
         .where(whereCondition)
-        .orderBy(asc(inspections.assetId)),
+        .orderBy(asc(defects.assetId)),
       db.selectDistinct({ value: inspections.driverName })
         .from(defects)
         .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
