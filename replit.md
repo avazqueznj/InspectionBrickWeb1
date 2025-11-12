@@ -68,7 +68,7 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **Duplicate Detection:** Rejects duplicate inspection IDs with 409 Conflict status
 
 **Recent Improvements:**
-- **DOT Compliance Enhancements:** Added `dotNumber` field to companies and `licensePlate` field to assets for DOT compliance reporting. Print reports now display company address, DOT number, asset license plate, parsed inspection form data table, and inspection timestamps in defects table (replacing status column). (2025-11-12)
+- **DOT Compliance Enhancements:** Added `dotNumber` field to companies and `licensePlate` field to assets for DOT compliance reporting. Print reports now display company address, DOT number, asset license plate, parsed inspection form data table, and inspection timestamps in defects table (replacing status column). Inspection detail dialog now filters out severity 0 defects and displays form data in a formatted table. (2025-11-12)
 - **Raw Data Storage in Inspections:** Added `rawData` text column to inspections table to store original BRICKINSPECTION EDI data from device uploads for comprehensive debugging and audit trail (2025-11-12)
 - **EDI Layout Management System:** Inspection types can now be associated with one or more EDI layouts stored as large text blobs. Special "all layouts" logic: when no specific associations exist (empty junction table), the inspection type applies to ALL layouts automatically. This allows dynamic layout additions without remapping existing inspection types.
 - **Defects Page Smart Defaults:** Page loads with severity DESC sorting and status filter set to "open" for immediate focus on critical open issues.
