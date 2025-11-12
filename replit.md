@@ -84,6 +84,8 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **Removed Deprecated assetId Column:** Dropped the deprecated `asset_id` column from the inspections table. All asset associations now exclusively use the `inspection_assets` junction table, eliminating confusion and ensuring single source of truth for multi-asset support. (2025-11-12)
 - **Severity 0 Filter:** Defects page now excludes severity = 0 entries (no-issue defects) from all queries and filter dropdowns. Backend storage layer enforces this filter automatically via `severity > 0` condition. (2025-11-12)
 - **Print Report Defect Sorting:** Both single inspection and bulk list print reports now sort defects by asset ID (alphabetically) first, then by inspection time (chronologically). Also filters out severity = 0 defects from printed reports. (2025-11-12)
+- **Defects Page Sorting Optimization:** Simplified Defects page sorting to severity DESC → inspectedAtUtc ASC for mechanics workflow (removed intermediate asset sorting). (2025-11-12)
+- **Print Reports Driver Notes:** Added critical "Driver Notes" column to both single inspection and bulk list print reports, displaying driver observations for each defect. (2025-11-12)
 
 ### Database Schema
 
