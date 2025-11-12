@@ -776,31 +776,33 @@ export class DatabaseStorage implements IStorage {
 
     // Get paginated data
     const offset = (page - 1) * limit;
-    const data = await db.query.inspections.findMany({
-      where: whereConditions,
-      with: {
-        defects: true,
-      },
-      orderBy: [orderBy],
-      limit,
-      offset,
-    });
+    const data = await db
+      .select()
+      .from(inspections)
+      .where(whereConditions)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset);
 
     console.log(`✅ [Storage] getInspections - Found ${data.length} of ${total} total inspections`);
     
-    // Fetch associated assets for each inspection
-    const dataWithAssets = await Promise.all(
+    // Fetch defects and associated assets for each inspection
+    const dataWithDefectsAndAssets = await Promise.all(
       data.map(async (inspection) => {
-        const assets = await this.getInspectionAssets(inspection.id);
+        const [inspectionDefects, assets] = await Promise.all([
+          db.select().from(defects).where(eq(defects.inspectionId, inspection.id)),
+          this.getInspectionAssets(inspection.id)
+        ]);
         return {
           ...inspection,
+          defects: inspectionDefects,
           assets,
         };
       })
     );
     
     return {
-      data: dataWithAssets as InspectionWithDefects[],
+      data: dataWithDefectsAndAssets as InspectionWithDefects[],
       total,
       page,
       totalPages: Math.ceil(total / limit),

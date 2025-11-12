@@ -362,10 +362,6 @@ async function seed() {
       { assetId: "CRANE-12", layoutKey: "CRANE", assetName: "Mobile Crane 12", status: "ACTIVE" as const, companyId: "NEC" },
       { assetId: "CRANE-13", layoutKey: "CRANE", assetName: "Tower Crane 13", status: "INACTIVE" as const, companyId: "NEC" },
       { assetId: "PALLET-JACK-05", layoutKey: "PALLET-JACK", assetName: "Electric Jack 05", status: "ACTIVE" as const, companyId: "NEC" },
-      { assetId: "127", layoutKey: "TRUCK", assetName: "Tractor 127", status: "ACTIVE" as const, companyId: "NEC" },
-      { assetId: "DOLLY-5", layoutKey: "DOLLY", assetName: "Dolly 5", status: "ACTIVE" as const, companyId: "NEC" },
-      { assetId: "TRAILER-101", layoutKey: "TRAILER", assetName: "Trailer 101", status: "ACTIVE" as const, companyId: "NEC" },
-      { assetId: "TRAILER-102", layoutKey: "TRAILER", assetName: "Trailer 102", status: "ACTIVE" as const, companyId: "NEC" },
     ];
     
     // WALMART Assets
@@ -380,7 +376,6 @@ async function seed() {
       { assetId: "FORKLIFT-W02", layoutKey: "FORKLIFT", assetName: "Warehouse Forklift W02", status: "ACTIVE" as const, companyId: "WALMART" },
       { assetId: "CONVEYOR-W3", layoutKey: "CONVEYOR", assetName: "Belt Conveyor W3", status: "ACTIVE" as const, companyId: "WALMART" },
       { assetId: "PALLET-JACK-W10", layoutKey: "PALLET-JACK", assetName: "Manual Jack W10", status: "ACTIVE" as const, companyId: "WALMART" },
-      { assetId: "TRAILER-W50", layoutKey: "TRAILER", assetName: "Trailer W50", status: "ACTIVE" as const, companyId: "WALMART" },
     ];
     
     // FEDEX Assets
@@ -395,9 +390,6 @@ async function seed() {
       { assetId: "TRUCK-5504", layoutKey: "TRUCK", assetName: "Box Truck 5504", status: "INACTIVE" as const, companyId: "FEDEX" },
       { assetId: "VAN-8804", layoutKey: "VAN", assetName: "Delivery Van 8804", status: "ACTIVE" as const, companyId: "FEDEX" },
       { assetId: "CRANE-F1", layoutKey: "CRANE", assetName: "Gantry Crane F1", status: "ACTIVE" as const, companyId: "FEDEX" },
-      { assetId: "DOLLY-F2", layoutKey: "DOLLY", assetName: "Dolly F2", status: "ACTIVE" as const, companyId: "FEDEX" },
-      { assetId: "TRAILER-F10", layoutKey: "TRAILER", assetName: "Trailer F10", status: "ACTIVE" as const, companyId: "FEDEX" },
-      { assetId: "TRAILER-F11", layoutKey: "TRAILER", assetName: "Trailer F11", status: "ACTIVE" as const, companyId: "FEDEX" },
     ];
     
     // Map asset data to include layout UUIDs and insert
