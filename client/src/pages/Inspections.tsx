@@ -243,7 +243,7 @@ export default function Inspections() {
                               ))}
                             </div>
                           ) : (
-                            <span className="font-mono font-medium">{inspection.assetId}</span>
+                            <span className="font-mono font-medium text-muted-foreground">No assets</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm">

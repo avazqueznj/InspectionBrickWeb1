@@ -30,6 +30,8 @@ interface FilterBarProps {
 export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [dateFromOpen, setDateFromOpen] = useState(false);
+  const [dateToOpen, setDateToOpen] = useState(false);
   const [inspectionType, setInspectionType] = useState<string>("");
   const [assetId, setAssetId] = useState<string>("");
   const [driverName, setDriverName] = useState<string>("");
@@ -84,7 +86,7 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
         <Label htmlFor="date-from" className="text-xs font-medium">
           Date From
         </Label>
-        <Popover>
+        <Popover open={dateFromOpen} onOpenChange={setDateFromOpen}>
           <PopoverTrigger asChild>
             <Button
               id="date-from"
@@ -100,7 +102,10 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
             <Calendar
               mode="single"
               selected={dateFrom}
-              onSelect={setDateFrom}
+              onSelect={(date) => {
+                setDateFrom(date);
+                setDateFromOpen(false);
+              }}
               initialFocus
             />
           </PopoverContent>
@@ -112,7 +117,7 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
         <Label htmlFor="date-to" className="text-xs font-medium">
           Date To
         </Label>
-        <Popover>
+        <Popover open={dateToOpen} onOpenChange={setDateToOpen}>
           <PopoverTrigger asChild>
             <Button
               id="date-to"
@@ -128,7 +133,10 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
             <Calendar
               mode="single"
               selected={dateTo}
-              onSelect={setDateTo}
+              onSelect={(date) => {
+                setDateTo(date);
+                setDateToOpen(false);
+              }}
               initialFocus
             />
           </PopoverContent>
