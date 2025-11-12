@@ -62,11 +62,13 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **STM32 Device Upload Endpoint:** POST /api/device/inspections accepts BRICKINSPECTION EDI format from simple devices (no authentication required for device uploads)
 - **UUID-based Inspection IDs:** Devices generate UUIDs for inspections, not database auto-generation
 - **UTC Timestamp Storage:** All timestamps stored in UTC with timezone offset/DST metadata for accurate reconstruction
+- **Raw Data Storage:** All successful inspection uploads store the original raw BRICKINSPECTION EDI data in the inspections table for debugging and audit purposes
 - **Comprehensive Error Logging:** Failed uploads logged to upload_errors table with raw payload and full stack traces
 - **Device-Friendly Debugging:** HTTP responses include complete error stack traces for device integration troubleshooting
 - **Duplicate Detection:** Rejects duplicate inspection IDs with 409 Conflict status
 
 **Recent Improvements:**
+- **Raw Data Storage in Inspections:** Added `rawData` text column to inspections table to store original BRICKINSPECTION EDI data from device uploads for comprehensive debugging and audit trail (2025-11-12)
 - **EDI Layout Management System:** Inspection types can now be associated with one or more EDI layouts stored as large text blobs. Special "all layouts" logic: when no specific associations exist (empty junction table), the inspection type applies to ALL layouts automatically. This allows dynamic layout additions without remapping existing inspection types.
 - **Defects Page Smart Defaults:** Page loads with severity DESC sorting and status filter set to "open" for immediate focus on critical open issues.
 - **Severity Filter with Ranges:** New dropdown filter with color-coded severity ranges - Critical (≥75), High (50-74), Medium (25-49), Low (0-24).
@@ -93,9 +95,10 @@ The system uses UUID surrogate primary keys with human-readable business IDs to 
 - **Inspection Type Form Fields:** `id` (UUID PK), `inspectionTypeId` (UUID FK → inspection_types.id), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength` (integer 0-64)
 - **Layouts:** `id` (UUID PK), `layoutId` (business ID, unique per company), `layoutData` (large text blob), `companyId` (FK), `UNIQUE(companyId, layoutId)`
 - **Inspection Type Layouts:** Junction table for many-to-many relationship between inspection types and layouts. `inspectionTypeId` (UUID FK → inspection_types.id), `layoutId` (UUID FK → layouts.id). Empty junction = "ALL LAYOUTS" logic.
-- **Inspections:** `id` (UUID PK), `companyId` (FK), `datetime` (auto-populated by DB), `inspectionType` (text, not FK), `assetId` (text, not FK), `driverName`, `driverId`, `inspectionFormData`, `inspStartTimeUtc`, `inspSubmitTimeUtc`, `inspTimeOffset`, `inspTimeDst`
+- **Inspections:** `id` (UUID PK), `companyId` (FK), `datetime` (auto-populated by DB), `inspectionType` (text, not FK), `assetId` (text, not FK), `driverName`, `driverId`, `inspectionFormData`, `inspStartTimeUtc`, `inspSubmitTimeUtc`, `inspTimeOffset`, `inspTimeDst`, `rawData` (original BRICKINSPECTION EDI data)
   - Note: `assetId` and `inspectionType` are stored as text (not FKs) to avoid stale data issues with permanent inspection records
   - Note: UTC timestamps with timezone metadata preserve device-local times for accurate reconstruction
+  - Note: `rawData` stores the original EDI format data from device uploads for debugging and audit purposes
 - **Defects:** `id` (UUID PK), `inspectionId` (UUID FK), `zoneId`, `zoneName`, `componentName`, `defect`, `severity`, `inspectedAtUtc`, `driverNotes`, `status`, `repairNotes`
 - **Upload Errors:** `id` (UUID PK), `timestamp`, `companyId`, `driverId`, `driverName`, `assetId`, `rawData`, `errorTrace`
   - Logs all failed device upload attempts with full context for debugging

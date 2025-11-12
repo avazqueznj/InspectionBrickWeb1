@@ -55,6 +55,7 @@ export const inspections = pgTable("inspections", {
   inspSubmitTimeUtc: timestamp("insp_submit_time_utc"),
   inspTimeOffset: integer("insp_time_offset"),
   inspTimeDst: integer("insp_time_dst"),
+  rawData: text("raw_data"),
 });
 
 // Defects table

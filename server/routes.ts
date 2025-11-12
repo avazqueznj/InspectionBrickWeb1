@@ -161,6 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inspSubmitTimeUtc: parsed.inspSubmitTimeUtc,
         inspTimeOffset: parsed.inspTimeOffset,
         inspTimeDst: parsed.inspTimeDst,
+        rawData: rawData,
       };
 
       const existingInspection = await storage.getInspection(parsed.inspectionId);
