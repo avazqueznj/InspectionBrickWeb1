@@ -81,6 +81,7 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **Page Scrolling Fix:** Main container changed from overflow-hidden to overflow-auto, enabling proper scrolling on all pages and making content below the fold accessible.
 - **Asset Filter SQL Bug Fix:** Fixed getInspections to use db.select().from(inspections) instead of db.query.inspections.findMany() to properly handle raw SQL EXISTS clauses for multi-asset inspection filtering. (2025-11-12)
 - **Inspection Assets Junction Table:** Updated seed script to populate inspection_assets for ALL inspections (both single and multi-asset), not just multi-asset test data. This ensures asset filters show all assets and correctly find all inspections. (2025-11-12)
+- **Removed Deprecated assetId Column:** Dropped the deprecated `asset_id` column from the inspections table. All asset associations now exclusively use the `inspection_assets` junction table, eliminating confusion and ensuring single source of truth for multi-asset support. (2025-11-12)
 
 ### Database Schema
 
@@ -100,8 +101,8 @@ The system uses UUID surrogate primary keys with human-readable business IDs to 
 - **Inspection Type Form Fields:** `id` (UUID PK), `inspectionTypeId` (UUID FK → inspection_types.id), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength` (integer 0-64)
 - **Layouts:** `id` (UUID PK), `layoutId` (business ID, unique per company), `layoutData` (large text blob), `companyId` (FK), `UNIQUE(companyId, layoutId)`
 - **Inspection Type Layouts:** Junction table for many-to-many relationship between inspection types and layouts. `inspectionTypeId` (UUID FK → inspection_types.id), `layoutId` (UUID FK → layouts.id). Empty junction = "ALL LAYOUTS" logic.
-- **Inspections:** `id` (UUID PK), `companyId` (FK), `datetime` (auto-populated by DB), `inspectionType` (text, not FK), `assetId` (text, not FK, legacy field), `driverName`, `driverId`, `inspectionFormData`, `inspStartTimeUtc`, `inspSubmitTimeUtc`, `inspTimeOffset`, `inspTimeDst`, `rawData` (original BRICKINSPECTION EDI data)
-  - Note: `assetId` and `inspectionType` are stored as text (not FKs) to avoid stale data issues with permanent inspection records
+- **Inspections:** `id` (UUID PK), `companyId` (FK), `datetime` (auto-populated by DB), `inspectionType` (text, not FK), `driverName`, `driverId`, `inspectionFormData`, `inspStartTimeUtc`, `inspSubmitTimeUtc`, `inspTimeOffset`, `inspTimeDst`, `rawData` (original BRICKINSPECTION EDI data)
+  - Note: `inspectionType` is stored as text (not FK) to avoid stale data issues with permanent inspection records
   - Note: UTC timestamps with timezone metadata preserve device-local times for accurate reconstruction
   - Note: `rawData` stores the original EDI format data from device uploads for debugging and audit purposes
 - **Inspection Assets:** Junction table for multi-asset inspections. `inspectionId` (UUID FK → inspections.id), `assetId` (text). Stores all assets associated with an inspection.

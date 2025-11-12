@@ -49,7 +49,6 @@ export const inspections = pgTable("inspections", {
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   datetime: timestamp("datetime").notNull().defaultNow(),
   inspectionType: text("inspection_type").notNull(),
-  assetId: text("asset_id").notNull(),
   driverName: text("driver_name").notNull(),
   driverId: text("driver_id").notNull(),
   inspectionFormData: text("inspection_form_data"),

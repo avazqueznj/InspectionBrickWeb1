@@ -720,7 +720,6 @@ export class DatabaseStorage implements IStorage {
       conditions.push(
         or(
           ilike(inspections.inspectionType, `%${search}%`),
-          ilike(inspections.assetId, `%${search}%`),
           ilike(inspections.driverName, `%${search}%`),
           ilike(inspections.driverId, `%${search}%`)
         )!
@@ -760,7 +759,6 @@ export class DatabaseStorage implements IStorage {
     const sortColumnMap = {
       datetime: inspections.datetime,
       inspectionType: inspections.inspectionType,
-      assetId: inspections.assetId,
       driverName: inspections.driverName,
     };
     
@@ -872,7 +870,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInspection(insertInspection: InsertInspection): Promise<Inspection> {
-    console.log(`➕ [Storage] createInspection - companyId: ${insertInspection.companyId}, assetId: ${insertInspection.assetId}`);
+    console.log(`➕ [Storage] createInspection - companyId: ${insertInspection.companyId}, inspectionType: ${insertInspection.inspectionType}`);
     const [inspection] = await db
       .insert(inspections)
       .values(insertInspection)

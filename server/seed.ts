@@ -434,7 +434,6 @@ async function seed() {
         companyId: "NEC",
         datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
         inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
-        assetId: necAssets[i % necAssets.length],
         driverName: necDrivers[i % necDrivers.length].name,
         driverId: necDrivers[i % necDrivers.length].id,
         inspectionFormData: `Inspection #${i + 1} - Routine check completed.`,
@@ -464,7 +463,6 @@ async function seed() {
         companyId: "WALMART",
         datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
         inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
-        assetId: walmartAssets[i % walmartAssets.length],
         driverName: walmartDrivers[i % walmartDrivers.length].name,
         driverId: walmartDrivers[i % walmartDrivers.length].id,
         inspectionFormData: `Inspection #${i + 1} - Standard inspection protocol.`,
@@ -494,7 +492,6 @@ async function seed() {
         companyId: "FEDEX",
         datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
         inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
-        assetId: fedexAssets[i % fedexAssets.length],
         driverName: fedexDrivers[i % fedexDrivers.length].name,
         driverId: fedexDrivers[i % fedexDrivers.length].id,
         inspectionFormData: `Inspection #${i + 1} - Operations check complete.`,
@@ -508,9 +505,9 @@ async function seed() {
     // Populate inspection_assets for all single-asset inspections
     console.log("🔗 Creating inspection_assets for single-asset inspections...");
     const singleAssetAssociations = [
-      ...necInspections.map(insp => ({ inspectionId: insp.id, assetId: insp.assetId })),
-      ...walmartInspections.map(insp => ({ inspectionId: insp.id, assetId: insp.assetId })),
-      ...fedexInspections.map(insp => ({ inspectionId: insp.id, assetId: insp.assetId })),
+      ...necInspections.map((insp, i) => ({ inspectionId: insp.id, assetId: necAssets[i % necAssets.length] })),
+      ...walmartInspections.map((insp, i) => ({ inspectionId: insp.id, assetId: walmartAssets[i % walmartAssets.length] })),
+      ...fedexInspections.map((insp, i) => ({ inspectionId: insp.id, assetId: fedexAssets[i % fedexAssets.length] })),
     ];
     await db.insert(inspectionAssets).values(singleAssetAssociations);
     console.log(`✅ Created ${singleAssetAssociations.length} single-asset associations`);
@@ -524,7 +521,6 @@ async function seed() {
         companyId: "NEC",
         datetime: new Date('2025-11-01T08:00:00'),
         inspectionType: "pre-trip",
-        assetId: "127", // Legacy field - first asset
         driverName: "John Smith",
         driverId: "DRV-12345",
         inspectionFormData: "Multi-asset inspection: Tractor + Dolly + Trailer",
@@ -533,7 +529,6 @@ async function seed() {
         companyId: "NEC",
         datetime: new Date('2025-11-05T14:30:00'),
         inspectionType: "post-trip",
-        assetId: "127", // Legacy field - first asset
         driverName: "Sarah Johnson",
         driverId: "DRV-54321",
         inspectionFormData: "Multi-asset inspection: Tractor + Trailer",
@@ -546,7 +541,6 @@ async function seed() {
         companyId: "WALMART",
         datetime: new Date('2025-11-02T09:15:00'),
         inspectionType: "delivery-pre-trip",
-        assetId: "TRUCK-5001", // Legacy field - first asset
         driverName: "Michael Brown",
         driverId: "DRV-10892",
         inspectionFormData: "Multi-asset inspection: Truck + Trailer combo",
@@ -555,7 +549,6 @@ async function seed() {
         companyId: "WALMART",
         datetime: new Date('2025-11-06T07:45:00'),
         inspectionType: "delivery-pre-trip",
-        assetId: "VAN-1145", // Legacy field - first asset
         driverName: "Emily Davis",
         driverId: "DRV-10123",
         inspectionFormData: "Multi-asset inspection: Van with attached equipment",
@@ -568,7 +561,6 @@ async function seed() {
         companyId: "FEDEX",
         datetime: new Date('2025-11-03T06:30:00'),
         inspectionType: "van-pre-route",
-        assetId: "VAN-8803", // Legacy field - first asset
         driverName: "James Wilson",
         driverId: "DRV-20445",
         inspectionFormData: "Multi-asset inspection: Van + Dolly + Trailer",
@@ -577,7 +569,6 @@ async function seed() {
         companyId: "FEDEX",
         datetime: new Date('2025-11-07T13:00:00'),
         inspectionType: "van-pre-route",
-        assetId: "TRUCK-5503", // Legacy field - first asset
         driverName: "Maria Garcia",
         driverId: "DRV-20567",
         inspectionFormData: "Multi-asset inspection: Truck + Trailer",
@@ -692,7 +683,7 @@ async function seed() {
           const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
           selectedDefects.push({
             inspectionId: necInspections[i].id,
-            assetId: necInspections[i].assetId,
+            assetId: necAssets[i % necAssets.length],
             zoneName: template.zoneName,
             componentName: template.componentName,
             defect: template.defect,
@@ -718,7 +709,7 @@ async function seed() {
           const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
           selectedDefects.push({
             inspectionId: walmartInspections[i].id,
-            assetId: walmartInspections[i].assetId,
+            assetId: walmartAssets[i % walmartAssets.length],
             zoneName: template.zoneName,
             componentName: template.componentName,
             defect: template.defect,
@@ -744,7 +735,7 @@ async function seed() {
           const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
           selectedDefects.push({
             inspectionId: fedexInspections[i].id,
-            assetId: fedexInspections[i].assetId,
+            assetId: fedexAssets[i % fedexAssets.length],
             zoneName: template.zoneName,
             componentName: template.componentName,
             defect: template.defect,
