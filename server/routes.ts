@@ -1097,7 +1097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     </table>
     ` : ''}
     
-    ${inspection.defects && inspection.defects.filter(d => d.severity > 0).length > 0 ? `
+    ${inspection.defects && inspection.defects.length > 0 ? `
     <h2>Defects</h2>
     <table>
       <thead>
@@ -1110,7 +1110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </tr>
       </thead>
       <tbody>
-        ${inspection.defects.filter(d => d.severity > 0).map(d => {
+        ${inspection.defects.map(d => {
           const inspTime = d.inspectedAtUtc 
             ? new Date(d.inspectedAtUtc).toLocaleString() 
             : new Date(inspection.datetime).toLocaleString();
@@ -1235,7 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   ` : ''}
   
   <h2>Defects</h2>
-  ${inspection.defects && inspection.defects.filter(d => d.severity > 0).length > 0 ? `
+  ${inspection.defects && inspection.defects.length > 0 ? `
   <table>
     <thead>
       <tr>
@@ -1247,7 +1247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       </tr>
     </thead>
     <tbody>
-      ${inspection.defects.filter(d => d.severity > 0).map(d => {
+      ${inspection.defects.map(d => {
         const inspTime = d.inspectedAtUtc 
           ? new Date(d.inspectedAtUtc).toLocaleString() 
           : new Date(inspection.datetime).toLocaleString();
