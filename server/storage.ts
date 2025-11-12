@@ -1047,14 +1047,14 @@ export class DatabaseStorage implements IStorage {
     const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspections.datetime;
     
     // Multi-column sorting for better UX:
-    // - severity: DESC → inspectedAtUtc ASC (mechanics prioritize severe defects, then chronologically)
+    // - severity: DESC → inspectedAtUtc DESC (mechanics prioritize severe defects, then newest first)
     // - assetId: ASC/DESC → zoneName ASC (group by asset, then by zone alphabetically)
     // - other fields: single column sort
     let orderByArray;
     if (sortField === "severity") {
       orderByArray = [
         sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn),
-        asc(defects.inspectedAtUtc)
+        desc(defects.inspectedAtUtc)
       ];
     } else if (sortField === "assetId") {
       orderByArray = [

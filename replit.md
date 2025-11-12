@@ -69,7 +69,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - **DOT Compliance:** Includes `dotNumber` for companies and `licensePlate` for assets, displayed in print reports.
 - **EDI Layout Management:** Inspection types can be associated with EDI layouts stored as text blobs, supporting dynamic layout additions.
 - **Defects vs. Checks:** Severity = 0 records are inspection CHECKS (components inspected with no issues), not actual defects. Preserved in database for audit trail. Defect counts show only severity > 0 (actual defects needing repair).
-- **Defects Page Optimization:** Defaults to severity DESC, asset ASC, datetime ASC sorting, and filters out severity 0 defects (shows only actual defects for repairs).
+- **Defects Page Optimization:** Defaults to severity DESC → inspectedAtUtc DESC sorting (high severity first, then newest first), and filters out severity 0 defects (shows only actual defects for repairs).
 - **Severity Filter:** New dropdown filter with color-coded severity ranges (Critical, High, Medium, Low).
 - **"View Inspection" Button:** Allows viewing parent inspection from the Defects page, showing full context including all associated defects.
 - **Database Constraints:** Utilizes `CHECK` constraints for non-empty surrogate IDs.
