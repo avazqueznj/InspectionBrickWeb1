@@ -1119,6 +1119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <th>Component</th>
           <th>Defect</th>
           <th>Severity</th>
+          <th>Driver Notes</th>
           <th>Inspection Time</th>
         </tr>
       </thead>
@@ -1145,6 +1146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <td>${d.componentName}</td>
           <td>${d.defect}</td>
           <td>${d.severity}</td>
+          <td>${d.driverNotes || '—'}</td>
           <td>${inspTime}</td>
         </tr>
         `;
@@ -1277,6 +1279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <th>Component</th>
         <th>Defect</th>
         <th>Severity</th>
+        <th>Driver Notes</th>
         <th>Inspection Time</th>
       </tr>
     </thead>
@@ -1303,6 +1306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <td>${d.componentName}</td>
         <td>${d.defect}</td>
         <td>${d.severity}</td>
+        <td>${d.driverNotes || '—'}</td>
         <td>${inspTime}</td>
       </tr>
       `;
