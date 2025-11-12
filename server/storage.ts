@@ -1032,9 +1032,9 @@ export class DatabaseStorage implements IStorage {
     };
     
     const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspections.datetime;
-    // Secondary sort: if sorting by assetId, also sort by zoneId
+    // Secondary sort: if sorting by assetId, also sort by zoneName alphabetically
     const orderByArray = sortField === "assetId" 
-      ? [sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn), asc(defects.zoneId)]
+      ? [sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn), asc(defects.zoneName)]
       : [sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn)];
 
     // Get total count using join
