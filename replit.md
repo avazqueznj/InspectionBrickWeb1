@@ -1,7 +1,13 @@
 # Inspection Brick
 
 ## Overview
-Inspection Brick is a professional web application for managing equipment and vehicle inspections, focusing on Department of Transportation (DOT) compliance. It offers a clean, efficient interface for viewing records, analyzing defects, and generating reports. Key features include multi-company data isolation, real-time search and filtering, detailed defect tracking with severity levels, and server-side pagination. The project aims to enhance operational efficiency, streamline inspection processes, and ensure regulatory compliance for organizations.
+Inspection Brick is a professional web application for managing equipment and vehicle inspections, focusing on Department of Transportation (DOT) compliance. The system serves two primary user workflows:
+
+1. **Live Defect Monitoring (Mechanics)**: The Defects page acts as a real-time dashboard that mechanics keep open to minimize vehicle downtime. Sorting by severity (high→low) then time (newest→oldest) ensures critical issues stopping vehicles are immediately visible as inspections come in.
+
+2. **Inspection Management (Supervisors)**: Comprehensive views for reviewing inspection history, analyzing trends, and generating compliance reports with multi-company data isolation.
+
+Key features include real-time defect monitoring, advanced filtering and search, detailed tracking with severity levels, server-side pagination, and native browser printing for reports.
 
 ## User Preferences
 
@@ -64,14 +70,29 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - **Comprehensive Error Logging:** Failed uploads are logged with raw payload and stack traces.
 - **Duplicate Detection:** Rejects duplicate inspection IDs with a 409 Conflict status.
 
+**Core Concepts:**
+
+**Defects Table Data Model:**
+- All records in the `defects` table represent **inspection checks** (components that were inspected)
+- **Severity = 0**: Component was checked, NO issue found (preserved for audit trail)
+- **Severity > 0**: Component was checked, defect WAS found (needs repair)
+- A "defect" is simply a **check record with a defect noted** (severity > 0)
+- This model ensures complete inspection coverage tracking while distinguishing actual defects
+
+**Mechanic Workflow - Real-Time Monitoring:**
+- Mechanics keep the Defects page open as a **live monitoring dashboard**
+- Primary goal: **Reduce vehicle downtime** by quickly identifying critical issues
+- Sorting (severity DESC → time DESC) ensures newest critical defects appear first
+- As inspections come in from devices, mechanics immediately see severe issues stopping vehicles
+- "View Inspection" button provides full context without leaving the monitoring view
+
 **Key Features:**
 - **Multi-Asset Inspection Support:** Full support for inspections involving multiple assets, with `assetId` in defects and an `inspection_assets` junction table.
 - **DOT Compliance:** Includes `dotNumber` for companies and `licensePlate` for assets, displayed in print reports.
 - **EDI Layout Management:** Inspection types can be associated with EDI layouts stored as text blobs, supporting dynamic layout additions.
-- **Defects vs. Checks:** Severity = 0 records are inspection CHECKS (components inspected with no issues), not actual defects. Preserved in database for audit trail. Defect counts show only severity > 0 (actual defects needing repair).
-- **Defects Page Optimization:** Defaults to severity DESC → inspectedAtUtc DESC sorting (high severity first, then newest first), and filters out severity 0 defects (shows only actual defects for repairs).
-- **Severity Filter:** New dropdown filter with color-coded severity ranges (Critical, High, Medium, Low).
-- **"View Inspection" Button:** Allows viewing parent inspection from the Defects page, showing full context including all associated defects.
+- **Live Defect Monitoring:** Defects page filters to severity > 0 only (actual defects) and sorts by severity DESC → time DESC for real-time monitoring workflow.
+- **Severity Filter:** Dropdown filter with color-coded severity ranges (Critical ≥75, High 50-74, Medium 25-49, Low 0-24).
+- **Inspection Context Button:** "View Inspection" button on each defect row shows full parent inspection details in modal.
 - **Database Constraints:** Utilizes `CHECK` constraints for non-empty surrogate IDs.
 
 ### Database Schema
