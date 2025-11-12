@@ -738,7 +738,14 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(inspections.inspectionType, inspectionType));
     }
     if (assetId) {
-      conditions.push(eq(inspections.assetId, assetId));
+      // Filter using inspection_assets junction table to support multi-asset inspections
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM ${inspectionAssets}
+          WHERE ${inspectionAssets.inspectionId} = ${inspections.id}
+          AND ${inspectionAssets.assetId} = ${assetId}
+        )`
+      );
     }
     if (driverName) {
       conditions.push(eq(inspections.driverName, driverName));
@@ -830,15 +837,17 @@ export class DatabaseStorage implements IStorage {
     const whereCondition = companyId ? eq(inspections.companyId, companyId) : undefined;
     
     // Get distinct values for each filterable column
+    // For assetIds, query from inspection_assets junction table to include all assets in multi-asset inspections
     const [inspectionTypesResult, assetIdsResult, driverNamesResult, driverIdsResult] = await Promise.all([
       db.selectDistinct({ value: inspections.inspectionType })
         .from(inspections)
         .where(whereCondition)
         .orderBy(asc(inspections.inspectionType)),
-      db.selectDistinct({ value: inspections.assetId })
-        .from(inspections)
+      db.selectDistinct({ value: inspectionAssets.assetId })
+        .from(inspectionAssets)
+        .innerJoin(inspections, eq(inspectionAssets.inspectionId, inspections.id))
         .where(whereCondition)
-        .orderBy(asc(inspections.assetId)),
+        .orderBy(asc(inspectionAssets.assetId)),
       db.selectDistinct({ value: inspections.driverName })
         .from(inspections)
         .where(whereCondition)
