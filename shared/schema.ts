@@ -8,6 +8,7 @@ export const companies = pgTable("companies", {
   id: text("company_id").primaryKey(),
   name: text("company_name").notNull(),
   address: text("company_address"),
+  dotNumber: text("dot_number"),
   settings: text("settings"),
 });
 
@@ -32,6 +33,7 @@ export const assets = pgTable("assets", {
   assetId: text("asset_id").notNull(),
   layout: varchar("layout").notNull().references(() => layouts.id, { onDelete: "restrict" }),
   assetName: text("asset_name").notNull(),
+  licensePlate: text("license_plate"),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
