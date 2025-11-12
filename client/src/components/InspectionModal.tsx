@@ -14,6 +14,20 @@ interface InspectionModalProps {
 export function InspectionModal({ inspection, open, onOpenChange }: InspectionModalProps) {
   if (!inspection) return null;
 
+  // Filter out severity 0 defects
+  const significantDefects = inspection.defects?.filter(d => d.severity > 0) || [];
+
+  // Parse inspection form data
+  let formDataEntries: Array<[string, string]> = [];
+  if (inspection.inspectionFormData) {
+    try {
+      const parsed = JSON.parse(inspection.inspectionFormData);
+      formDataEntries = Object.entries(parsed);
+    } catch (e) {
+      // If parsing fails, keep empty array
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="modal-inspection-details">
@@ -81,25 +95,46 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
                   {inspection.driverId}
                 </p>
               </div>
-              {inspection.inspectionFormData && (
-                <div className="col-span-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                    Form Data
-                  </p>
-                  <p className="text-sm text-muted-foreground" data-testid="text-form-data">
-                    {inspection.inspectionFormData}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
+
+          {/* Inspection Form Data */}
+          {formDataEntries.length > 0 && (
+            <div>
+              <h3 className="text-lg font-medium mb-4">Inspection Form Data</h3>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Field
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Value
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {formDataEntries.map(([key, value], index) => (
+                        <tr key={index} className="hover-elevate">
+                          <td className="px-4 py-3 text-sm font-medium">{key}</td>
+                          <td className="px-4 py-3 text-sm">{value || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Defects Section */}
           <div>
             <h3 className="text-lg font-medium mb-4">
-              Defects ({inspection.defects?.length || 0})
+              Defects ({significantDefects.length})
             </h3>
-            {inspection.defects && inspection.defects.length > 0 ? (
+            {significantDefects.length > 0 ? (
               <div className="border rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -123,7 +158,7 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {inspection.defects.map((defect) => (
+                      {significantDefects.map((defect) => (
                         <tr key={defect.id} className="hover-elevate" data-testid={`row-defect-${defect.id}`}>
                           <td className="px-4 py-3 text-sm">{defect.zoneName}</td>
                           <td className="px-4 py-3 text-sm">{defect.componentName}</td>
