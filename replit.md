@@ -68,6 +68,7 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **Duplicate Detection:** Rejects duplicate inspection IDs with 409 Conflict status
 
 **Recent Improvements:**
+- **DOT Compliance Enhancements:** Added `dotNumber` field to companies and `licensePlate` field to assets for DOT compliance reporting. Print reports now display company address, DOT number, asset license plate, parsed inspection form data table, and inspection timestamps in defects table (replacing status column). (2025-11-12)
 - **Raw Data Storage in Inspections:** Added `rawData` text column to inspections table to store original BRICKINSPECTION EDI data from device uploads for comprehensive debugging and audit trail (2025-11-12)
 - **EDI Layout Management System:** Inspection types can now be associated with one or more EDI layouts stored as large text blobs. Special "all layouts" logic: when no specific associations exist (empty junction table), the inspection type applies to ALL layouts automatically. This allows dynamic layout additions without remapping existing inspection types.
 - **Defects Page Smart Defaults:** Page loads with severity DESC sorting and status filter set to "open" for immediate focus on critical open issues.
@@ -88,9 +89,9 @@ The system uses UUID surrogate primary keys with human-readable business IDs to 
 - **Foreign Keys:** All relationships use UUID foreign keys for referential integrity
 
 **Tables:**
-- **Companies:** `id` (PK), `name`
+- **Companies:** `id` (PK), `name`, `address` (nullable), `dotNumber` (nullable)
 - **Users:** `id` (UUID PK), `userId` (business ID, unique per company), `password`, `companyId` (FK), `UNIQUE(companyId, userId)`
-- **Assets:** `id` (UUID PK), `assetId` (business ID, unique per company), `assetConfig`, `assetName`, `status`, `companyId` (FK), `UNIQUE(companyId, assetId)`
+- **Assets:** `id` (UUID PK), `assetId` (business ID, unique per company), `assetConfig`, `assetName`, `licensePlate` (nullable), `status`, `companyId` (FK), `UNIQUE(companyId, assetId)`
 - **Inspection Types:** `id` (UUID PK), `inspectionTypeId` (business ID, unique per company), `status` (ACTIVE/INACTIVE), `companyId` (FK), `UNIQUE(companyId, inspectionTypeId)`
 - **Inspection Type Form Fields:** `id` (UUID PK), `inspectionTypeId` (UUID FK → inspection_types.id), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength` (integer 0-64)
 - **Layouts:** `id` (UUID PK), `layoutId` (business ID, unique per company), `layoutData` (large text blob), `companyId` (FK), `UNIQUE(companyId, layoutId)`
