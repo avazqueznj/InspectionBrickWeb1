@@ -1114,6 +1114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <table>
       <thead>
         <tr>
+          <th>Asset ID</th>
           <th>Zone</th>
           <th>Component</th>
           <th>Defect</th>
@@ -1128,6 +1129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : new Date(inspection.datetime).toLocaleString();
           return `
         <tr>
+          <td>${d.assetId}</td>
           <td>${d.zoneName}</td>
           <td>${d.componentName}</td>
           <td>${d.defect}</td>
@@ -1259,6 +1261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <table>
     <thead>
       <tr>
+        <th>Asset ID</th>
         <th>Zone</th>
         <th>Component</th>
         <th>Defect</th>
@@ -1273,6 +1276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : new Date(inspection.datetime).toLocaleString();
         return `
       <tr>
+        <td>${d.assetId}</td>
         <td>${d.zoneName}</td>
         <td>${d.componentName}</td>
         <td>${d.defect}</td>
