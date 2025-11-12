@@ -1026,6 +1026,9 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(defects.status, status));
     }
     
+    // Always filter out severity = 0 defects (no-issue entries)
+    conditions.push(sql`${defects.severity} > 0`);
+    
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Determine sort order based on sortField
@@ -1130,7 +1133,13 @@ export class DatabaseStorage implements IStorage {
   async getDefectFilterValues(companyId?: string): Promise<DefectFilterValues> {
     console.log(`🔍 [Storage] getDefectFilterValues - companyId: ${companyId || 'ALL'}`);
     
-    const whereCondition = companyId ? eq(inspections.companyId, companyId) : undefined;
+    // Build where conditions: company filter + exclude severity 0
+    const conditions = [];
+    if (companyId) {
+      conditions.push(eq(inspections.companyId, companyId));
+    }
+    conditions.push(sql`${defects.severity} > 0`);
+    const whereCondition = and(...conditions);
     
     // Get distinct values for each filterable column (join with inspections for company scoping)
     const [assetIdsResult, driverNamesResult, zoneNamesResult, componentNamesResult, statusesResult] = await Promise.all([

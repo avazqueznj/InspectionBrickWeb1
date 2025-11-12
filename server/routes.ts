@@ -1123,7 +1123,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </tr>
       </thead>
       <tbody>
-        ${inspection.defects.map(d => {
+        ${inspection.defects
+          .filter(d => d.severity > 0)
+          .sort((a, b) => {
+            // Sort by asset ID first
+            if (a.assetId < b.assetId) return -1;
+            if (a.assetId > b.assetId) return 1;
+            // Then by inspection time
+            const timeA = a.inspectedAtUtc ? new Date(a.inspectedAtUtc).getTime() : new Date(inspection.datetime).getTime();
+            const timeB = b.inspectedAtUtc ? new Date(b.inspectedAtUtc).getTime() : new Date(inspection.datetime).getTime();
+            return timeA - timeB;
+          })
+          .map(d => {
           const inspTime = d.inspectedAtUtc 
             ? new Date(d.inspectedAtUtc).toLocaleString() 
             : new Date(inspection.datetime).toLocaleString();
@@ -1270,7 +1281,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       </tr>
     </thead>
     <tbody>
-      ${inspection.defects.map(d => {
+      ${inspection.defects
+        .filter(d => d.severity > 0)
+        .sort((a, b) => {
+          // Sort by asset ID first
+          if (a.assetId < b.assetId) return -1;
+          if (a.assetId > b.assetId) return 1;
+          // Then by inspection time
+          const timeA = a.inspectedAtUtc ? new Date(a.inspectedAtUtc).getTime() : new Date(inspection.datetime).getTime();
+          const timeB = b.inspectedAtUtc ? new Date(b.inspectedAtUtc).getTime() : new Date(inspection.datetime).getTime();
+          return timeA - timeB;
+        })
+        .map(d => {
         const inspTime = d.inspectedAtUtc 
           ? new Date(d.inspectedAtUtc).toLocaleString() 
           : new Date(inspection.datetime).toLocaleString();
