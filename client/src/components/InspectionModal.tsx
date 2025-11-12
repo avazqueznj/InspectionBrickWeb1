@@ -149,6 +149,9 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
                     <thead className="bg-muted">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Asset ID
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                           Zone
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -168,6 +171,7 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
                     <tbody className="divide-y">
                       {significantDefects.map((defect) => (
                         <tr key={defect.id} className="hover-elevate" data-testid={`row-defect-${defect.id}`}>
+                          <td className="px-4 py-3 text-sm font-mono font-medium">{defect.assetId}</td>
                           <td className="px-4 py-3 text-sm">{defect.zoneName}</td>
                           <td className="px-4 py-3 text-sm">{defect.componentName}</td>
                           <td className="px-4 py-3">
