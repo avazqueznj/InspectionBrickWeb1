@@ -1041,10 +1041,26 @@ export class DatabaseStorage implements IStorage {
     };
     
     const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspections.datetime;
-    // Secondary sort: if sorting by assetId, also sort by zoneName alphabetically
-    const orderByArray = sortField === "assetId" 
-      ? [sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn), asc(defects.zoneName)]
-      : [sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn)];
+    
+    // Multi-column sorting for better UX:
+    // - severity: DESC → asset ASC → earliest time ASC (mechanics prioritize severe defects)
+    // - assetId: ASC/DESC → zoneName ASC (group by asset, then by zone alphabetically)
+    // - other fields: single column sort
+    let orderByArray;
+    if (sortField === "severity") {
+      orderByArray = [
+        sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn),
+        asc(defects.assetId),
+        asc(inspections.datetime)
+      ];
+    } else if (sortField === "assetId") {
+      orderByArray = [
+        sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn),
+        asc(defects.zoneName)
+      ];
+    } else {
+      orderByArray = [sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn)];
+    }
 
     // Get total count using join
     const countResult = await db
