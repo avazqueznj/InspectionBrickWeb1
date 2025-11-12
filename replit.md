@@ -68,6 +68,8 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **Duplicate Detection:** Rejects duplicate inspection IDs with 409 Conflict status
 
 **Recent Improvements:**
+- **Multi-Asset Inspection Support:** Implemented full support for inspections with multiple assets (e.g., tractor + dolly + trailer). Added `assetId` to defects table and `inspection_assets` junction table. All UI components now display multiple assets using chips/badges. Asset ID column added to all defect tables (InspectionModal, print reports) so users can identify which asset each defect belongs to. (2025-11-12)
+- **Enhanced Filtering & Sorting:** Asset filters now query `inspection_assets` junction table to properly find multi-asset inspections. Defects page defaults to severity DESC → asset ASC → datetime ASC sorting (optimized for mechanics prioritizing severe defects). Asset sorting includes secondary sort by zone name alphabetically. (2025-11-12)
 - **DOT Compliance Enhancements:** Added `dotNumber` field to companies and `licensePlate` field to assets for DOT compliance reporting. Print reports now display company address, DOT number, asset license plate, parsed inspection form data table, and inspection timestamps in defects table (replacing status column). Inspection detail dialog now filters out severity 0 defects and displays form data in a formatted table. (2025-11-12)
 - **Raw Data Storage in Inspections:** Added `rawData` text column to inspections table to store original BRICKINSPECTION EDI data from device uploads for comprehensive debugging and audit trail (2025-11-12)
 - **EDI Layout Management System:** Inspection types can now be associated with one or more EDI layouts stored as large text blobs. Special "all layouts" logic: when no specific associations exist (empty junction table), the inspection type applies to ALL layouts automatically. This allows dynamic layout additions without remapping existing inspection types.
@@ -96,11 +98,12 @@ The system uses UUID surrogate primary keys with human-readable business IDs to 
 - **Inspection Type Form Fields:** `id` (UUID PK), `inspectionTypeId` (UUID FK → inspection_types.id), `formFieldName`, `formFieldType` (TEXT/NUM), `formFieldLength` (integer 0-64)
 - **Layouts:** `id` (UUID PK), `layoutId` (business ID, unique per company), `layoutData` (large text blob), `companyId` (FK), `UNIQUE(companyId, layoutId)`
 - **Inspection Type Layouts:** Junction table for many-to-many relationship between inspection types and layouts. `inspectionTypeId` (UUID FK → inspection_types.id), `layoutId` (UUID FK → layouts.id). Empty junction = "ALL LAYOUTS" logic.
-- **Inspections:** `id` (UUID PK), `companyId` (FK), `datetime` (auto-populated by DB), `inspectionType` (text, not FK), `assetId` (text, not FK), `driverName`, `driverId`, `inspectionFormData`, `inspStartTimeUtc`, `inspSubmitTimeUtc`, `inspTimeOffset`, `inspTimeDst`, `rawData` (original BRICKINSPECTION EDI data)
+- **Inspections:** `id` (UUID PK), `companyId` (FK), `datetime` (auto-populated by DB), `inspectionType` (text, not FK), `assetId` (text, not FK, legacy field), `driverName`, `driverId`, `inspectionFormData`, `inspStartTimeUtc`, `inspSubmitTimeUtc`, `inspTimeOffset`, `inspTimeDst`, `rawData` (original BRICKINSPECTION EDI data)
   - Note: `assetId` and `inspectionType` are stored as text (not FKs) to avoid stale data issues with permanent inspection records
   - Note: UTC timestamps with timezone metadata preserve device-local times for accurate reconstruction
   - Note: `rawData` stores the original EDI format data from device uploads for debugging and audit purposes
-- **Defects:** `id` (UUID PK), `inspectionId` (UUID FK), `zoneId`, `zoneName`, `componentName`, `defect`, `severity`, `inspectedAtUtc`, `driverNotes`, `status`, `repairNotes`
+- **Inspection Assets:** Junction table for multi-asset inspections. `inspectionId` (UUID FK → inspections.id), `assetId` (text). Stores all assets associated with an inspection.
+- **Defects:** `id` (UUID PK), `inspectionId` (UUID FK), `assetId` (text, identifies which asset this defect belongs to), `zoneId`, `zoneName`, `componentName`, `defect`, `severity`, `inspectedAtUtc`, `driverNotes`, `status`, `repairNotes`
 - **Upload Errors:** `id` (UUID PK), `timestamp`, `companyId`, `driverId`, `driverName`, `assetId`, `rawData`, `errorTrace`
   - Logs all failed device upload attempts with full context for debugging
 
