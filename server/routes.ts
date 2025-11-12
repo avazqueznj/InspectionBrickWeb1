@@ -1015,6 +1015,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companies = await storage.getCompanies();
       const company = companies.find(c => c.id === params.companyId);
       
+      // Get all assets for license plates
+      const assetsResult = await storage.getAssets({ 
+        companyId: params.companyId, 
+        limit: 10000 
+      });
+      
       // Generate simple HTML
       const html = `
 <!DOCTYPE html>
@@ -1025,11 +1031,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <style>
     body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 20px; }
     h1 { font-size: 24px; margin-bottom: 10px; }
+    h2 { font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
     .summary { margin-bottom: 30px; color: #666; }
     .inspection { border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; page-break-inside: avoid; }
     .inspection h2 { font-size: 16px; margin: 0 0 10px 0; }
     .info-row { margin-bottom: 5px; font-size: 14px; }
-    .label { font-weight: bold; display: inline-block; width: 120px; }
+    .label { font-weight: bold; display: inline-block; width: 150px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
     th, td { text-align: left; padding: 6px; border: 1px solid #ddd; }
     th { background-color: #f5f5f5; font-weight: bold; }
@@ -1039,6 +1046,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <h1>EQUIPMENT INSPECTION LIST</h1>
   <div class="summary">
     ${company ? `Company: ${company.name}<br>` : ''}
+    ${company?.address ? `Address: ${company.address}<br>` : ''}
+    ${company?.dotNumber ? `DOT Number: ${company.dotNumber}<br>` : ''}
     Total Inspections: ${result.total}
   </div>
   
@@ -1046,6 +1055,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const date = new Date(inspection.datetime);
     const formattedDate = date.toLocaleDateString();
     const formattedTime = date.toLocaleTimeString();
+    const asset = assetsResult.data.find(a => a.assetId === inspection.assetId);
+    
+    // Parse inspection form data
+    let formDataRows = '';
+    if (inspection.inspectionFormData) {
+      try {
+        const formData = JSON.parse(inspection.inspectionFormData);
+        formDataRows = Object.entries(formData).map(([key, value]) => `
+        <tr>
+          <td>${key}</td>
+          <td>${value || '—'}</td>
+        </tr>
+        `).join('');
+      } catch (e) {
+        formDataRows = '<tr><td colspan="2">Unable to parse form data</td></tr>';
+      }
+    }
     
     return `
   <div class="inspection">
@@ -1053,9 +1079,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <div class="info-row"><span class="label">Date/Time:</span> ${formattedDate} ${formattedTime}</div>
     <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
     <div class="info-row"><span class="label">Asset ID:</span> ${inspection.assetId}</div>
+    ${asset?.licensePlate ? `<div class="info-row"><span class="label">License Plate:</span> ${asset.licensePlate}</div>` : ''}
     <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName} (${inspection.driverId})</div>
     
+    ${formDataRows ? `
+    <h2>Inspection Form Data</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${formDataRows}
+      </tbody>
+    </table>
+    ` : ''}
+    
     ${inspection.defects && inspection.defects.length > 0 ? `
+    <h2>Defects</h2>
     <table>
       <thead>
         <tr>
@@ -1063,19 +1106,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <th>Component</th>
           <th>Defect</th>
           <th>Severity</th>
-          <th>Status</th>
+          <th>Inspection Time</th>
         </tr>
       </thead>
       <tbody>
-        ${inspection.defects.map(d => `
+        ${inspection.defects.map(d => {
+          const inspTime = d.inspectedAtUtc 
+            ? new Date(d.inspectedAtUtc).toLocaleString() 
+            : new Date(inspection.datetime).toLocaleString();
+          return `
         <tr>
           <td>${d.zoneName}</td>
           <td>${d.componentName}</td>
           <td>${d.defect}</td>
           <td>${d.severity}</td>
-          <td>${d.status}</td>
+          <td>${inspTime}</td>
         </tr>
-        `).join('')}
+        `;
+        }).join('')}
       </tbody>
     </table>
     ` : '<div style="margin-top: 10px; color: #666;">No defects found.</div>'}
@@ -1106,14 +1154,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).send("<html><body><h1>Access denied</h1></body></html>");
       }
       
-      // Get company name
+      // Get company details
       const companies = await storage.getCompanies();
       const company = companies.find(c => c.id === inspection.companyId);
+      
+      // Get asset details for license plate
+      const assetsResult = await storage.getAssets({ 
+        companyId: inspection.companyId, 
+        limit: 10000 
+      });
+      const asset = assetsResult.data.find(a => a.assetId === inspection.assetId);
       
       // Format date
       const date = new Date(inspection.datetime);
       const formattedDate = date.toLocaleDateString();
       const formattedTime = date.toLocaleTimeString();
+      
+      // Parse inspection form data
+      let formDataRows = '';
+      if (inspection.inspectionFormData) {
+        try {
+          const formData = JSON.parse(inspection.inspectionFormData);
+          formDataRows = Object.entries(formData).map(([key, value]) => `
+          <tr>
+            <td>${key}</td>
+            <td>${value || '—'}</td>
+          </tr>
+          `).join('');
+        } catch (e) {
+          formDataRows = '<tr><td colspan="2">Unable to parse form data</td></tr>';
+        }
+      }
       
       // Generate simple HTML
       const html = `
@@ -1137,13 +1208,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <h1>EQUIPMENT INSPECTION REPORT</h1>
   
   <div class="info-row"><span class="label">Company:</span> ${company?.name || inspection.companyId}</div>
+  ${company?.address ? `<div class="info-row"><span class="label">Address:</span> ${company.address}</div>` : ''}
+  ${company?.dotNumber ? `<div class="info-row"><span class="label">DOT Number:</span> ${company.dotNumber}</div>` : ''}
   <div class="info-row"><span class="label">Inspection ID:</span> ${inspection.id}</div>
   <div class="info-row"><span class="label">Date:</span> ${formattedDate}</div>
   <div class="info-row"><span class="label">Time:</span> ${formattedTime}</div>
   <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
   <div class="info-row"><span class="label">Asset ID:</span> ${inspection.assetId}</div>
+  ${asset?.licensePlate ? `<div class="info-row"><span class="label">License Plate:</span> ${asset.licensePlate}</div>` : ''}
   <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName}</div>
   <div class="info-row"><span class="label">Driver ID:</span> ${inspection.driverId}</div>
+  
+  ${formDataRows ? `
+  <h2>Inspection Form Data</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${formDataRows}
+    </tbody>
+  </table>
+  ` : ''}
   
   <h2>Defects</h2>
   ${inspection.defects && inspection.defects.length > 0 ? `
@@ -1154,19 +1243,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <th>Component</th>
         <th>Defect</th>
         <th>Severity</th>
-        <th>Status</th>
+        <th>Inspection Time</th>
       </tr>
     </thead>
     <tbody>
-      ${inspection.defects.map(d => `
+      ${inspection.defects.map(d => {
+        const inspTime = d.inspectedAtUtc 
+          ? new Date(d.inspectedAtUtc).toLocaleString() 
+          : new Date(inspection.datetime).toLocaleString();
+        return `
       <tr>
         <td>${d.zoneName}</td>
         <td>${d.componentName}</td>
         <td>${d.defect}</td>
         <td>${d.severity}</td>
-        <td>${d.status}</td>
+        <td>${inspTime}</td>
       </tr>
-      `).join('')}
+      `;
+      }).join('')}
     </tbody>
   </table>
   ` : '<p>No defects found.</p>'}
