@@ -505,6 +505,16 @@ async function seed() {
     
     console.log(`✅ Created ${necInspections.length + walmartInspections.length + fedexInspections.length} inspections (${necInspections.length} NEC, ${walmartInspections.length} WALMART, ${fedexInspections.length} FEDEX)`);
 
+    // Populate inspection_assets for all single-asset inspections
+    console.log("🔗 Creating inspection_assets for single-asset inspections...");
+    const singleAssetAssociations = [
+      ...necInspections.map(insp => ({ inspectionId: insp.id, assetId: insp.assetId })),
+      ...walmartInspections.map(insp => ({ inspectionId: insp.id, assetId: insp.assetId })),
+      ...fedexInspections.map(insp => ({ inspectionId: insp.id, assetId: insp.assetId })),
+    ];
+    await db.insert(inspectionAssets).values(singleAssetAssociations);
+    console.log(`✅ Created ${singleAssetAssociations.length} single-asset associations`);
+
     // Create multi-asset inspection test data
     console.log("🚛 Creating multi-asset inspection test data...");
     

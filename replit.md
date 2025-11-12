@@ -80,6 +80,7 @@ The application features a dark industrial theme with orange (#FF5722) branding 
 - **Asset Update Bug Fix:** PATCH /api/assets/:assetId now uses limit: 10000 to fetch all assets for authorization check, fixing 404 errors when updating assets beyond first pagination page.
 - **Page Scrolling Fix:** Main container changed from overflow-hidden to overflow-auto, enabling proper scrolling on all pages and making content below the fold accessible.
 - **Asset Filter SQL Bug Fix:** Fixed getInspections to use db.select().from(inspections) instead of db.query.inspections.findMany() to properly handle raw SQL EXISTS clauses for multi-asset inspection filtering. (2025-11-12)
+- **Inspection Assets Junction Table:** Updated seed script to populate inspection_assets for ALL inspections (both single and multi-asset), not just multi-asset test data. This ensures asset filters show all assets and correctly find all inspections. (2025-11-12)
 
 ### Database Schema
 
