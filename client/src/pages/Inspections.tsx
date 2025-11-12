@@ -254,7 +254,7 @@ export default function Inspections() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center justify-center min-w-8 h-6 px-2 rounded-full bg-muted text-xs font-medium">
-                            {inspection.defects?.length || 0}
+                            {inspection.defects?.filter(d => d.severity > 0).length || 0}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">

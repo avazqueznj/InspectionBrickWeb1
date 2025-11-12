@@ -918,12 +918,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDefectsByInspectionId(inspectionId: string): Promise<Defect[]> {
-    return await db.select().from(defects).where(
-      and(
-        eq(defects.inspectionId, inspectionId),
-        sql`${defects.severity} > 0`
-      )
-    );
+    return await db.select().from(defects).where(eq(defects.inspectionId, inspectionId));
   }
 
   async createDefect(insertDefect: InsertDefect): Promise<Defect> {
