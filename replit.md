@@ -74,10 +74,12 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 
 **Defects Table Data Model:**
 - All records in the `defects` table represent **inspection checks** (components that were inspected)
-- **Severity = 0**: Component was checked, NO issue found (preserved for audit trail)
-- **Severity > 0**: Component was checked, defect WAS found (needs repair)
+- **Severity Scale: 0-10** where 0 = no defect found (audit trail only), 1-10 = actual defects
+- **Severity = 0**: Component was checked, NO issue found (preserved for audit trail, never displayed)
+- **Severity 1-10**: Component was checked, defect WAS found (needs repair)
 - A "defect" is simply a **check record with a defect noted** (severity > 0)
 - This model ensures complete inspection coverage tracking while distinguishing actual defects
+- **Severity Thresholds**: Critical (8-10), High (6-7), Medium (4-5), Low (1-3)
 
 **Mechanic Workflow - Real-Time Monitoring:**
 - Mechanics keep the Defects page open as a **live monitoring dashboard**
@@ -91,7 +93,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - **DOT Compliance:** Includes `dotNumber` for companies and `licensePlate` for assets, displayed in print reports.
 - **EDI Layout Management:** Inspection types can be associated with EDI layouts stored as text blobs, supporting dynamic layout additions.
 - **Live Defect Monitoring:** Defects page filters to severity > 0 only (actual defects) and sorts by severity DESC → time DESC for real-time monitoring workflow.
-- **Severity Filter:** Dropdown filter with color-coded severity ranges (Critical ≥75, High 50-74, Medium 25-49, Low 0-24).
+- **Severity Filter:** Dropdown filter with color-coded severity ranges (Critical 8-10, High 6-7, Medium 4-5, Low 1-3).
 - **Inspection Context Button:** "View Inspection" button on each defect row shows full parent inspection details in modal.
 - **Database Constraints:** Utilizes `CHECK` constraints for non-empty surrogate IDs.
 

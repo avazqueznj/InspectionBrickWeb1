@@ -177,11 +177,11 @@ export default function Defects() {
   );
 
   const getSeverityBadge = (severity: number) => {
-    if (severity >= 75) {
+    if (severity >= 8) {
       return <Badge variant="destructive" data-testid={`badge-severity-${severity}`}>{severity}</Badge>;
-    } else if (severity >= 50) {
+    } else if (severity >= 6) {
       return <Badge className="bg-orange-600 hover:bg-orange-700" data-testid={`badge-severity-${severity}`}>{severity}</Badge>;
-    } else if (severity >= 25) {
+    } else if (severity >= 4) {
       return <Badge className="bg-yellow-600 hover:bg-yellow-700" data-testid={`badge-severity-${severity}`}>{severity}</Badge>;
     } else {
       return <Badge variant="secondary" data-testid={`badge-severity-${severity}`}>{severity}</Badge>;
@@ -340,10 +340,10 @@ export default function Defects() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="critical">Critical (75-100)</SelectItem>
-                <SelectItem value="high">High (50-74)</SelectItem>
-                <SelectItem value="medium">Medium (25-49)</SelectItem>
-                <SelectItem value="low">Low (0-24)</SelectItem>
+                <SelectItem value="critical">Critical (8-10)</SelectItem>
+                <SelectItem value="high">High (6-7)</SelectItem>
+                <SelectItem value="medium">Medium (4-5)</SelectItem>
+                <SelectItem value="low">Low (1-3)</SelectItem>
               </SelectContent>
             </Select>
           </div>

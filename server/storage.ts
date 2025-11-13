@@ -1008,11 +1008,12 @@ export class DatabaseStorage implements IStorage {
     }
     if (severityLevel) {
       // Map severity levels to numeric ranges (aligned with UI badge thresholds)
+      // Scale: 0-10 where 0 = no defect (audit only), 1-10 = actual defects
       const severityRanges = {
-        critical: { min: 75, max: 100 },
-        high: { min: 50, max: 74 },
-        medium: { min: 25, max: 49 },
-        low: { min: 0, max: 24 },
+        critical: { min: 8, max: 10 },
+        high: { min: 6, max: 7 },
+        medium: { min: 4, max: 5 },
+        low: { min: 1, max: 3 },
       };
       const range = severityRanges[severityLevel];
       conditions.push(

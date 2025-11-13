@@ -254,7 +254,7 @@ export const insertDefectSchema = createInsertSchema(defects).omit({
   id: true,
 }).extend({
   status: z.enum(["open", "pending", "repaired"]),
-  severity: z.number().min(0).max(100),
+  severity: z.number().min(0).max(10),
 });
 
 export const insertInspectionTypeSchema = createInsertSchema(inspectionTypes).omit({

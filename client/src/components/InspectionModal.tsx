@@ -83,7 +83,7 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
                       </span>
                     ))
                   ) : (
-                    <span className="text-sm font-medium font-mono">{inspection.assetId}</span>
+                    <span className="text-sm font-medium font-mono text-muted-foreground">No assets</span>
                   )}
                 </div>
               </div>
