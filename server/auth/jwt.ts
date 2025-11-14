@@ -7,7 +7,7 @@ const DEVICE_TOKEN_EXPIRATION = '87600h'; // 10 years for device tokens
 
 interface TokenPayload {
   userId: string;
-  companyId: string;
+  companyId: string | null;
   isSuperuser: boolean;
   isDeviceToken?: boolean;
 }

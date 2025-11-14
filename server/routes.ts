@@ -374,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all companies (protected)
-  app.get("/api/companies", requireAuth, async (req, res) => {
+  app.get("/api/companies", requireAuth, async (req: AuthRequest, res) => {
     console.log(`🏢 [Routes] GET /api/companies - User: ${req.session.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
     
     try {
@@ -399,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // === USER ROUTES ===
 
   // Get available filter values for users (protected)
-  app.get("/api/users/filter-values", requireAuth, async (req, res) => {
+  app.get("/api/users/filter-values", requireAuth, async (req: AuthRequest, res) => {
     console.log(`🔍 [Routes] GET /api/users/filter-values - User: ${req.session.userId}`);
     
     try {
@@ -421,7 +421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all users (protected)
-  app.get("/api/users", requireAuth, async (req, res) => {
+  app.get("/api/users", requireAuth, async (req: AuthRequest, res) => {
     console.log(`👥 [Routes] GET /api/users - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
@@ -447,7 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new user (protected)
-  app.post("/api/users", requireAuth, async (req, res) => {
+  app.post("/api/users", requireAuth, async (req: AuthRequest, res) => {
     console.log(`➕ [Routes] POST /api/users - Creating user: ${req.body?.userId || 'UNKNOWN'}`);
     
     try {
@@ -480,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a user (protected)
-  app.patch("/api/users/:userId", requireAuth, async (req, res) => {
+  app.patch("/api/users/:userId", requireAuth, async (req: AuthRequest, res) => {
     const { userId } = req.params;
     console.log(`🔄 [Routes] PATCH /api/users/${userId} - Updating user`);
     
@@ -524,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a user (protected)
-  app.delete("/api/users/:userId", requireAuth, async (req, res) => {
+  app.delete("/api/users/:userId", requireAuth, async (req: AuthRequest, res) => {
     const { userId } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/users/${userId}`);
     
@@ -564,7 +564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // === ASSET ROUTES ===
 
   // Get available filter values for assets (protected)
-  app.get("/api/assets/filter-values", requireAuth, async (req, res) => {
+  app.get("/api/assets/filter-values", requireAuth, async (req: AuthRequest, res) => {
     console.log(`🔍 [Routes] GET /api/assets/filter-values - User: ${req.session.userId}`);
     
     try {
@@ -586,7 +586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all assets (protected)
-  app.get("/api/assets", requireAuth, async (req, res) => {
+  app.get("/api/assets", requireAuth, async (req: AuthRequest, res) => {
     console.log(`📦 [Routes] GET /api/assets - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
@@ -612,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new asset (protected)
-  app.post("/api/assets", requireAuth, async (req, res) => {
+  app.post("/api/assets", requireAuth, async (req: AuthRequest, res) => {
     console.log(`➕ [Routes] POST /api/assets - Creating asset: ${req.body?.assetId || 'UNKNOWN'}`);
     
     try {
@@ -645,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update an asset (protected)
-  app.patch("/api/assets/:assetId", requireAuth, async (req, res) => {
+  app.patch("/api/assets/:assetId", requireAuth, async (req: AuthRequest, res) => {
     const { assetId } = req.params;
     console.log(`🔄 [Routes] PATCH /api/assets/${assetId} - Updating asset`);
     
@@ -689,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // === LAYOUT ROUTES ===
 
   // Get all layouts for a company (protected)
-  app.get("/api/layouts", requireAuth, async (req, res) => {
+  app.get("/api/layouts", requireAuth, async (req: AuthRequest, res) => {
     console.log(`📋 [Routes] GET /api/layouts - User: ${req.session.userId}`);
     
     try {
@@ -716,7 +716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get layout by layoutId (protected)
-  app.get("/api/layouts/:layoutId", requireAuth, async (req, res) => {
+  app.get("/api/layouts/:layoutId", requireAuth, async (req: AuthRequest, res) => {
     const { layoutId } = req.params;
     console.log(`🔍 [Routes] GET /api/layouts/${layoutId} - User: ${req.session.userId}`);
     
@@ -737,7 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create layout (protected)
-  app.post("/api/layouts", requireAuth, async (req, res) => {
+  app.post("/api/layouts", requireAuth, async (req: AuthRequest, res) => {
     console.log(`➕ [Routes] POST /api/layouts - Creating layout: ${req.body?.layoutId || 'UNKNOWN'}`);
     
     try {
@@ -766,7 +766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update layout (protected)
-  app.patch("/api/layouts/:layoutId", requireAuth, async (req, res) => {
+  app.patch("/api/layouts/:layoutId", requireAuth, async (req: AuthRequest, res) => {
     const { layoutId } = req.params;
     console.log(`🔄 [Routes] PATCH /api/layouts/${layoutId} - Updating layout`);
     
@@ -794,7 +794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete layout (protected)
-  app.delete("/api/layouts/:id", requireAuth, async (req, res) => {
+  app.delete("/api/layouts/:id", requireAuth, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/layouts/${id} - Deleting layout`);
     
@@ -831,7 +831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get zones for a layout (protected)
-  app.get("/api/layouts/:layoutId/zones", requireAuth, async (req, res) => {
+  app.get("/api/layouts/:layoutId/zones", requireAuth, async (req: AuthRequest, res) => {
     const { layoutId } = req.params;
     console.log(`📋 [Routes] GET /api/layouts/${layoutId}/zones - Fetching zones`);
     
@@ -854,7 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create zone (protected)
-  app.post("/api/layouts/:layoutId/zones", requireAuth, async (req, res) => {
+  app.post("/api/layouts/:layoutId/zones", requireAuth, async (req: AuthRequest, res) => {
     const { layoutId } = req.params;
     console.log(`➕ [Routes] POST /api/layouts/${layoutId}/zones - Creating zone`);
     
@@ -885,7 +885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update zone (protected)
-  app.patch("/api/zones/:id", requireAuth, async (req, res) => {
+  app.patch("/api/zones/:id", requireAuth, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🔄 [Routes] PATCH /api/zones/${id} - Updating zone`);
     
@@ -911,7 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete zone (protected)
-  app.delete("/api/zones/:id", requireAuth, async (req, res) => {
+  app.delete("/api/zones/:id", requireAuth, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/zones/${id} - Deleting zone`);
     
@@ -932,7 +932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get components for a zone (protected)
-  app.get("/api/zones/:zoneId/components", requireAuth, async (req, res) => {
+  app.get("/api/zones/:zoneId/components", requireAuth, async (req: AuthRequest, res) => {
     const { zoneId } = req.params;
     console.log(`📋 [Routes] GET /api/zones/${zoneId}/components - Fetching components`);
     
@@ -951,7 +951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create component (protected)
-  app.post("/api/zones/:zoneId/components", requireAuth, async (req, res) => {
+  app.post("/api/zones/:zoneId/components", requireAuth, async (req: AuthRequest, res) => {
     const { zoneId } = req.params;
     console.log(`➕ [Routes] POST /api/zones/${zoneId}/components - Creating component`);
     
@@ -978,7 +978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update component (protected)
-  app.patch("/api/components/:id", requireAuth, async (req, res) => {
+  app.patch("/api/components/:id", requireAuth, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🔄 [Routes] PATCH /api/components/${id} - Updating component`);
     
@@ -1003,7 +1003,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete component (protected)
-  app.delete("/api/components/:id", requireAuth, async (req, res) => {
+  app.delete("/api/components/:id", requireAuth, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/components/${id} - Deleting component`);
     
@@ -1024,7 +1024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get defects for a component (protected)
-  app.get("/api/components/:componentId/defects", requireAuth, async (req, res) => {
+  app.get("/api/components/:componentId/defects", requireAuth, async (req: AuthRequest, res) => {
     const { componentId } = req.params;
     console.log(`📋 [Routes] GET /api/components/${componentId}/defects - Fetching defects`);
     
@@ -1043,7 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create component defect (protected)
-  app.post("/api/components/:componentId/defects", requireAuth, async (req, res) => {
+  app.post("/api/components/:componentId/defects", requireAuth, async (req: AuthRequest, res) => {
     const { componentId } = req.params;
     console.log(`➕ [Routes] POST /api/components/${componentId}/defects - Creating defect`);
     
@@ -1070,7 +1070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update component defect (protected)
-  app.patch("/api/component-defects/:id", requireAuth, async (req, res) => {
+  app.patch("/api/component-defects/:id", requireAuth, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🔄 [Routes] PATCH /api/component-defects/${id} - Updating defect`);
     
@@ -1095,7 +1095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete component defect (protected)
-  app.delete("/api/component-defects/:id", requireAuth, async (req, res) => {
+  app.delete("/api/component-defects/:id", requireAuth, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/component-defects/${id} - Deleting defect`);
     
@@ -1118,7 +1118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // === INSPECTION TYPE ROUTES ===
 
   // Get available filter values for inspection types (protected)
-  app.get("/api/inspection-types/filter-values", requireAuth, async (req, res) => {
+  app.get("/api/inspection-types/filter-values", requireAuth, async (req: AuthRequest, res) => {
     console.log(`🔍 [Routes] GET /api/inspection-types/filter-values - User: ${req.session.userId}`);
     
     try {
@@ -1139,7 +1139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all inspection types (protected)
-  app.get("/api/inspection-types", requireAuth, async (req, res) => {
+  app.get("/api/inspection-types", requireAuth, async (req: AuthRequest, res) => {
     console.log(`📋 [Routes] GET /api/inspection-types - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
@@ -1165,7 +1165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get a single inspection type with form fields (protected)
-  app.get("/api/inspection-types/:inspectionTypeId", requireAuth, async (req, res) => {
+  app.get("/api/inspection-types/:inspectionTypeId", requireAuth, async (req: AuthRequest, res) => {
     const { inspectionTypeId } = req.params;
     console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeId} - User: ${req.session.userId}`);
     
@@ -1194,7 +1194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new inspection type (protected)
-  app.post("/api/inspection-types", requireAuth, async (req, res) => {
+  app.post("/api/inspection-types", requireAuth, async (req: AuthRequest, res) => {
     console.log(`➕ [Routes] POST /api/inspection-types - Creating inspection type: ${req.body?.inspectionTypeId || 'UNKNOWN'}`);
     
     try {
@@ -1234,7 +1234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update an inspection type (protected)
-  app.patch("/api/inspection-types/:inspectionTypeId", requireAuth, async (req, res) => {
+  app.patch("/api/inspection-types/:inspectionTypeId", requireAuth, async (req: AuthRequest, res) => {
     const { inspectionTypeId } = req.params;
     console.log(`🔄 [Routes] PATCH /api/inspection-types/${inspectionTypeId} - Updating inspection type`);
     
@@ -1281,7 +1281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get form fields for an inspection type (protected)
-  app.get("/api/inspection-types/:inspectionTypeId/form-fields", requireAuth, async (req, res) => {
+  app.get("/api/inspection-types/:inspectionTypeId/form-fields", requireAuth, async (req: AuthRequest, res) => {
     const { inspectionTypeId } = req.params;
     console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeId}/form-fields - Fetching form fields`);
     
@@ -1310,7 +1310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new form field for an inspection type (protected)
-  app.post("/api/inspection-types/:inspectionTypeId/form-fields", requireAuth, async (req, res) => {
+  app.post("/api/inspection-types/:inspectionTypeId/form-fields", requireAuth, async (req: AuthRequest, res) => {
     const { inspectionTypeId } = req.params;
     console.log(`➕ [Routes] POST /api/inspection-types/${inspectionTypeId}/form-fields - Creating form field`);
     
@@ -1349,7 +1349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a form field (protected)
-  app.patch("/api/inspection-type-form-fields/:id", requireAuth, async (req, res) => {
+  app.patch("/api/inspection-type-form-fields/:id", requireAuth, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🔄 [Routes] PATCH /api/inspection-type-form-fields/${id} - Updating form field`);
     
@@ -1393,7 +1393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a form field (protected)
-  app.delete("/api/inspection-type-form-fields/:id", requireAuth, async (req, res) => {
+  app.delete("/api/inspection-type-form-fields/:id", requireAuth, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/inspection-type-form-fields/${id}`);
     
@@ -1434,7 +1434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // === INSPECTION ROUTES ===
 
   // Get available filter values for inspections (protected)
-  app.get("/api/inspections/filter-values", requireAuth, async (req, res) => {
+  app.get("/api/inspections/filter-values", requireAuth, async (req: AuthRequest, res) => {
     console.log(`🔍 [Routes] GET /api/inspections/filter-values - User: ${req.session.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
     
     try {
@@ -1456,7 +1456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all inspections with their defects (with query params for search, sort, pagination) (protected)
-  app.get("/api/inspections", requireAuth, async (req, res) => {
+  app.get("/api/inspections", requireAuth, async (req: AuthRequest, res) => {
     console.log(`📋 [Routes] GET /api/inspections - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
@@ -1484,7 +1484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Print inspection list - serves simple HTML in new tab (protected)
   // NOTE: This MUST be before the /:id route to avoid Express matching "print-list" as an ID
-  app.get("/api/inspections/print-list", requireAuth, async (req, res) => {
+  app.get("/api/inspections/print-list", requireAuth, async (req: AuthRequest, res) => {
     try {
       const params = queryParamsSchema.parse(req.query);
       
@@ -1541,7 +1541,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const date = new Date(inspection.datetime);
     const formattedDate = date.toLocaleDateString();
     const formattedTime = date.toLocaleTimeString();
-    const asset = assetsResult.data.find(a => a.assetId === inspection.assetId);
+    const primaryAssetId = inspection.assets && inspection.assets.length > 0 ? inspection.assets[0] : 'N/A';
+    const asset = assetsResult.data.find(a => a.assetId === primaryAssetId);
     
     // Parse inspection form data
     let formDataRows = '';
@@ -1561,10 +1562,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     return `
   <div class="inspection">
-    <h2>Inspection: ${inspection.assetId} - ${formattedDate}</h2>
+    <h2>Inspection: ${primaryAssetId} - ${formattedDate}</h2>
     <div class="info-row"><span class="label">Date/Time:</span> ${formattedDate} ${formattedTime}</div>
     <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
-    <div class="info-row"><span class="label">Asset ID:</span> ${inspection.assetId}</div>
+    <div class="info-row"><span class="label">Asset ID${inspection.assets && inspection.assets.length > 1 ? 's' : ''}:</span> ${inspection.assets && inspection.assets.length > 0 ? inspection.assets.join(', ') : 'N/A'}</div>
     ${asset?.licensePlate ? `<div class="info-row"><span class="label">License Plate:</span> ${asset.licensePlate}</div>` : ''}
     <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName} (${inspection.driverId})</div>
     
@@ -1643,7 +1644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Print single inspection - serves simple HTML in new tab (protected)
-  app.get("/api/inspections/:id/print", requireAuth, async (req, res) => {
+  app.get("/api/inspections/:id/print", requireAuth, async (req: AuthRequest, res) => {
     try {
       const inspection = await storage.getInspection(req.params.id);
       if (!inspection) {
@@ -1668,8 +1669,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build asset info string
       const assetIds = inspection.assets && inspection.assets.length > 0 
         ? inspection.assets 
-        : [inspection.assetId];
+        : ['N/A'];
       const assetInfo = assetIds.map(assetId => {
+        if (assetId === 'N/A') return assetId;
         const asset = assetsResult.data.find(a => a.assetId === assetId);
         const licensePlate = asset?.licensePlate ? ` (${asset.licensePlate})` : '';
         return `${assetId}${licensePlate}`;
@@ -1800,7 +1802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get a single inspection by ID (protected)
-  app.get("/api/inspections/:id", requireAuth, async (req, res) => {
+  app.get("/api/inspections/:id", requireAuth, async (req: AuthRequest, res) => {
     try {
       const inspection = await storage.getInspection(req.params.id);
       if (!inspection) {
@@ -1820,7 +1822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new inspection (protected)
-  app.post("/api/inspections", requireAuth, async (req, res) => {
+  app.post("/api/inspections", requireAuth, async (req: AuthRequest, res) => {
     try {
       const validatedData = insertInspectionSchema.parse(req.body);
       
@@ -1841,7 +1843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update an inspection (protected)
-  app.patch("/api/inspections/:id", requireAuth, async (req, res) => {
+  app.patch("/api/inspections/:id", requireAuth, async (req: AuthRequest, res) => {
     try {
       // First, verify user has access to this inspection
       const existingInspection = await storage.getInspection(req.params.id);
@@ -1872,7 +1874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete an inspection (protected)
-  app.delete("/api/inspections/:id", requireAuth, async (req, res) => {
+  app.delete("/api/inspections/:id", requireAuth, async (req: AuthRequest, res) => {
     try {
       // First, verify user has access to this inspection
       const existingInspection = await storage.getInspection(req.params.id);
@@ -1895,7 +1897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // === DEFECT ROUTES ===
 
   // Get available filter values for defects (protected)
-  app.get("/api/defects/filter-values", requireAuth, async (req, res) => {
+  app.get("/api/defects/filter-values", requireAuth, async (req: AuthRequest, res) => {
     console.log(`🔍 [Routes] GET /api/defects/filter-values - User: ${req.session.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
     
     try {
@@ -1917,7 +1919,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all defects with pagination, search, and filters (protected)
-  app.get("/api/defects", requireAuth, async (req, res) => {
+  app.get("/api/defects", requireAuth, async (req: AuthRequest, res) => {
     console.log(`📋 [Routes] GET /api/defects - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
@@ -1944,7 +1946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new defect (protected)
-  app.post("/api/defects", requireAuth, async (req, res) => {
+  app.post("/api/defects", requireAuth, async (req: AuthRequest, res) => {
     try {
       const validatedData = insertDefectSchema.parse(req.body);
       
@@ -1970,7 +1972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a defect (protected)
-  app.patch("/api/defects/:id", requireAuth, async (req, res) => {
+  app.patch("/api/defects/:id", requireAuth, async (req: AuthRequest, res) => {
     try {
       // Get the existing defect
       const existingDefect = await storage.getDefectById(req.params.id);
@@ -2008,7 +2010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a defect (protected)
-  app.delete("/api/defects/:id", requireAuth, async (req, res) => {
+  app.delete("/api/defects/:id", requireAuth, async (req: AuthRequest, res) => {
     try {
       // Get the existing defect
       const existingDefect = await storage.getDefectById(req.params.id);
@@ -2036,7 +2038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get defects by inspection ID (protected)
-  app.get("/api/inspections/:id/defects", requireAuth, async (req, res) => {
+  app.get("/api/inspections/:id/defects", requireAuth, async (req: AuthRequest, res) => {
     try {
       // Verify user has access to the parent inspection
       const inspection = await storage.getInspection(req.params.id);
