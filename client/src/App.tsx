@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,6 +13,7 @@ import InspectionTypes from "@/pages/InspectionTypes";
 import Defects from "@/pages/Defects";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
 
 function ProtectedRouter() {
   return (
@@ -29,6 +30,14 @@ function ProtectedRouter() {
 
 function AppContent() {
   const { user, isLoading } = useAuth();
+  const [location, setLocation] = useLocation();
+
+  // Redirect to /login if not authenticated and not already on login page
+  useEffect(() => {
+    if (!isLoading && !user && location !== "/login") {
+      setLocation("/login");
+    }
+  }, [user, isLoading, location, setLocation]);
 
   if (isLoading) {
     return (
@@ -38,6 +47,12 @@ function AppContent() {
     );
   }
 
+  // Show login page for /login route
+  if (location === "/login") {
+    return <Login />;
+  }
+
+  // Redirect to login if not authenticated (belt and suspenders with useEffect above)
   if (!user) {
     return <Login />;
   }
