@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -32,7 +32,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Trash2, Edit2, FolderTree } from "lucide-react";
+import { Plus, Trash2, Edit2, FolderTree, Pencil } from "lucide-react";
 
 interface Layout {
   id: string;
@@ -467,10 +467,43 @@ function ZoneManager({ layoutId, zones }: { layoutId: string; zones: LayoutZone[
 function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
   const { toast } = useToast();
   const [deleteZoneId, setDeleteZoneId] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editZoneName, setEditZoneName] = useState(zone.zoneName);
+  const [editZoneTag, setEditZoneTag] = useState(zone.zoneTag || "");
+
+  // Sync edit state when dialog opens or zone props change
+  useEffect(() => {
+    if (isEditDialogOpen) {
+      setEditZoneName(zone.zoneName);
+      setEditZoneTag(zone.zoneTag || "");
+    }
+  }, [isEditDialogOpen, zone.zoneName, zone.zoneTag]);
 
   // Fetch components for this zone
   const { data: components = [] } = useQuery<LayoutZoneComponent[]>({
     queryKey: ["/api/zones", zone.id, "components"],
+  });
+
+  // Update zone mutation
+  const updateZoneMutation = useMutation({
+    mutationFn: async (data: { zoneName: string; zoneTag: string }) => {
+      return apiRequest("PATCH", `/api/zones/${zone.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/layouts", layoutId, "zones"] });
+      toast({
+        title: "Success",
+        description: "Zone updated successfully",
+      });
+      setIsEditDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update zone",
+        variant: "destructive",
+      });
+    },
   });
 
   // Delete zone mutation
@@ -496,6 +529,18 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
     },
   });
 
+  const handleUpdateZone = () => {
+    if (!editZoneName.trim()) {
+      toast({
+        title: "Error",
+        description: "Zone name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateZoneMutation.mutate({ zoneName: editZoneName, zoneTag: editZoneTag });
+  };
+
   return (
     <>
       <AccordionItem value={zone.id} className="border rounded-lg px-4" data-testid={`zone-${zone.id}`}>
@@ -509,18 +554,32 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
                 </span>
               )}
             </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteZoneId(zone.id);
-              }}
-              data-testid={`button-delete-zone-${zone.id}`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditDialogOpen(true);
+                }}
+                data-testid={`button-edit-zone-${zone.id}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteZoneId(zone.id);
+                }}
+                data-testid={`button-delete-zone-${zone.id}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </AccordionTrigger>
         <AccordionContent>
@@ -529,6 +588,54 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
           </div>
         </AccordionContent>
       </AccordionItem>
+
+      {/* Edit Zone Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent data-testid="dialog-edit-zone">
+          <DialogHeader>
+            <DialogTitle>Edit Zone</DialogTitle>
+            <DialogDescription>
+              Update the zone name and tag
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editZoneName">Zone Name</Label>
+              <Input
+                id="editZoneName"
+                value={editZoneName}
+                onChange={(e) => setEditZoneName(e.target.value)}
+                data-testid="input-edit-zone-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editZoneTag">Zone Tag (Optional)</Label>
+              <Input
+                id="editZoneTag"
+                value={editZoneTag}
+                onChange={(e) => setEditZoneTag(e.target.value)}
+                data-testid="input-edit-zone-tag"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              data-testid="button-cancel-edit-zone"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateZone}
+              disabled={updateZoneMutation.isPending}
+              data-testid="button-confirm-edit-zone"
+            >
+              {updateZoneMutation.isPending ? "Updating..." : "Update"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Zone Confirmation */}
       <AlertDialog open={deleteZoneId === zone.id} onOpenChange={() => setDeleteZoneId(null)}>
@@ -679,11 +786,44 @@ function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; 
   const { toast } = useToast();
   const [deleteComponentId, setDeleteComponentId] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editComponentName, setEditComponentName] = useState(component.componentName);
+  const [editInstructions, setEditInstructions] = useState(component.componentInspectionInstructions || "");
+
+  // Sync edit state when dialog opens or component props change
+  useEffect(() => {
+    if (isEditDialogOpen) {
+      setEditComponentName(component.componentName);
+      setEditInstructions(component.componentInspectionInstructions || "");
+    }
+  }, [isEditDialogOpen, component.componentName, component.componentInspectionInstructions]);
 
   // Fetch defects for this component
   const { data: defects = [] } = useQuery<ComponentDefect[]>({
     queryKey: ["/api/components", component.id, "defects"],
     enabled: isExpanded,
+  });
+
+  // Update component mutation
+  const updateComponentMutation = useMutation({
+    mutationFn: async (data: { componentName: string; componentInspectionInstructions: string }) => {
+      return apiRequest("PATCH", `/api/components/${component.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/zones", zoneId, "components"] });
+      toast({
+        title: "Success",
+        description: "Component updated successfully",
+      });
+      setIsEditDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update component",
+        variant: "destructive",
+      });
+    },
   });
 
   // Delete component mutation
@@ -709,6 +849,21 @@ function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; 
     },
   });
 
+  const handleUpdateComponent = () => {
+    if (!editComponentName.trim()) {
+      toast({
+        title: "Error",
+        description: "Component name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateComponentMutation.mutate({ 
+      componentName: editComponentName, 
+      componentInspectionInstructions: editInstructions 
+    });
+  };
+
   return (
     <>
       <Card className="bg-muted/50" data-testid={`component-${component.id}`}>
@@ -733,15 +888,26 @@ function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; 
                 </p>
               )}
             </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={() => setDeleteComponentId(component.id)}
-              data-testid={`button-delete-component-${component.id}`}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => setIsEditDialogOpen(true)}
+                data-testid={`button-edit-component-${component.id}`}
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => setDeleteComponentId(component.id)}
+                data-testid={`button-delete-component-${component.id}`}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
 
           {isExpanded && (
@@ -751,6 +917,54 @@ function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; 
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Component Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent data-testid="dialog-edit-component">
+          <DialogHeader>
+            <DialogTitle>Edit Component</DialogTitle>
+            <DialogDescription>
+              Update the component name and inspection instructions
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editComponentName">Component Name</Label>
+              <Input
+                id="editComponentName"
+                value={editComponentName}
+                onChange={(e) => setEditComponentName(e.target.value)}
+                data-testid="input-edit-component-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editInstructions">Inspection Instructions (Optional)</Label>
+              <Input
+                id="editInstructions"
+                value={editInstructions}
+                onChange={(e) => setEditInstructions(e.target.value)}
+                data-testid="input-edit-component-instructions"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              data-testid="button-cancel-edit-component"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateComponent}
+              disabled={updateComponentMutation.isPending}
+              data-testid="button-confirm-edit-component"
+            >
+              {updateComponentMutation.isPending ? "Updating..." : "Update"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Component Confirmation */}
       <AlertDialog open={deleteComponentId === component.id} onOpenChange={() => setDeleteComponentId(null)}>
@@ -928,6 +1142,41 @@ function DefectManager({ componentId, defects }: { componentId: string; defects:
 function DefectItem({ defect, componentId }: { defect: ComponentDefect; componentId: string }) {
   const { toast } = useToast();
   const [deleteDefectId, setDeleteDefectId] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editDefectName, setEditDefectName] = useState(defect.defectName);
+  const [editMaxSeverity, setEditMaxSeverity] = useState(defect.defectMaxSeverity.toString());
+  const [editDefectInstructions, setEditDefectInstructions] = useState(defect.defectInstructions || "");
+
+  // Sync edit state when dialog opens or defect props change
+  useEffect(() => {
+    if (isEditDialogOpen) {
+      setEditDefectName(defect.defectName);
+      setEditMaxSeverity(defect.defectMaxSeverity.toString());
+      setEditDefectInstructions(defect.defectInstructions || "");
+    }
+  }, [isEditDialogOpen, defect.defectName, defect.defectMaxSeverity, defect.defectInstructions]);
+
+  // Update defect mutation
+  const updateDefectMutation = useMutation({
+    mutationFn: async (data: { defectName: string; defectMaxSeverity: number; defectInstructions: string }) => {
+      return apiRequest("PATCH", `/api/component-defects/${defect.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/components", componentId, "defects"] });
+      toast({
+        title: "Success",
+        description: "Defect updated successfully",
+      });
+      setIsEditDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update defect",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Delete defect mutation
   const deleteDefectMutation = useMutation({
@@ -951,6 +1200,31 @@ function DefectItem({ defect, componentId }: { defect: ComponentDefect; componen
       setDeleteDefectId(null);
     },
   });
+
+  const handleUpdateDefect = () => {
+    if (!editDefectName.trim()) {
+      toast({
+        title: "Error",
+        description: "Defect name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    const severity = parseInt(editMaxSeverity);
+    if (isNaN(severity) || severity < 1 || severity > 10) {
+      toast({
+        title: "Error",
+        description: "Max severity must be between 1 and 10",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateDefectMutation.mutate({ 
+      defectName: editDefectName, 
+      defectMaxSeverity: severity,
+      defectInstructions: editDefectInstructions
+    });
+  };
 
   const getSeverityColor = (severity: number) => {
     if (severity >= 8) return "text-red-500";
@@ -976,6 +1250,15 @@ function DefectItem({ defect, componentId }: { defect: ComponentDefect; componen
             size="icon"
             variant="ghost"
             className="h-5 w-5"
+            onClick={() => setIsEditDialogOpen(true)}
+            data-testid={`button-edit-defect-${defect.id}`}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-5 w-5"
             onClick={() => setDeleteDefectId(defect.id)}
             data-testid={`button-delete-defect-${defect.id}`}
           >
@@ -983,6 +1266,69 @@ function DefectItem({ defect, componentId }: { defect: ComponentDefect; componen
           </Button>
         </div>
       </div>
+
+      {/* Edit Defect Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent data-testid="dialog-edit-defect">
+          <DialogHeader>
+            <DialogTitle>Edit Defect</DialogTitle>
+            <DialogDescription>
+              Update the defect name, severity, and instructions
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editDefectName">Defect Name</Label>
+              <Input
+                id="editDefectName"
+                value={editDefectName}
+                onChange={(e) => setEditDefectName(e.target.value)}
+                data-testid="input-edit-defect-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editMaxSeverity">Maximum Severity (1-10)</Label>
+              <Input
+                id="editMaxSeverity"
+                type="number"
+                min="1"
+                max="10"
+                value={editMaxSeverity}
+                onChange={(e) => setEditMaxSeverity(e.target.value)}
+                data-testid="input-edit-defect-severity"
+              />
+              <p className="text-xs text-muted-foreground">
+                Critical: 8-10 | High: 6-7 | Medium: 4-5 | Low: 1-3
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDefectInstructions">Instructions (Optional)</Label>
+              <Input
+                id="editDefectInstructions"
+                value={editDefectInstructions}
+                onChange={(e) => setEditDefectInstructions(e.target.value)}
+                data-testid="input-edit-defect-instructions"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              data-testid="button-cancel-edit-defect"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateDefect}
+              disabled={updateDefectMutation.isPending}
+              data-testid="button-confirm-edit-defect"
+            >
+              {updateDefectMutation.isPending ? "Updating..." : "Update"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Defect Confirmation */}
       <AlertDialog open={deleteDefectId === defect.id} onOpenChange={() => setDeleteDefectId(null)}>
