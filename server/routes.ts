@@ -705,24 +705,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all layouts for a company (protected)
   app.get("/api/layouts", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`📋 [Routes] GET /api/layouts - User: ${req.session.userId}`);
+    console.log(`📋 [Routes] GET /api/layouts - User: ${req.auth?.userId}, isSuperuser: ${req.auth?.isSuperuser || false}`);
     
     try {
-      const companyId = req.auth?.companyId || (req.query.companyId as string);
+      // For superusers, use query param companyId; for regular users, use their token companyId
+      const companyId = req.auth?.isSuperuser 
+        ? (req.query.companyId as string)
+        : req.auth?.companyId;
       
       if (!companyId) {
-        console.log(`❌ [Routes] Company ID is required`);
+        console.log(`❌ [Routes] Company ID is required (provide ?companyId= query param for superusers)`);
         return res.status(400).json({ error: "Company ID is required" });
       }
       
-      // Enforce company scoping for non-superusers
-      if (req.auth?.companyId && req.auth?.companyId !== companyId) {
+      // Regular users can only access their own company's layouts
+      if (!req.auth?.isSuperuser && req.auth?.companyId !== companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot access layouts from another company`);
         return res.status(403).json({ error: "Cannot access layouts from other companies" });
       }
       
+      console.log(`🔍 [Routes] Fetching layouts for company: ${companyId}`);
       const layouts = await storage.getLayouts(companyId);
-      console.log(`✅ [Routes] Returning ${layouts.length} layouts`);
+      console.log(`✅ [Routes] Returning ${layouts.length} layouts for company: ${companyId}`);
       res.json(layouts);
     } catch (error) {
       console.error("❌ [Routes] Error fetching layouts:", error);
@@ -753,29 +757,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Create layout (protected)
   app.post("/api/layouts", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`➕ [Routes] POST /api/layouts - Creating layout: ${req.body?.layoutId || 'UNKNOWN'}`);
+    console.log(`➕ [Routes] POST /api/layouts - Creating layout: ${req.body?.layoutId || 'UNKNOWN'}, User: ${req.auth?.userId}, isSuperuser: ${req.auth?.isSuperuser || false}`);
     
     try {
       const insertData = insertLayoutSchema.parse(req.body);
       
       // Enforce company scoping
-      if (req.auth?.companyId) {
-        insertData.companyId = req.auth?.companyId;
-      }
-      
-      if (!insertData.companyId) {
+      // For superusers, allow them to specify companyId in the request body
+      // For regular users, enforce their token's companyId
+      if (req.auth?.isSuperuser) {
+        // Superuser can specify companyId in body, but it's still required
+        if (!insertData.companyId) {
+          console.log(`❌ [Routes] Superuser must specify companyId in request body`);
+          return res.status(400).json({ error: "Company ID is required" });
+        }
+        console.log(`👑 [Routes] Superuser creating layout for company: ${insertData.companyId}`);
+      } else if (req.auth?.companyId) {
+        // Regular user - enforce their company ID
+        insertData.companyId = req.auth.companyId;
+        console.log(`🔒 [Routes] Regular user - enforcing companyId: ${insertData.companyId}`);
+      } else {
         console.log(`❌ [Routes] Company ID is required for layout creation`);
         return res.status(400).json({ error: "Company ID is required" });
       }
       
       const layout = await storage.createLayout(insertData);
-      console.log(`✅ [Routes] Layout created successfully: ${layout.layoutId}`);
+      console.log(`✅ [Routes] Layout created successfully: ${layout.layoutId} for company: ${layout.companyId}`);
       res.json(layout);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid input", details: error.errors });
       }
+      // Enhanced error logging
       console.error("❌ [Routes] Error creating layout:", error);
+      if (error && typeof error === 'object' && 'code' in error) {
+        const dbError = error as any;
+        console.error(`   DB Error Code: ${dbError.code}, Detail: ${dbError.detail || 'N/A'}`);
+        
+        // Handle common database errors
+        if (dbError.code === '23505') { // Unique violation
+          return res.status(409).json({ error: "Layout ID already exists for this company" });
+        } else if (dbError.code === '23502' || dbError.code === '23503') { // NOT NULL or FK violation
+          return res.status(400).json({ error: "Invalid company ID or missing required field" });
+        }
+      }
       res.status(500).json({ error: "Failed to create layout" });
     }
   });
@@ -870,16 +895,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Create zone (protected)
   app.post("/api/layouts/:layoutId/zones", requireAuth, async (req: AuthRequest, res) => {
-    const { layoutId } = req.params;
-    console.log(`➕ [Routes] POST /api/layouts/${layoutId}/zones - Creating zone`);
+    const { layoutId } = req.params; // This is the layout UUID
+    console.log(`➕ [Routes] POST /api/layouts/${layoutId}/zones - Creating zone, User: ${req.auth?.userId}`);
     
     try {
-      // Verify layout exists and check permissions
-      const layout = await storage.getLayoutById(layoutId, req.auth?.companyId || undefined);
+      // Verify layout exists by UUID and check permissions
+      const layout = await storage.getLayoutByUUID(layoutId);
       
       if (!layout) {
-        console.log(`❌ [Routes] Layout not found: ${layoutId}`);
+        console.log(`❌ [Routes] Layout not found by UUID: ${layoutId}`);
         return res.status(404).json({ error: "Layout not found" });
+      }
+      
+      // Enforce company scoping
+      if (!req.auth?.isSuperuser && req.auth?.companyId !== layout.companyId) {
+        console.log(`❌ [Routes] Authorization failed - cannot modify layout from company ${layout.companyId}`);
+        return res.status(403).json({ error: "Cannot modify layouts from other companies" });
       }
       
       const insertData = insertLayoutZoneSchema.parse({
@@ -887,8 +918,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         layoutId: layout.id,
       });
       
-      const zone = await storage.createLayoutZone(insertData, req.auth?.companyId || undefined);
-      console.log(`✅ [Routes] Zone created successfully`);
+      const zone = await storage.createLayoutZone(insertData, layout.companyId);
+      console.log(`✅ [Routes] Zone created successfully for layout ${layout.layoutId} (${layout.id})`);
       res.json(zone);
     } catch (error) {
       if (error instanceof z.ZodError) {

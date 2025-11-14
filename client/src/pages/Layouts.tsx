@@ -72,8 +72,23 @@ export default function Layouts() {
 
   // Fetch layouts
   const { data: layouts = [], isLoading } = useQuery<Layout[]>({
-    queryKey: ["/api/layouts", selectedCompany],
+    queryKey: ["/api/layouts", { companyId: selectedCompany }],
     enabled: !!selectedCompany,
+    queryFn: async () => {
+      const url = selectedCompany 
+        ? `/api/layouts?companyId=${selectedCompany}`
+        : "/api/layouts";
+      const response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+      return response.json();
+    },
   });
 
   // Create layout mutation
