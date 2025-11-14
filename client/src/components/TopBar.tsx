@@ -11,6 +11,7 @@ const menuItems = [
   { path: "/assets", label: "Assets" },
   { path: "/users", label: "Users" },
   { path: "/inspection-types", label: "Inspection Types" },
+  { path: "/layouts", label: "Layouts" },
 ];
 
 export function TopBar() {

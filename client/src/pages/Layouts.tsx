@@ -448,27 +448,548 @@ function ZoneManager({ layoutId, zones }: { layoutId: string; zones: LayoutZone[
   );
 }
 
-// Zone Item Component (to be continued with components and defects)
+// Zone Item Component with Components Management
 function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
+  const { toast } = useToast();
+  const [deleteZoneId, setDeleteZoneId] = useState<string | null>(null);
+
+  // Fetch components for this zone
+  const { data: components = [] } = useQuery<LayoutZoneComponent[]>({
+    queryKey: ["/api/zones", zone.id, "components"],
+  });
+
+  // Delete zone mutation
+  const deleteZoneMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/zones/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/layouts", layoutId, "zones"] });
+      toast({
+        title: "Success",
+        description: "Zone deleted successfully",
+      });
+      setDeleteZoneId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete zone",
+        variant: "destructive",
+      });
+      setDeleteZoneId(null);
+    },
+  });
+
   return (
-    <AccordionItem value={zone.id} className="border rounded-lg px-4" data-testid={`zone-${zone.id}`}>
-      <AccordionTrigger className="hover:no-underline">
-        <div className="flex items-center justify-between w-full pr-4">
-          <span className="font-medium">{zone.zoneName}</span>
-          {zone.zoneTag && (
-            <span className="text-xs text-muted-foreground">
-              {zone.zoneTag}
-            </span>
+    <>
+      <AccordionItem value={zone.id} className="border rounded-lg px-4" data-testid={`zone-${zone.id}`}>
+        <AccordionTrigger className="hover:no-underline">
+          <div className="flex items-center justify-between w-full pr-4">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{zone.zoneName}</span>
+              {zone.zoneTag && (
+                <span className="text-xs px-2 py-1 bg-muted rounded">
+                  {zone.zoneTag}
+                </span>
+              )}
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteZoneId(zone.id);
+              }}
+              data-testid={`button-delete-zone-${zone.id}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="pt-4">
+            <ComponentManager zoneId={zone.id} components={components} />
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Delete Zone Confirmation */}
+      <AlertDialog open={deleteZoneId === zone.id} onOpenChange={() => setDeleteZoneId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete-zone">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Zone?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{zone.zoneName}" and all its components and defects.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-zone">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteZoneMutation.mutate(zone.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-zone"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// Component Manager
+function ComponentManager({ zoneId, components }: { zoneId: string; components: LayoutZoneComponent[] }) {
+  const { toast } = useToast();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [componentName, setComponentName] = useState("");
+  const [instructions, setInstructions] = useState("");
+
+  // Create component mutation
+  const createComponentMutation = useMutation({
+    mutationFn: async (data: { componentName: string; componentInspectionInstructions: string }) => {
+      return apiRequest("POST", `/api/zones/${zoneId}/components`, { ...data, zoneId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/zones", zoneId, "components"] });
+      toast({
+        title: "Success",
+        description: "Component created successfully",
+      });
+      setIsCreateDialogOpen(false);
+      setComponentName("");
+      setInstructions("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create component",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateComponent = () => {
+    if (!componentName.trim()) {
+      toast({
+        title: "Error",
+        description: "Component name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    createComponentMutation.mutate({ 
+      componentName, 
+      componentInspectionInstructions: instructions 
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold">Components</h4>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline" data-testid={`button-add-component-${zoneId}`}>
+              <Plus className="h-3 w-3 mr-1" />
+              Add Component
+            </Button>
+          </DialogTrigger>
+          <DialogContent data-testid="dialog-create-component">
+            <DialogHeader>
+              <DialogTitle>Create Component</DialogTitle>
+              <DialogDescription>
+                Add a new inspectable component to this zone
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="componentName">Component Name</Label>
+                <Input
+                  id="componentName"
+                  placeholder="e.g., Brake Lights, Tires, Windshield"
+                  value={componentName}
+                  onChange={(e) => setComponentName(e.target.value)}
+                  data-testid="input-component-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instructions">Inspection Instructions (Optional)</Label>
+                <Input
+                  id="instructions"
+                  placeholder="e.g., Check for cracks or damage"
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  data-testid="input-component-instructions"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsCreateDialogOpen(false)}
+                data-testid="button-cancel-component"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateComponent}
+                disabled={createComponentMutation.isPending}
+                data-testid="button-confirm-component"
+              >
+                {createComponentMutation.isPending ? "Creating..." : "Create"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {components.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No components added yet</p>
+      ) : (
+        <div className="space-y-2">
+          {components.map((component) => (
+            <ComponentItem key={component.id} component={component} zoneId={zoneId} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Component Item
+function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; zoneId: string }) {
+  const { toast } = useToast();
+  const [deleteComponentId, setDeleteComponentId] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Fetch defects for this component
+  const { data: defects = [] } = useQuery<ComponentDefect[]>({
+    queryKey: ["/api/components", component.id, "defects"],
+    enabled: isExpanded,
+  });
+
+  // Delete component mutation
+  const deleteComponentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/components/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/zones", zoneId, "components"] });
+      toast({
+        title: "Success",
+        description: "Component deleted successfully",
+      });
+      setDeleteComponentId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete component",
+        variant: "destructive",
+      });
+      setDeleteComponentId(null);
+    },
+  });
+
+  return (
+    <>
+      <Card className="bg-muted/50" data-testid={`component-${component.id}`}>
+        <CardContent className="p-3">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">{component.componentName}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-xs"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  data-testid={`button-toggle-defects-${component.id}`}
+                >
+                  {isExpanded ? "Hide" : "Show"} Defects
+                </Button>
+              </div>
+              {component.componentInspectionInstructions && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {component.componentInspectionInstructions}
+                </p>
+              )}
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              onClick={() => setDeleteComponentId(component.id)}
+              data-testid={`button-delete-component-${component.id}`}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+
+          {isExpanded && (
+            <div className="mt-3 pt-3 border-t">
+              <DefectManager componentId={component.id} defects={defects} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Component Confirmation */}
+      <AlertDialog open={deleteComponentId === component.id} onOpenChange={() => setDeleteComponentId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete-component">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Component?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{component.componentName}" and all its defects.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-component">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteComponentMutation.mutate(component.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-component"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// Defect Manager
+function DefectManager({ componentId, defects }: { componentId: string; defects: ComponentDefect[] }) {
+  const { toast } = useToast();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [defectName, setDefectName] = useState("");
+  const [maxSeverity, setMaxSeverity] = useState("5");
+  const [defectInstructions, setDefectInstructions] = useState("");
+
+  // Create defect mutation
+  const createDefectMutation = useMutation({
+    mutationFn: async (data: { defectName: string; defectMaxSeverity: number; defectInstructions: string }) => {
+      return apiRequest("POST", `/api/components/${componentId}/defects`, { ...data, componentId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/components", componentId, "defects"] });
+      toast({
+        title: "Success",
+        description: "Defect created successfully",
+      });
+      setIsCreateDialogOpen(false);
+      setDefectName("");
+      setMaxSeverity("5");
+      setDefectInstructions("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create defect",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateDefect = () => {
+    if (!defectName.trim()) {
+      toast({
+        title: "Error",
+        description: "Defect name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    const severity = parseInt(maxSeverity);
+    if (isNaN(severity) || severity < 1 || severity > 10) {
+      toast({
+        title: "Error",
+        description: "Max severity must be between 1 and 10",
+        variant: "destructive",
+      });
+      return;
+    }
+    createDefectMutation.mutate({ 
+      defectName, 
+      defectMaxSeverity: severity,
+      defectInstructions 
+    });
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h5 className="text-xs font-semibold">Possible Defects</h5>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline" className="h-7 text-xs" data-testid={`button-add-defect-${componentId}`}>
+              <Plus className="h-3 w-3 mr-1" />
+              Add Defect
+            </Button>
+          </DialogTrigger>
+          <DialogContent data-testid="dialog-create-defect">
+            <DialogHeader>
+              <DialogTitle>Create Defect</DialogTitle>
+              <DialogDescription>
+                Add a possible defect for this component
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="defectName">Defect Name</Label>
+                <Input
+                  id="defectName"
+                  placeholder="e.g., Cracked lens, Worn tread"
+                  value={defectName}
+                  onChange={(e) => setDefectName(e.target.value)}
+                  data-testid="input-defect-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxSeverity">Maximum Severity (1-10)</Label>
+                <Input
+                  id="maxSeverity"
+                  type="number"
+                  min="1"
+                  max="10"
+                  placeholder="5"
+                  value={maxSeverity}
+                  onChange={(e) => setMaxSeverity(e.target.value)}
+                  data-testid="input-defect-severity"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Critical: 8-10 | High: 6-7 | Medium: 4-5 | Low: 1-3
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="defectInstructions">Instructions (Optional)</Label>
+                <Input
+                  id="defectInstructions"
+                  placeholder="e.g., Measure tread depth"
+                  value={defectInstructions}
+                  onChange={(e) => setDefectInstructions(e.target.value)}
+                  data-testid="input-defect-instructions"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsCreateDialogOpen(false)}
+                data-testid="button-cancel-defect"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateDefect}
+                disabled={createDefectMutation.isPending}
+                data-testid="button-confirm-defect"
+              >
+                {createDefectMutation.isPending ? "Creating..." : "Create"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {defects.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No defects defined</p>
+      ) : (
+        <div className="space-y-1">
+          {defects.map((defect) => (
+            <DefectItem key={defect.id} defect={defect} componentId={componentId} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Defect Item
+function DefectItem({ defect, componentId }: { defect: ComponentDefect; componentId: string }) {
+  const { toast } = useToast();
+  const [deleteDefectId, setDeleteDefectId] = useState<string | null>(null);
+
+  // Delete defect mutation
+  const deleteDefectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/defects/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/components", componentId, "defects"] });
+      toast({
+        title: "Success",
+        description: "Defect deleted successfully",
+      });
+      setDeleteDefectId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete defect",
+        variant: "destructive",
+      });
+      setDeleteDefectId(null);
+    },
+  });
+
+  const getSeverityColor = (severity: number) => {
+    if (severity >= 8) return "text-red-500";
+    if (severity >= 6) return "text-orange-500";
+    if (severity >= 4) return "text-yellow-500";
+    return "text-blue-500";
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-between text-xs p-2 bg-background rounded border" data-testid={`defect-${defect.id}`}>
+        <div className="flex-1">
+          <span>{defect.defectName}</span>
+          {defect.defectInstructions && (
+            <span className="text-muted-foreground ml-2">• {defect.defectInstructions}</span>
           )}
         </div>
-      </AccordionTrigger>
-      <AccordionContent>
-        <div className="pt-4">
-          <p className="text-sm text-muted-foreground">
-            Components will be displayed here
-          </p>
+        <div className="flex items-center gap-2">
+          <span className={`font-medium ${getSeverityColor(defect.defectMaxSeverity)}`}>
+            Max: {defect.defectMaxSeverity}
+          </span>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-5 w-5"
+            onClick={() => setDeleteDefectId(defect.id)}
+            data-testid={`button-delete-defect-${defect.id}`}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
         </div>
-      </AccordionContent>
-    </AccordionItem>
+      </div>
+
+      {/* Delete Defect Confirmation */}
+      <AlertDialog open={deleteDefectId === defect.id} onOpenChange={() => setDeleteDefectId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete-defect">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Defect?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{defect.defectName}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-defect">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteDefectMutation.mutate(defect.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-defect"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

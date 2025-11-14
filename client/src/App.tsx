@@ -11,6 +11,7 @@ import Users from "@/pages/Users";
 import Assets from "@/pages/Assets";
 import InspectionTypes from "@/pages/InspectionTypes";
 import Defects from "@/pages/Defects";
+import Layouts from "@/pages/Layouts";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
@@ -23,6 +24,7 @@ function ProtectedRouter() {
       <Route path="/assets" component={Assets} />
       <Route path="/users" component={Users} />
       <Route path="/inspection-types" component={InspectionTypes} />
+      <Route path="/layouts" component={Layouts} />
       <Route component={NotFound} />
     </Switch>
   );
