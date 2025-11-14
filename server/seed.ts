@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionAssets, layouts } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects } from "@shared/schema";
 import { storage } from "./storage";
 
 async function seed() {
@@ -14,6 +14,9 @@ async function seed() {
     await db.delete(inspectionTypeFormFields);
     await db.delete(inspectionTypes);
     await db.delete(assets);
+    await db.delete(componentDefects);
+    await db.delete(layoutZoneComponents);
+    await db.delete(layoutZones);
     await db.delete(layouts);
     await db.delete(users);
     await db.delete(companies);
@@ -294,12 +297,14 @@ async function seed() {
     console.log("📐 Creating layouts...");
     const layoutsData = [
       // NEC layouts
+      { layoutId: "SCHOOL-BUS", layoutData: "School Bus layout configuration", companyId: "NEC" },
       { layoutId: "TRUCK", layoutData: "Truck layout configuration", companyId: "NEC" },
       { layoutId: "VAN", layoutData: "Van layout configuration", companyId: "NEC" },
       { layoutId: "FORKLIFT", layoutData: "Forklift layout configuration", companyId: "NEC" },
       { layoutId: "CRANE", layoutData: "Crane layout configuration", companyId: "NEC" },
       { layoutId: "PALLET-JACK", layoutData: "Pallet Jack layout configuration", companyId: "NEC" },
       // WALMART layouts
+      { layoutId: "SCHOOL-BUS", layoutData: "School Bus layout configuration", companyId: "WALMART" },
       { layoutId: "TRUCK", layoutData: "Truck layout configuration", companyId: "WALMART" },
       { layoutId: "VAN", layoutData: "Van layout configuration", companyId: "WALMART" },
       { layoutId: "EXCAVATOR", layoutData: "Excavator layout configuration", companyId: "WALMART" },
@@ -308,6 +313,7 @@ async function seed() {
       { layoutId: "CONVEYOR", layoutData: "Conveyor layout configuration", companyId: "WALMART" },
       { layoutId: "PALLET-JACK", layoutData: "Pallet Jack layout configuration", companyId: "WALMART" },
       // FEDEX layouts
+      { layoutId: "SCHOOL-BUS", layoutData: "School Bus layout configuration", companyId: "FEDEX" },
       { layoutId: "CONVEYOR", layoutData: "Conveyor layout configuration", companyId: "FEDEX" },
       { layoutId: "SORTATION-UNIT", layoutData: "Sortation Unit layout configuration", companyId: "FEDEX" },
       { layoutId: "VAN", layoutData: "Van layout configuration", companyId: "FEDEX" },
@@ -331,6 +337,210 @@ async function seed() {
       layoutMap.set(`${layout.companyId}:${layout.layoutId}`, layout.id);
     }
     console.log(`✅ Created ${createdLayouts.length} layouts with UUID mapping`);
+
+    // Create layout zones, components, and defects based on NJ DOT inspection form
+    console.log("🔧 Creating layout structures (zones, components, defects)...");
+    
+    // Layout templates based on NJ DOT vehicle inspection requirements
+    const layoutTemplates = {
+      "SCHOOL-BUS": {
+        zones: [
+          { name: "Before Operating", tag: "PRE-OP", components: [
+            { name: "Bus Interior Damage", instructions: "Check for tears, damage, or unsafe conditions", defects: [
+              { name: "Torn seat", severity: 4, instructions: "Repair or replace damaged seat" },
+              { name: "Damaged handrails", severity: 6, instructions: "Replace or secure handrails" },
+            ]},
+            { name: "Fire Extinguisher", instructions: "Verify charged and accessible", defects: [
+              { name: "Expired", severity: 8, instructions: "Replace immediately - safety critical" },
+              { name: "Low pressure", severity: 7, instructions: "Recharge or replace" },
+            ]},
+            { name: "Emergency Exits", instructions: "Test all emergency doors and windows", defects: [
+              { name: "Door won't open", severity: 10, instructions: "Out of service - repair immediately" },
+              { name: "Buzzer not working", severity: 6, instructions: "Repair buzzer system" },
+            ]},
+            { name: "Seats", instructions: "Check all passenger seats for security", defects: [
+              { name: "Loose mounting", severity: 7, instructions: "Tighten or replace mounts" },
+              { name: "Missing seatbelt", severity: 8, instructions: "Install replacement belt" },
+            ]},
+          ]},
+          { name: "During Warm-Up", tag: "WARM-UP", components: [
+            { name: "Service Brakes", instructions: "Test brake pedal response and hold", defects: [
+              { name: "Spongy pedal", severity: 8, instructions: "Bleed brakes or check for leaks" },
+              { name: "Pulls to one side", severity: 7, instructions: "Inspect brake calipers" },
+            ]},
+            { name: "Windshield Wipers", instructions: "Test all speeds and washer fluid", defects: [
+              { name: "Streaking", severity: 3, instructions: "Replace wiper blades" },
+              { name: "Not working", severity: 9, instructions: "Repair wiper motor - weather safety" },
+            ]},
+            { name: "Headlights", instructions: "Check high and low beams", defects: [
+              { name: "Bulb out", severity: 8, instructions: "Replace bulb before operation" },
+              { name: "Lens cracked", severity: 5, instructions: "Replace headlight assembly" },
+            ]},
+            { name: "Stop Lights", instructions: "Verify all brake lights illuminate", defects: [
+              { name: "Bulb out", severity: 9, instructions: "Replace immediately - safety critical" },
+              { name: "Dim light", severity: 6, instructions: "Check wiring and bulb" },
+            ]},
+            { name: "School Bus Warning Lights", instructions: "Test amber and red warning lights", defects: [
+              { name: "Lights not working", severity: 10, instructions: "Out of service - must repair" },
+              { name: "Flashing incorrectly", severity: 8, instructions: "Repair flasher unit" },
+            ]},
+          ]},
+          { name: "Exterior Walkaround", tag: "EXTERIOR", components: [
+            { name: "Tires", instructions: "Check tread depth and sidewall condition", defects: [
+              { name: "Low tread", severity: 8, instructions: "Replace if below 4/32 inch" },
+              { name: "Sidewall damage", severity: 9, instructions: "Replace tire immediately" },
+            ]},
+            { name: "Mirrors", instructions: "Check all mirrors for visibility and security", defects: [
+              { name: "Cracked", severity: 6, instructions: "Replace mirror" },
+              { name: "Loose mounting", severity: 7, instructions: "Tighten or repair mount" },
+            ]},
+            { name: "Stop Arm", instructions: "Test stop arm extension and lights", defects: [
+              { name: "Won't extend", severity: 10, instructions: "Out of service - repair mechanism" },
+              { name: "Lights not working", severity: 9, instructions: "Repair stop arm lights" },
+            ]},
+          ]},
+        ]
+      },
+      "TRUCK": {
+        zones: [
+          { name: "Before Operating", tag: "PRE-OP", components: [
+            { name: "Fuel Level", instructions: "Verify sufficient fuel for route", defects: [
+              { name: "Below 1/4 tank", severity: 4, instructions: "Refuel before departure" },
+              { name: "Fuel leak detected", severity: 10, instructions: "Out of service - repair leak" },
+            ]},
+            { name: "Engine Oil", instructions: "Check oil level and condition", defects: [
+              { name: "Low oil level", severity: 7, instructions: "Add oil to proper level" },
+              { name: "Oil leak", severity: 8, instructions: "Repair leak before operation" },
+            ]},
+            { name: "Coolant", instructions: "Check coolant level in reservoir", defects: [
+              { name: "Low coolant", severity: 6, instructions: "Top off coolant" },
+              { name: "Leak detected", severity: 9, instructions: "Repair cooling system" },
+            ]},
+          ]},
+          { name: "During Warm-Up", tag: "WARM-UP", components: [
+            { name: "Air Brakes", instructions: "Test air pressure and brake response", defects: [
+              { name: "Low air pressure", severity: 10, instructions: "Out of service - repair air system" },
+              { name: "Slow build time", severity: 7, instructions: "Inspect compressor" },
+            ]},
+            { name: "Parking Brake", instructions: "Test parking brake hold", defects: [
+              { name: "Won't hold", severity: 10, instructions: "Out of service - adjust or repair" },
+              { name: "Slow release", severity: 5, instructions: "Inspect brake linkage" },
+            ]},
+            { name: "Gauges", instructions: "Check all instrument readings", defects: [
+              { name: "Warning light on", severity: 8, instructions: "Diagnose and repair issue" },
+              { name: "Gauge not working", severity: 6, instructions: "Replace gauge or sensor" },
+            ]},
+          ]},
+          { name: "Exterior Walkaround", tag: "EXTERIOR", components: [
+            { name: "Tires", instructions: "Inspect all tires for wear and damage", defects: [
+              { name: "Tread below limit", severity: 9, instructions: "Replace tire" },
+              { name: "Uneven wear", severity: 6, instructions: "Check alignment" },
+            ]},
+            { name: "Lights", instructions: "Test all exterior lights", defects: [
+              { name: "Light out", severity: 8, instructions: "Replace bulb or fixture" },
+              { name: "Lens damaged", severity: 5, instructions: "Replace lens" },
+            ]},
+            { name: "Cargo Securement", instructions: "Verify load is properly secured", defects: [
+              { name: "Loose straps", severity: 9, instructions: "Tighten all cargo straps" },
+              { name: "Shifted load", severity: 10, instructions: "Resecure load before departure" },
+            ]},
+          ]},
+        ]
+      },
+      "TRAILER": {
+        zones: [
+          { name: "Coupling", tag: "COUPLING", components: [
+            { name: "Fifth Wheel", instructions: "Check fifth wheel connection and lock", defects: [
+              { name: "Not locked", severity: 10, instructions: "Out of service - ensure proper lock" },
+              { name: "Worn kingpin", severity: 8, instructions: "Replace kingpin" },
+            ]},
+            { name: "Glad Hands", instructions: "Check air line connections", defects: [
+              { name: "Leak detected", severity: 9, instructions: "Replace seals or lines" },
+              { name: "Cross-threaded", severity: 7, instructions: "Replace glad hand" },
+            ]},
+            { name: "Safety Chains", instructions: "Verify chains are attached and secure", defects: [
+              { name: "Not attached", severity: 10, instructions: "Attach safety chains" },
+              { name: "Damaged links", severity: 8, instructions: "Replace chains" },
+            ]},
+          ]},
+          { name: "Exterior Inspection", tag: "EXTERIOR", components: [
+            { name: "Trailer Tires", instructions: "Inspect all trailer tires", defects: [
+              { name: "Flat tire", severity: 10, instructions: "Replace or repair tire" },
+              { name: "Low tread", severity: 8, instructions: "Replace tire" },
+            ]},
+            { name: "Trailer Lights", instructions: "Test all trailer lights", defects: [
+              { name: "Light not working", severity: 9, instructions: "Repair wiring or replace bulb" },
+              { name: "Corroded socket", severity: 6, instructions: "Clean or replace socket" },
+            ]},
+            { name: "Doors", instructions: "Check rear and side doors for operation", defects: [
+              { name: "Won't latch", severity: 8, instructions: "Adjust or replace latch" },
+              { name: "Damaged seals", severity: 4, instructions: "Replace door seals" },
+            ]},
+          ]},
+          { name: "Brake System", tag: "BRAKES", components: [
+            { name: "Brake Adjustment", instructions: "Check brake adjustment on all wheels", defects: [
+              { name: "Out of adjustment", severity: 9, instructions: "Adjust brakes per spec" },
+              { name: "Brake drag", severity: 7, instructions: "Inspect brake chamber" },
+            ]},
+            { name: "Brake Hoses", instructions: "Inspect all brake hoses for damage", defects: [
+              { name: "Cracked hose", severity: 10, instructions: "Replace hose immediately" },
+              { name: "Rubbing on frame", severity: 6, instructions: "Reroute or protect hose" },
+            ]},
+          ]},
+        ]
+      },
+    };
+
+    // Helper function to instantiate a layout template
+    const instantiateLayout = async (template: typeof layoutTemplates["SCHOOL-BUS"], layoutUuid: string) => {
+      const zoneMap = new Map<string, string>();
+      
+      for (const zoneTemplate of template.zones) {
+        // Insert zone
+        const [zone] = await db.insert(layoutZones).values({
+          zoneName: zoneTemplate.name,
+          zoneTag: zoneTemplate.tag,
+          layoutId: layoutUuid,
+        }).returning();
+        
+        zoneMap.set(zoneTemplate.name, zone.id);
+        
+        // Insert components for this zone
+        for (const compTemplate of zoneTemplate.components) {
+          const [component] = await db.insert(layoutZoneComponents).values({
+            componentName: compTemplate.name,
+            componentInspectionInstructions: compTemplate.instructions,
+            zoneId: zone.id,
+          }).returning();
+          
+          // Insert defects for this component
+          for (const defectTemplate of compTemplate.defects) {
+            await db.insert(componentDefects).values({
+              defectName: defectTemplate.name,
+              defectMaxSeverity: defectTemplate.severity,
+              defectInstructions: defectTemplate.instructions,
+              componentId: component.id,
+            });
+          }
+        }
+      }
+    };
+
+    // Apply templates to all companies' SCHOOL-BUS, TRUCK, and TRAILER layouts
+    const layoutsToPopulate = ["SCHOOL-BUS", "TRUCK", "TRAILER"];
+    const companiesToPopulate = ["NEC", "WALMART", "FEDEX"];
+    
+    for (const company of companiesToPopulate) {
+      for (const layoutType of layoutsToPopulate) {
+        const layoutUuid = layoutMap.get(`${company}:${layoutType}`);
+        if (layoutUuid && layoutTemplates[layoutType as keyof typeof layoutTemplates]) {
+          await instantiateLayout(layoutTemplates[layoutType as keyof typeof layoutTemplates], layoutUuid);
+          console.log(`   ✅ Created ${layoutType} structure for ${company}`);
+        }
+      }
+    }
+    
+    console.log("✅ Created layout structures for 9 vehicle layouts (3 companies × 3 layout types)");
 
     // Create assets for all companies
     console.log("📦 Creating assets...");
