@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, inspectionTypeLayouts, inspectionAssets, uploadErrors, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertInspectionAsset } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
 
@@ -168,6 +168,39 @@ export interface IStorage {
   
   // Upload Errors
   createUploadError(error: { companyId: string | null; driverId: string | null; driverName: string | null; assetId: string | null; rawData: string; errorTrace: string }): Promise<void>;
+  
+  // Layouts
+  getLayouts(companyId: string): Promise<Layout[]>;
+  getLayoutById(layoutId: string, companyId?: string): Promise<Layout | undefined>;
+  getLayoutByUUID(id: string): Promise<Layout | undefined>;
+  createLayout(layout: InsertLayout): Promise<Layout>;
+  updateLayout(layoutId: string, layout: Partial<InsertLayout>): Promise<Layout | undefined>;
+  deleteLayout(id: string): Promise<boolean>;
+  
+  // Layout Zones
+  getLayoutZones(layoutId: string): Promise<LayoutZone[]>;
+  getLayoutZoneById(id: string): Promise<LayoutZone | undefined>;
+  createLayoutZone(zone: InsertLayoutZone): Promise<LayoutZone>;
+  updateLayoutZone(id: string, zone: Partial<InsertLayoutZone>): Promise<LayoutZone | undefined>;
+  deleteLayoutZone(id: string): Promise<boolean>;
+  
+  // Layout Zone Components
+  getZoneComponents(zoneId: string): Promise<LayoutZoneComponent[]>;
+  getComponentById(id: string): Promise<LayoutZoneComponent | undefined>;
+  createComponent(component: InsertLayoutZoneComponent): Promise<LayoutZoneComponent>;
+  updateComponent(id: string, component: Partial<InsertLayoutZoneComponent>): Promise<LayoutZoneComponent | undefined>;
+  deleteComponent(id: string): Promise<boolean>;
+  
+  // Component Defects
+  getComponentDefects(componentId: string): Promise<ComponentDefect[]>;
+  getComponentDefectById(id: string): Promise<ComponentDefect | undefined>;
+  createComponentDefect(defect: InsertComponentDefect): Promise<ComponentDefect>;
+  updateComponentDefect(id: string, defect: Partial<InsertComponentDefect>): Promise<ComponentDefect | undefined>;
+  deleteComponentDefect(id: string): Promise<boolean>;
+  
+  // Inspection Type Layouts (existing methods)
+  getInspectionTypeLayouts(inspectionTypeId: string): Promise<string[]>;
+  setInspectionTypeLayouts(inspectionTypeId: string, layoutIds: string[]): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1196,6 +1229,221 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`✅ [Storage] Found ${result.length} layouts`);
     return result as Layout[];
+  }
+
+  async getLayoutById(layoutId: string, companyId?: string): Promise<Layout | undefined> {
+    console.log(`🔍 [Storage] getLayoutById - layoutId: ${layoutId}, companyId: ${companyId || 'ANY'}`);
+    
+    const conditions = [eq(layouts.layoutId, layoutId)];
+    if (companyId) {
+      conditions.push(eq(layouts.companyId, companyId));
+    }
+    
+    const [result] = await db.select().from(layouts).where(and(...conditions));
+    console.log(`${result ? '✅' : '❌'} [Storage] Layout ${result ? 'found' : 'not found'}`);
+    return result;
+  }
+
+  async getLayoutByUUID(id: string): Promise<Layout | undefined> {
+    console.log(`🔍 [Storage] getLayoutByUUID - UUID: ${id}`);
+    const [result] = await db.select().from(layouts).where(eq(layouts.id, id));
+    console.log(`${result ? '✅' : '❌'} [Storage] Layout ${result ? 'found' : 'not found'}`);
+    return result;
+  }
+
+  async createLayout(insertLayout: InsertLayout): Promise<Layout> {
+    console.log(`➕ [Storage] Creating layout: ${insertLayout.layoutId}, companyId: ${insertLayout.companyId}`);
+    
+    const [layout] = await db
+      .insert(layouts)
+      .values(insertLayout)
+      .returning();
+    
+    console.log(`✅ [Storage] Layout created successfully: ${insertLayout.layoutId}`);
+    return layout;
+  }
+
+  async updateLayout(layoutId: string, updateData: Partial<InsertLayout>): Promise<Layout | undefined> {
+    console.log(`🔄 [Storage] Updating layout: ${layoutId}`);
+    const [layout] = await db
+      .update(layouts)
+      .set(updateData)
+      .where(eq(layouts.layoutId, layoutId))
+      .returning();
+    console.log(`${layout ? '✅' : '❌'} [Storage] Layout ${layout ? 'updated' : 'not found'}`);
+    return layout;
+  }
+
+  async deleteLayout(id: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting layout: ${id}`);
+    const result = await db
+      .delete(layouts)
+      .where(eq(layouts.id, id))
+      .returning();
+    console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Layout ${result.length > 0 ? 'deleted' : 'not found'}`);
+    return result.length > 0;
+  }
+
+  // === LAYOUT ZONES ===
+
+  async getLayoutZones(layoutId: string): Promise<LayoutZone[]> {
+    console.log(`📊 [Storage] getLayoutZones - layoutId: ${layoutId}`);
+    
+    const result = await db.select()
+      .from(layoutZones)
+      .where(eq(layoutZones.layoutId, layoutId))
+      .orderBy(asc(layoutZones.zoneName));
+    
+    console.log(`✅ [Storage] Found ${result.length} zones`);
+    return result;
+  }
+
+  async getLayoutZoneById(id: string): Promise<LayoutZone | undefined> {
+    console.log(`🔍 [Storage] getLayoutZoneById - id: ${id}`);
+    const [result] = await db.select().from(layoutZones).where(eq(layoutZones.id, id));
+    console.log(`${result ? '✅' : '❌'} [Storage] Zone ${result ? 'found' : 'not found'}`);
+    return result;
+  }
+
+  async createLayoutZone(insertZone: InsertLayoutZone): Promise<LayoutZone> {
+    console.log(`➕ [Storage] Creating zone: ${insertZone.zoneName}, layoutId: ${insertZone.layoutId}`);
+    
+    const [zone] = await db
+      .insert(layoutZones)
+      .values(insertZone)
+      .returning();
+    
+    console.log(`✅ [Storage] Zone created successfully: ${insertZone.zoneName}`);
+    return zone;
+  }
+
+  async updateLayoutZone(id: string, updateData: Partial<InsertLayoutZone>): Promise<LayoutZone | undefined> {
+    console.log(`🔄 [Storage] Updating zone: ${id}`);
+    const [zone] = await db
+      .update(layoutZones)
+      .set(updateData)
+      .where(eq(layoutZones.id, id))
+      .returning();
+    console.log(`${zone ? '✅' : '❌'} [Storage] Zone ${zone ? 'updated' : 'not found'}`);
+    return zone;
+  }
+
+  async deleteLayoutZone(id: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting zone: ${id}`);
+    const result = await db
+      .delete(layoutZones)
+      .where(eq(layoutZones.id, id))
+      .returning();
+    console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Zone ${result.length > 0 ? 'deleted' : 'not found'}`);
+    return result.length > 0;
+  }
+
+  // === LAYOUT ZONE COMPONENTS ===
+
+  async getZoneComponents(zoneId: string): Promise<LayoutZoneComponent[]> {
+    console.log(`📊 [Storage] getZoneComponents - zoneId: ${zoneId}`);
+    
+    const result = await db.select()
+      .from(layoutZoneComponents)
+      .where(eq(layoutZoneComponents.zoneId, zoneId))
+      .orderBy(asc(layoutZoneComponents.componentName));
+    
+    console.log(`✅ [Storage] Found ${result.length} components`);
+    return result;
+  }
+
+  async getComponentById(id: string): Promise<LayoutZoneComponent | undefined> {
+    console.log(`🔍 [Storage] getComponentById - id: ${id}`);
+    const [result] = await db.select().from(layoutZoneComponents).where(eq(layoutZoneComponents.id, id));
+    console.log(`${result ? '✅' : '❌'} [Storage] Component ${result ? 'found' : 'not found'}`);
+    return result;
+  }
+
+  async createComponent(insertComponent: InsertLayoutZoneComponent): Promise<LayoutZoneComponent> {
+    console.log(`➕ [Storage] Creating component: ${insertComponent.componentName}, zoneId: ${insertComponent.zoneId}`);
+    
+    const [component] = await db
+      .insert(layoutZoneComponents)
+      .values(insertComponent)
+      .returning();
+    
+    console.log(`✅ [Storage] Component created successfully: ${insertComponent.componentName}`);
+    return component;
+  }
+
+  async updateComponent(id: string, updateData: Partial<InsertLayoutZoneComponent>): Promise<LayoutZoneComponent | undefined> {
+    console.log(`🔄 [Storage] Updating component: ${id}`);
+    const [component] = await db
+      .update(layoutZoneComponents)
+      .set(updateData)
+      .where(eq(layoutZoneComponents.id, id))
+      .returning();
+    console.log(`${component ? '✅' : '❌'} [Storage] Component ${component ? 'updated' : 'not found'}`);
+    return component;
+  }
+
+  async deleteComponent(id: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting component: ${id}`);
+    const result = await db
+      .delete(layoutZoneComponents)
+      .where(eq(layoutZoneComponents.id, id))
+      .returning();
+    console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Component ${result.length > 0 ? 'deleted' : 'not found'}`);
+    return result.length > 0;
+  }
+
+  // === COMPONENT DEFECTS ===
+
+  async getComponentDefects(componentId: string): Promise<ComponentDefect[]> {
+    console.log(`📊 [Storage] getComponentDefects - componentId: ${componentId}`);
+    
+    const result = await db.select()
+      .from(componentDefects)
+      .where(eq(componentDefects.componentId, componentId))
+      .orderBy(asc(componentDefects.defectName));
+    
+    console.log(`✅ [Storage] Found ${result.length} defects`);
+    return result;
+  }
+
+  async getComponentDefectById(id: string): Promise<ComponentDefect | undefined> {
+    console.log(`🔍 [Storage] getComponentDefectById - id: ${id}`);
+    const [result] = await db.select().from(componentDefects).where(eq(componentDefects.id, id));
+    console.log(`${result ? '✅' : '❌'} [Storage] Component defect ${result ? 'found' : 'not found'}`);
+    return result;
+  }
+
+  async createComponentDefect(insertDefect: InsertComponentDefect): Promise<ComponentDefect> {
+    console.log(`➕ [Storage] Creating component defect: ${insertDefect.defectName}, componentId: ${insertDefect.componentId}`);
+    
+    const [defect] = await db
+      .insert(componentDefects)
+      .values(insertDefect)
+      .returning();
+    
+    console.log(`✅ [Storage] Component defect created successfully: ${insertDefect.defectName}`);
+    return defect;
+  }
+
+  async updateComponentDefect(id: string, updateData: Partial<InsertComponentDefect>): Promise<ComponentDefect | undefined> {
+    console.log(`🔄 [Storage] Updating component defect: ${id}`);
+    const [defect] = await db
+      .update(componentDefects)
+      .set(updateData)
+      .where(eq(componentDefects.id, id))
+      .returning();
+    console.log(`${defect ? '✅' : '❌'} [Storage] Component defect ${defect ? 'updated' : 'not found'}`);
+    return defect;
+  }
+
+  async deleteComponentDefect(id: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting component defect: ${id}`);
+    const result = await db
+      .delete(componentDefects)
+      .where(eq(componentDefects.id, id))
+      .returning();
+    console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Component defect ${result.length > 0 ? 'deleted' : 'not found'}`);
+    return result.length > 0;
   }
 
   async getInspectionTypeLayouts(inspectionTypeId: string): Promise<string[]> {
