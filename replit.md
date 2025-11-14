@@ -51,7 +51,15 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 ### Technical Implementations
 
 **Authentication & Authorization:**
-- Session-based authentication with server-side authorization enforcing multi-company data isolation.
+- **JWT-based authentication** with RS256 signing using RSA key pair stored in Replit Secrets
+- **Access tokens**: 8-hour expiration, no refresh tokens (users re-login when expired)
+- **Device tokens**: 10-year expiration for mobile inspection devices (perpetual, company-scoped)
+- **Dual-mode support**: JWT preferred (Authorization Bearer header), session fallback for migration
+- **Rate limiting**: 5 login attempts per 15 minutes (in-memory, local only)
+- **Audit logging**: Failed login attempts logged locally with IP, timestamp, user ID
+- **Company scoping**: All data access verified through cryptographically signed tokens (companyId from JWT payload)
+- **Token verification**: Middleware validates signature, expiration, issuer, and audience on every protected route
+- **Security**: Device upload endpoint validates parsed company ID matches token company ID to prevent cross-tenant data injection
 
 **Multi-Company Support:**
 - Data isolation is enforced at database and API levels, with a client-side company selector managing context.
@@ -63,7 +71,9 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - Both individual inspection reports and bulk lists are generated as server-rendered HTML for native browser printing.
 
 **Device Integration:**
-- **STM32 Device Upload Endpoint:** `POST /api/device/inspections` for BRICKINSPECTION EDI format (unauthenticated).
+- **STM32 Device Upload Endpoint:** `POST /api/device/inspections` for BRICKINSPECTION EDI format (requires device token authentication).
+- **Device Token Authentication:** 10-year JWT device tokens issued via `POST /api/auth/device-token`, sent as Authorization Bearer header.
+- **Company ID Validation:** Upload endpoint verifies parsed company ID matches device token company ID (prevents cross-tenant uploads).
 - **UUID-based Inspection IDs:** Devices generate UUIDs for inspections.
 - **UTC Timestamp Storage:** All timestamps stored in UTC with offset/DST metadata.
 - **Raw Data Storage:** Original BRICKINSPECTION EDI data is stored for debugging and audit.
