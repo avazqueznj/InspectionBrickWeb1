@@ -98,6 +98,16 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - As inspections come in from devices, mechanics immediately see severe issues stopping vehicles
 - "View Inspection" button provides full context without leaving the monitoring view
 
+**Layout Builder:**
+- **Visual Configuration UI:** Interactive builder for inspection layouts with hierarchical structure (Layout → Zone → Component → Defect)
+- **Master-Detail Pattern:** Left panel shows layout list, right panel shows nested accordion builder with inline editing
+- **UUID-based REST API:** All routes use UUIDs for consistent routing (/api/layouts/{uuid}/zones, etc.)
+- **Superuser Query Params:** GET /api/layouts?companyId=NEC allows superusers to manage any company's layouts
+- **Full CRUD Hierarchy:** Create, read, update, delete operations at all levels with cascade delete enabled
+- **Severity Configuration:** Defects have configurable max severity (1-10) with color-coded display (red/orange/yellow/blue)
+- **Company Scoping:** Regular users limited to their company; superusers specify companyId in request body/query params
+- **Database Tables:** layout_zones, layout_zone_components, component_defects with proper FK constraints and cascade delete
+
 **Key Features:**
 - **Multi-Asset Inspection Support:** Full support for inspections involving multiple assets, with `assetId` in defects and an `inspection_assets` junction table.
 - **DOT Compliance:** Includes `dotNumber` for companies and `licensePlate` for assets, displayed in print reports.

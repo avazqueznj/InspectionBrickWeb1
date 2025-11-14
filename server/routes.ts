@@ -872,20 +872,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get zones for a layout (protected)
   app.get("/api/layouts/:layoutId/zones", requireAuth, async (req: AuthRequest, res) => {
-    const { layoutId } = req.params;
+    const { layoutId } = req.params; // This is the layout UUID
     console.log(`📋 [Routes] GET /api/layouts/${layoutId}/zones - Fetching zones`);
     
     try {
-      // Verify layout exists and check permissions
-      const layout = await storage.getLayoutById(layoutId, req.auth?.companyId || undefined);
+      // Verify layout exists by UUID
+      const layout = await storage.getLayoutByUUID(layoutId);
       
       if (!layout) {
-        console.log(`❌ [Routes] Layout not found: ${layoutId}`);
+        console.log(`❌ [Routes] Layout not found by UUID: ${layoutId}`);
         return res.status(404).json({ error: "Layout not found" });
       }
       
-      const zones = await storage.getLayoutZones(layout.id, req.auth?.companyId || undefined);
-      console.log(`✅ [Routes] Returning ${zones.length} zones`);
+      // Enforce company scoping
+      if (!req.auth?.isSuperuser && req.auth?.companyId !== layout.companyId) {
+        console.log(`❌ [Routes] Authorization failed - cannot access layout from company ${layout.companyId}`);
+        return res.status(403).json({ error: "Cannot access layouts from other companies" });
+      }
+      
+      const zones = await storage.getLayoutZones(layout.id, layout.companyId);
+      console.log(`✅ [Routes] Returning ${zones.length} zones for layout ${layout.layoutId}`);
       res.json(zones);
     } catch (error) {
       console.error("❌ [Routes] Error fetching zones:", error);
