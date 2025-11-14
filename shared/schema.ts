@@ -97,11 +97,10 @@ export const inspectionTypeFormFields = pgTable("inspection_type_form_fields", {
   inspectionTypeId: varchar("inspection_type_id").notNull().references(() => inspectionTypes.id, { onDelete: "cascade" }),
 });
 
-// Layouts table - stores EDI format layout data
+// Layouts table - stores layout configuration
 export const layouts = pgTable("layouts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   layoutId: text("layout_id").notNull(),
-  layoutData: text("layout_data").notNull(),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
   // Unique constraint: same layoutId can exist across companies, but not within same company
@@ -109,6 +108,31 @@ export const layouts = pgTable("layouts", {
   // Check constraint: layoutId cannot be empty string
   layoutIdNotEmpty: check("layout_id_not_empty", sql`LENGTH(TRIM(${table.layoutId})) > 0`),
 }));
+
+// Layout Zones table
+export const layoutZones = pgTable("layout_zones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  zoneName: text("zone_name").notNull(),
+  zoneTag: text("zone_tag"),
+  layoutId: varchar("layout_id").notNull().references(() => layouts.id, { onDelete: "cascade" }),
+});
+
+// Layout Zone Components table
+export const layoutZoneComponents = pgTable("layout_zone_components", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  componentName: text("component_name").notNull(),
+  componentInspectionInstructions: text("component_inspection_instructions"),
+  zoneId: varchar("zone_id").notNull().references(() => layoutZones.id, { onDelete: "cascade" }),
+});
+
+// Component Defects table
+export const componentDefects = pgTable("component_defects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  defectName: text("defect_name").notNull(),
+  defectMaxSeverity: integer("defect_max_severity").notNull(),
+  defectInstructions: text("defect_instructions"),
+  componentId: varchar("component_id").notNull().references(() => layoutZoneComponents.id, { onDelete: "cascade" }),
+});
 
 // Inspection Type Layouts junction table - many-to-many relationship
 // NOTE: If no records exist for an inspection_type, it means "ALL LAYOUTS" apply
@@ -218,6 +242,30 @@ export const layoutsRelations = relations(layouts, ({ one, many }) => ({
   }),
   inspectionTypes: many(inspectionTypeLayouts),
   assets: many(assets),
+  zones: many(layoutZones),
+}));
+
+export const layoutZonesRelations = relations(layoutZones, ({ one, many }) => ({
+  layout: one(layouts, {
+    fields: [layoutZones.layoutId],
+    references: [layouts.id],
+  }),
+  components: many(layoutZoneComponents),
+}));
+
+export const layoutZoneComponentsRelations = relations(layoutZoneComponents, ({ one, many }) => ({
+  zone: one(layoutZones, {
+    fields: [layoutZoneComponents.zoneId],
+    references: [layoutZones.id],
+  }),
+  defects: many(componentDefects),
+}));
+
+export const componentDefectsRelations = relations(componentDefects, ({ one }) => ({
+  component: one(layoutZoneComponents, {
+    fields: [componentDefects.componentId],
+    references: [layoutZoneComponents.id],
+  }),
 }));
 
 export const inspectionTypeLayoutsRelations = relations(inspectionTypeLayouts, ({ one }) => ({
@@ -283,6 +331,20 @@ export const insertUploadErrorSchema = createInsertSchema(uploadErrors).omit({
   timestamp: true,
 });
 
+export const insertLayoutZoneSchema = createInsertSchema(layoutZones).omit({
+  id: true,
+});
+
+export const insertLayoutZoneComponentSchema = createInsertSchema(layoutZoneComponents).omit({
+  id: true,
+});
+
+export const insertComponentDefectSchema = createInsertSchema(componentDefects).omit({
+  id: true,
+}).extend({
+  defectMaxSeverity: z.number().int().min(1).max(10),
+});
+
 // Types
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
@@ -307,6 +369,12 @@ export type InspectionAsset = typeof inspectionAssets.$inferSelect;
 export type InsertInspectionAsset = z.infer<typeof insertInspectionAssetSchema>;
 export type UploadError = typeof uploadErrors.$inferSelect;
 export type InsertUploadError = z.infer<typeof insertUploadErrorSchema>;
+export type LayoutZone = typeof layoutZones.$inferSelect;
+export type InsertLayoutZone = z.infer<typeof insertLayoutZoneSchema>;
+export type LayoutZoneComponent = typeof layoutZoneComponents.$inferSelect;
+export type InsertLayoutZoneComponent = z.infer<typeof insertLayoutZoneComponentSchema>;
+export type ComponentDefect = typeof componentDefects.$inferSelect;
+export type InsertComponentDefect = z.infer<typeof insertComponentDefectSchema>;
 
 // Extended type for inspection with defects and assets
 export type InspectionWithDefects = Inspection & {
@@ -327,4 +395,17 @@ export type DefectWithInspection = Defect & {
     driverName: string;
     datetime: Date;
   };
+};
+
+// Extended types for layout hierarchy
+export type LayoutZoneWithComponents = LayoutZone & {
+  components: LayoutZoneComponent[];
+};
+
+export type LayoutZoneComponentWithDefects = LayoutZoneComponent & {
+  defects: ComponentDefect[];
+};
+
+export type LayoutWithZones = Layout & {
+  zones: LayoutZoneWithComponents[];
 };
