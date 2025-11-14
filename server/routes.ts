@@ -130,9 +130,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isSuperuser: user.companyId === null,
       });
       
+      // Also set session for dual-mode compatibility (legacy clients)
+      req.session.userId = user.userId;
+      req.session.companyId = user.companyId;
+      
       // Reset rate limit on successful login
       resetLoginRateLimit(req);
       console.log(`✅ [Routes] JWT token generated - userId: ${user.userId}, companyId: ${user.companyId || 'null (superuser)'}`);
+      console.log(`🔄 [Routes] Session also populated for legacy client compatibility`);
       
       // Return token and user info
       res.json({
@@ -219,6 +224,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📋 [Routes] Parsing BRICKINSPECTION data (${rawData.length} bytes)`);
       parsed = parseBrickInspection(rawData);
       console.log(`✅ [Routes] Parsed inspection: ${parsed.inspectionId} for company ${parsed.companyId}`);
+
+      // CRITICAL SECURITY: Verify company ID from token matches parsed data
+      if (parsed.companyId !== req.auth.companyId) {
+        console.log(`❌ [Routes] SECURITY VIOLATION - Device token company (${req.auth.companyId}) does not match inspection company (${parsed.companyId})`);
+        return res.status(403).json({ 
+          error: "Company ID mismatch",
+          message: "Device token does not authorize uploads for this company" 
+        });
+      }
+      console.log(`✅ [Routes] Company ID verified - matches device token`);
 
       const formFieldsJson = JSON.stringify(parsed.formFields);
       const primaryAssetId = parsed.assets.length > 0 ? parsed.assets[0].assetId : "UNKNOWN";
