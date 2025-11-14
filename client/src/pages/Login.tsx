@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import logoUrl from "@assets/FBricklogo_1761093196077.png";
 
 export default function Login() {
-  const [, setLocation] = useLocation();
   const { login } = useAuth();
   const { toast } = useToast();
   const [userId, setUserId] = useState("");
@@ -31,7 +29,7 @@ export default function Login() {
     setIsLoading(true);
     try {
       await login(userId, password);
-      setLocation("/");
+      // Don't manually redirect - let App.tsx handle it after state updates
     } catch (error: any) {
       toast({
         title: "Login Failed",

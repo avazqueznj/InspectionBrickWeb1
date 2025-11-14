@@ -32,10 +32,17 @@ function AppContent() {
   const { user, isLoading } = useAuth();
   const [location, setLocation] = useLocation();
 
-  // Redirect to /login if not authenticated and not already on login page
+  // Handle redirects based on auth state
   useEffect(() => {
-    if (!isLoading && !user && location !== "/login") {
-      setLocation("/login");
+    if (!isLoading) {
+      // Redirect to /login if not authenticated and not already there
+      if (!user && location !== "/login") {
+        setLocation("/login");
+      }
+      // Redirect to home if authenticated and on login page
+      else if (user && location === "/login") {
+        setLocation("/");
+      }
     }
   }, [user, isLoading, location, setLocation]);
 
