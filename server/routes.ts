@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema } from "@shared/schema";
+import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema } from "@shared/schema";
 import { z } from "zod";
 import { parseBrickInspection } from "./brickParser";
 
@@ -638,6 +638,406 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Routes] Error fetching layouts:", error);
       res.status(500).json({ error: "Failed to fetch layouts" });
+    }
+  });
+
+  // Get layout by layoutId (protected)
+  app.get("/api/layouts/:layoutId", requireAuth, async (req, res) => {
+    const { layoutId } = req.params;
+    console.log(`🔍 [Routes] GET /api/layouts/${layoutId} - User: ${req.session.userId}`);
+    
+    try {
+      const layout = await storage.getLayoutById(layoutId, req.session.companyId || undefined);
+      
+      if (!layout) {
+        console.log(`❌ [Routes] Layout not found: ${layoutId}`);
+        return res.status(404).json({ error: "Layout not found" });
+      }
+      
+      console.log(`✅ [Routes] Returning layout: ${layoutId}`);
+      res.json(layout);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching layout:", error);
+      res.status(500).json({ error: "Failed to fetch layout" });
+    }
+  });
+
+  // Create layout (protected)
+  app.post("/api/layouts", requireAuth, async (req, res) => {
+    console.log(`➕ [Routes] POST /api/layouts - Creating layout: ${req.body?.layoutId || 'UNKNOWN'}`);
+    
+    try {
+      const insertData = insertLayoutSchema.parse(req.body);
+      
+      // Enforce company scoping
+      if (req.session.companyId) {
+        insertData.companyId = req.session.companyId;
+      }
+      
+      if (!insertData.companyId) {
+        console.log(`❌ [Routes] Company ID is required for layout creation`);
+        return res.status(400).json({ error: "Company ID is required" });
+      }
+      
+      const layout = await storage.createLayout(insertData);
+      console.log(`✅ [Routes] Layout created successfully: ${layout.layoutId}`);
+      res.json(layout);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error creating layout:", error);
+      res.status(500).json({ error: "Failed to create layout" });
+    }
+  });
+
+  // Update layout (protected)
+  app.patch("/api/layouts/:layoutId", requireAuth, async (req, res) => {
+    const { layoutId } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/layouts/${layoutId} - Updating layout`);
+    
+    try {
+      const updateData = insertLayoutSchema.partial().parse(req.body);
+      
+      // Verify layout exists and check permissions
+      const existingLayout = await storage.getLayoutById(layoutId, req.session.companyId || undefined);
+      
+      if (!existingLayout) {
+        console.log(`❌ [Routes] Layout not found: ${layoutId}`);
+        return res.status(404).json({ error: "Layout not found" });
+      }
+      
+      const updatedLayout = await storage.updateLayout(layoutId, updateData);
+      console.log(`✅ [Routes] Layout updated successfully: ${layoutId}`);
+      res.json(updatedLayout);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating layout:", error);
+      res.status(500).json({ error: "Failed to update layout" });
+    }
+  });
+
+  // Delete layout (protected)
+  app.delete("/api/layouts/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    console.log(`🗑️ [Routes] DELETE /api/layouts/${id} - Deleting layout`);
+    
+    try {
+      // Verify layout exists and check permissions
+      const layout = await storage.getLayoutByUUID(id);
+      
+      if (!layout) {
+        console.log(`❌ [Routes] Layout not found: ${id}`);
+        return res.status(404).json({ error: "Layout not found" });
+      }
+      
+      if (req.session.companyId && layout.companyId !== req.session.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot delete layout from another company`);
+        return res.status(403).json({ error: "Cannot delete layouts from other companies" });
+      }
+      
+      // Check if layout has dependent assets
+      const hasAssets = await storage.layoutHasAssets(id);
+      if (hasAssets) {
+        console.log(`❌ [Routes] Cannot delete layout - has dependent assets`);
+        return res.status(409).json({ 
+          error: "Cannot delete layout that is being used by assets. Please reassign or delete the assets first." 
+        });
+      }
+      
+      await storage.deleteLayout(id);
+      console.log(`✅ [Routes] Layout deleted successfully: ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Routes] Error deleting layout:", error);
+      res.status(500).json({ error: "Failed to delete layout" });
+    }
+  });
+
+  // Get zones for a layout (protected)
+  app.get("/api/layouts/:layoutId/zones", requireAuth, async (req, res) => {
+    const { layoutId } = req.params;
+    console.log(`📋 [Routes] GET /api/layouts/${layoutId}/zones - Fetching zones`);
+    
+    try {
+      // Verify layout exists and check permissions
+      const layout = await storage.getLayoutById(layoutId, req.session.companyId || undefined);
+      
+      if (!layout) {
+        console.log(`❌ [Routes] Layout not found: ${layoutId}`);
+        return res.status(404).json({ error: "Layout not found" });
+      }
+      
+      const zones = await storage.getLayoutZones(layout.id, req.session.companyId || undefined);
+      console.log(`✅ [Routes] Returning ${zones.length} zones`);
+      res.json(zones);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching zones:", error);
+      res.status(500).json({ error: "Failed to fetch zones" });
+    }
+  });
+
+  // Create zone (protected)
+  app.post("/api/layouts/:layoutId/zones", requireAuth, async (req, res) => {
+    const { layoutId } = req.params;
+    console.log(`➕ [Routes] POST /api/layouts/${layoutId}/zones - Creating zone`);
+    
+    try {
+      // Verify layout exists and check permissions
+      const layout = await storage.getLayoutById(layoutId, req.session.companyId || undefined);
+      
+      if (!layout) {
+        console.log(`❌ [Routes] Layout not found: ${layoutId}`);
+        return res.status(404).json({ error: "Layout not found" });
+      }
+      
+      const insertData = insertLayoutZoneSchema.parse({
+        ...req.body,
+        layoutId: layout.id,
+      });
+      
+      const zone = await storage.createLayoutZone(insertData, req.session.companyId || undefined);
+      console.log(`✅ [Routes] Zone created successfully`);
+      res.json(zone);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error creating zone:", error);
+      res.status(500).json({ error: "Failed to create zone" });
+    }
+  });
+
+  // Update zone (protected)
+  app.patch("/api/zones/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/zones/${id} - Updating zone`);
+    
+    try {
+      const updateData = insertLayoutZoneSchema.partial().parse(req.body);
+      
+      const zone = await storage.updateLayoutZone(id, updateData, req.session.companyId || undefined);
+      
+      if (!zone) {
+        console.log(`❌ [Routes] Zone not found or unauthorized`);
+        return res.status(404).json({ error: "Zone not found" });
+      }
+      
+      console.log(`✅ [Routes] Zone updated successfully`);
+      res.json(zone);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating zone:", error);
+      res.status(500).json({ error: "Failed to update zone" });
+    }
+  });
+
+  // Delete zone (protected)
+  app.delete("/api/zones/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    console.log(`🗑️ [Routes] DELETE /api/zones/${id} - Deleting zone`);
+    
+    try {
+      const deleted = await storage.deleteLayoutZone(id, req.session.companyId || undefined);
+      
+      if (!deleted) {
+        console.log(`❌ [Routes] Zone not found or unauthorized`);
+        return res.status(404).json({ error: "Zone not found" });
+      }
+      
+      console.log(`✅ [Routes] Zone deleted successfully`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Routes] Error deleting zone:", error);
+      res.status(500).json({ error: "Failed to delete zone" });
+    }
+  });
+
+  // Get components for a zone (protected)
+  app.get("/api/zones/:zoneId/components", requireAuth, async (req, res) => {
+    const { zoneId } = req.params;
+    console.log(`📋 [Routes] GET /api/zones/${zoneId}/components - Fetching components`);
+    
+    try {
+      const components = await storage.getZoneComponents(zoneId, req.session.companyId || undefined);
+      console.log(`✅ [Routes] Returning ${components.length} components`);
+      res.json(components);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("unauthorized")) {
+        console.log(`❌ [Routes] Unauthorized access attempt`);
+        return res.status(403).json({ error: "Zone not found or unauthorized" });
+      }
+      console.error("❌ [Routes] Error fetching components:", error);
+      res.status(500).json({ error: "Failed to fetch components" });
+    }
+  });
+
+  // Create component (protected)
+  app.post("/api/zones/:zoneId/components", requireAuth, async (req, res) => {
+    const { zoneId } = req.params;
+    console.log(`➕ [Routes] POST /api/zones/${zoneId}/components - Creating component`);
+    
+    try {
+      const insertData = insertLayoutZoneComponentSchema.parse({
+        ...req.body,
+        zoneId,
+      });
+      
+      const component = await storage.createComponent(insertData, req.session.companyId || undefined);
+      console.log(`✅ [Routes] Component created successfully`);
+      res.json(component);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      if (error instanceof Error && error.message.includes("unauthorized")) {
+        console.log(`❌ [Routes] Unauthorized access attempt`);
+        return res.status(403).json({ error: "Zone not found or unauthorized" });
+      }
+      console.error("❌ [Routes] Error creating component:", error);
+      res.status(500).json({ error: "Failed to create component" });
+    }
+  });
+
+  // Update component (protected)
+  app.patch("/api/components/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/components/${id} - Updating component`);
+    
+    try {
+      const updateData = insertLayoutZoneComponentSchema.partial().parse(req.body);
+      const component = await storage.updateComponent(id, updateData, req.session.companyId || undefined);
+      
+      if (!component) {
+        console.log(`❌ [Routes] Component not found or unauthorized`);
+        return res.status(404).json({ error: "Component not found" });
+      }
+      
+      console.log(`✅ [Routes] Component updated successfully`);
+      res.json(component);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating component:", error);
+      res.status(500).json({ error: "Failed to update component" });
+    }
+  });
+
+  // Delete component (protected)
+  app.delete("/api/components/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    console.log(`🗑️ [Routes] DELETE /api/components/${id} - Deleting component`);
+    
+    try {
+      const deleted = await storage.deleteComponent(id, req.session.companyId || undefined);
+      
+      if (!deleted) {
+        console.log(`❌ [Routes] Component not found or unauthorized`);
+        return res.status(404).json({ error: "Component not found" });
+      }
+      
+      console.log(`✅ [Routes] Component deleted successfully`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Routes] Error deleting component:", error);
+      res.status(500).json({ error: "Failed to delete component" });
+    }
+  });
+
+  // Get defects for a component (protected)
+  app.get("/api/components/:componentId/defects", requireAuth, async (req, res) => {
+    const { componentId } = req.params;
+    console.log(`📋 [Routes] GET /api/components/${componentId}/defects - Fetching defects`);
+    
+    try {
+      const defects = await storage.getComponentDefects(componentId, req.session.companyId || undefined);
+      console.log(`✅ [Routes] Returning ${defects.length} defects`);
+      res.json(defects);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("unauthorized")) {
+        console.log(`❌ [Routes] Unauthorized access attempt`);
+        return res.status(403).json({ error: "Component not found or unauthorized" });
+      }
+      console.error("❌ [Routes] Error fetching defects:", error);
+      res.status(500).json({ error: "Failed to fetch defects" });
+    }
+  });
+
+  // Create component defect (protected)
+  app.post("/api/components/:componentId/defects", requireAuth, async (req, res) => {
+    const { componentId } = req.params;
+    console.log(`➕ [Routes] POST /api/components/${componentId}/defects - Creating defect`);
+    
+    try {
+      const insertData = insertComponentDefectSchema.parse({
+        ...req.body,
+        componentId,
+      });
+      
+      const defect = await storage.createComponentDefect(insertData, req.session.companyId || undefined);
+      console.log(`✅ [Routes] Defect created successfully`);
+      res.json(defect);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      if (error instanceof Error && error.message.includes("unauthorized")) {
+        console.log(`❌ [Routes] Unauthorized access attempt`);
+        return res.status(403).json({ error: "Component not found or unauthorized" });
+      }
+      console.error("❌ [Routes] Error creating defect:", error);
+      res.status(500).json({ error: "Failed to create defect" });
+    }
+  });
+
+  // Update component defect (protected)
+  app.patch("/api/component-defects/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/component-defects/${id} - Updating defect`);
+    
+    try {
+      const updateData = insertComponentDefectSchema.partial().parse(req.body);
+      const defect = await storage.updateComponentDefect(id, updateData, req.session.companyId || undefined);
+      
+      if (!defect) {
+        console.log(`❌ [Routes] Defect not found or unauthorized`);
+        return res.status(404).json({ error: "Defect not found" });
+      }
+      
+      console.log(`✅ [Routes] Defect updated successfully`);
+      res.json(defect);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating defect:", error);
+      res.status(500).json({ error: "Failed to update defect" });
+    }
+  });
+
+  // Delete component defect (protected)
+  app.delete("/api/component-defects/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    console.log(`🗑️ [Routes] DELETE /api/component-defects/${id} - Deleting defect`);
+    
+    try {
+      const deleted = await storage.deleteComponentDefect(id, req.session.companyId || undefined);
+      
+      if (!deleted) {
+        console.log(`❌ [Routes] Defect not found or unauthorized`);
+        return res.status(404).json({ error: "Defect not found" });
+      }
+      
+      console.log(`✅ [Routes] Defect deleted successfully`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Routes] Error deleting defect:", error);
+      res.status(500).json({ error: "Failed to delete defect" });
     }
   });
 

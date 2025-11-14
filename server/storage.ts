@@ -177,26 +177,29 @@ export interface IStorage {
   updateLayout(layoutId: string, layout: Partial<InsertLayout>): Promise<Layout | undefined>;
   deleteLayout(id: string): Promise<boolean>;
   
-  // Layout Zones
-  getLayoutZones(layoutId: string): Promise<LayoutZone[]>;
-  getLayoutZoneById(id: string): Promise<LayoutZone | undefined>;
-  createLayoutZone(zone: InsertLayoutZone): Promise<LayoutZone>;
-  updateLayoutZone(id: string, zone: Partial<InsertLayoutZone>): Promise<LayoutZone | undefined>;
-  deleteLayoutZone(id: string): Promise<boolean>;
+  // Layout Zones  
+  getLayoutZones(layoutId: string, companyId?: string): Promise<LayoutZone[]>;
+  getLayoutZoneById(id: string, companyId?: string): Promise<LayoutZone | undefined>;
+  createLayoutZone(zone: InsertLayoutZone, companyId?: string): Promise<LayoutZone>;
+  updateLayoutZone(id: string, zone: Partial<InsertLayoutZone>, companyId?: string): Promise<LayoutZone | undefined>;
+  deleteLayoutZone(id: string, companyId?: string): Promise<boolean>;
   
   // Layout Zone Components
-  getZoneComponents(zoneId: string): Promise<LayoutZoneComponent[]>;
-  getComponentById(id: string): Promise<LayoutZoneComponent | undefined>;
-  createComponent(component: InsertLayoutZoneComponent): Promise<LayoutZoneComponent>;
-  updateComponent(id: string, component: Partial<InsertLayoutZoneComponent>): Promise<LayoutZoneComponent | undefined>;
-  deleteComponent(id: string): Promise<boolean>;
+  getZoneComponents(zoneId: string, companyId?: string): Promise<LayoutZoneComponent[]>;
+  getComponentById(id: string, companyId?: string): Promise<LayoutZoneComponent | undefined>;
+  createComponent(component: InsertLayoutZoneComponent, companyId?: string): Promise<LayoutZoneComponent>;
+  updateComponent(id: string, component: Partial<InsertLayoutZoneComponent>, companyId?: string): Promise<LayoutZoneComponent | undefined>;
+  deleteComponent(id: string, companyId?: string): Promise<boolean>;
   
   // Component Defects
-  getComponentDefects(componentId: string): Promise<ComponentDefect[]>;
-  getComponentDefectById(id: string): Promise<ComponentDefect | undefined>;
-  createComponentDefect(defect: InsertComponentDefect): Promise<ComponentDefect>;
-  updateComponentDefect(id: string, defect: Partial<InsertComponentDefect>): Promise<ComponentDefect | undefined>;
-  deleteComponentDefect(id: string): Promise<boolean>;
+  getComponentDefects(componentId: string, companyId?: string): Promise<ComponentDefect[]>;
+  getComponentDefectById(id: string, companyId?: string): Promise<ComponentDefect | undefined>;
+  createComponentDefect(defect: InsertComponentDefect, companyId?: string): Promise<ComponentDefect>;
+  updateComponentDefect(id: string, defect: Partial<InsertComponentDefect>, companyId?: string): Promise<ComponentDefect | undefined>;
+  deleteComponentDefect(id: string, companyId?: string): Promise<boolean>;
+  
+  // Check if layout has dependent assets
+  layoutHasAssets(layoutId: string): Promise<boolean>;
   
   // Inspection Type Layouts (existing methods)
   getInspectionTypeLayouts(inspectionTypeId: string): Promise<string[]>;
@@ -1286,8 +1289,17 @@ export class DatabaseStorage implements IStorage {
 
   // === LAYOUT ZONES ===
 
-  async getLayoutZones(layoutId: string): Promise<LayoutZone[]> {
-    console.log(`📊 [Storage] getLayoutZones - layoutId: ${layoutId}`);
+  async getLayoutZones(layoutId: string, companyId?: string): Promise<LayoutZone[]> {
+    console.log(`📊 [Storage] getLayoutZones - layoutId: ${layoutId}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify layout ownership if companyId provided
+    if (companyId) {
+      const layout = await this.getLayoutByUUID(layoutId);
+      if (!layout || layout.companyId !== companyId) {
+        console.log(`❌ [Storage] Layout not found or unauthorized`);
+        throw new Error("Layout not found or unauthorized");
+      }
+    }
     
     const result = await db.select()
       .from(layoutZones)
@@ -1298,15 +1310,40 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getLayoutZoneById(id: string): Promise<LayoutZone | undefined> {
-    console.log(`🔍 [Storage] getLayoutZoneById - id: ${id}`);
-    const [result] = await db.select().from(layoutZones).where(eq(layoutZones.id, id));
-    console.log(`${result ? '✅' : '❌'} [Storage] Zone ${result ? 'found' : 'not found'}`);
-    return result;
+  async getLayoutZoneById(id: string, companyId?: string): Promise<LayoutZone | undefined> {
+    console.log(`🔍 [Storage] getLayoutZoneById - id: ${id}, companyId: ${companyId || 'ANY'}`);
+    
+    const [zone] = await db.select().from(layoutZones).where(eq(layoutZones.id, id));
+    
+    if (!zone) {
+      console.log(`❌ [Storage] Zone not found`);
+      return undefined;
+    }
+    
+    // Verify layout ownership if companyId provided
+    if (companyId) {
+      const layout = await this.getLayoutByUUID(zone.layoutId);
+      if (!layout || layout.companyId !== companyId) {
+        console.log(`❌ [Storage] Zone found but unauthorized (wrong company)`);
+        return undefined;
+      }
+    }
+    
+    console.log(`✅ [Storage] Zone found`);
+    return zone;
   }
 
-  async createLayoutZone(insertZone: InsertLayoutZone): Promise<LayoutZone> {
-    console.log(`➕ [Storage] Creating zone: ${insertZone.zoneName}, layoutId: ${insertZone.layoutId}`);
+  async createLayoutZone(insertZone: InsertLayoutZone, companyId?: string): Promise<LayoutZone> {
+    console.log(`➕ [Storage] Creating zone: ${insertZone.zoneName}, layoutId: ${insertZone.layoutId}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify layout ownership if companyId provided
+    if (companyId) {
+      const layout = await this.getLayoutByUUID(insertZone.layoutId);
+      if (!layout || layout.companyId !== companyId) {
+        console.log(`❌ [Storage] Layout not found or unauthorized`);
+        throw new Error("Layout not found or unauthorized");
+      }
+    }
     
     const [zone] = await db
       .insert(layoutZones)
@@ -1317,31 +1354,58 @@ export class DatabaseStorage implements IStorage {
     return zone;
   }
 
-  async updateLayoutZone(id: string, updateData: Partial<InsertLayoutZone>): Promise<LayoutZone | undefined> {
-    console.log(`🔄 [Storage] Updating zone: ${id}`);
+  async updateLayoutZone(id: string, updateData: Partial<InsertLayoutZone>, companyId?: string): Promise<LayoutZone | undefined> {
+    console.log(`🔄 [Storage] Updating zone: ${id}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify zone ownership if companyId provided
+    const existingZone = await this.getLayoutZoneById(id, companyId);
+    if (!existingZone) {
+      console.log(`❌ [Storage] Zone not found or unauthorized`);
+      return undefined;
+    }
+    
     const [zone] = await db
       .update(layoutZones)
       .set(updateData)
       .where(eq(layoutZones.id, id))
       .returning();
+    
     console.log(`${zone ? '✅' : '❌'} [Storage] Zone ${zone ? 'updated' : 'not found'}`);
     return zone;
   }
 
-  async deleteLayoutZone(id: string): Promise<boolean> {
-    console.log(`🗑️ [Storage] Deleting zone: ${id}`);
+  async deleteLayoutZone(id: string, companyId?: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting zone: ${id}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify zone ownership if companyId provided
+    const zone = await this.getLayoutZoneById(id, companyId);
+    if (!zone) {
+      console.log(`❌ [Storage] Zone not found or unauthorized`);
+      return false;
+    }
+    
     const result = await db
       .delete(layoutZones)
       .where(eq(layoutZones.id, id))
       .returning();
+    
     console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Zone ${result.length > 0 ? 'deleted' : 'not found'}`);
     return result.length > 0;
   }
 
   // === LAYOUT ZONE COMPONENTS ===
 
-  async getZoneComponents(zoneId: string): Promise<LayoutZoneComponent[]> {
-    console.log(`📊 [Storage] getZoneComponents - zoneId: ${zoneId}`);
+  async getZoneComponents(zoneId: string, companyId?: string): Promise<LayoutZoneComponent[]> {
+    console.log(`📊 [Storage] getZoneComponents - zoneId: ${zoneId}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify zone ownership if companyId provided
+    if (companyId) {
+      const zone = await this.getLayoutZoneById(zoneId, companyId);
+      if (!zone) {
+        console.log(`❌ [Storage] Zone not found or unauthorized`);
+        throw new Error("Zone not found or unauthorized");
+      }
+    }
     
     const result = await db.select()
       .from(layoutZoneComponents)
@@ -1352,15 +1416,40 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getComponentById(id: string): Promise<LayoutZoneComponent | undefined> {
-    console.log(`🔍 [Storage] getComponentById - id: ${id}`);
-    const [result] = await db.select().from(layoutZoneComponents).where(eq(layoutZoneComponents.id, id));
-    console.log(`${result ? '✅' : '❌'} [Storage] Component ${result ? 'found' : 'not found'}`);
-    return result;
+  async getComponentById(id: string, companyId?: string): Promise<LayoutZoneComponent | undefined> {
+    console.log(`🔍 [Storage] getComponentById - id: ${id}, companyId: ${companyId || 'ANY'}`);
+    
+    const [component] = await db.select().from(layoutZoneComponents).where(eq(layoutZoneComponents.id, id));
+    
+    if (!component) {
+      console.log(`❌ [Storage] Component not found`);
+      return undefined;
+    }
+    
+    // Verify zone ownership if companyId provided
+    if (companyId) {
+      const zone = await this.getLayoutZoneById(component.zoneId, companyId);
+      if (!zone) {
+        console.log(`❌ [Storage] Component found but unauthorized (wrong company)`);
+        return undefined;
+      }
+    }
+    
+    console.log(`✅ [Storage] Component found`);
+    return component;
   }
 
-  async createComponent(insertComponent: InsertLayoutZoneComponent): Promise<LayoutZoneComponent> {
-    console.log(`➕ [Storage] Creating component: ${insertComponent.componentName}, zoneId: ${insertComponent.zoneId}`);
+  async createComponent(insertComponent: InsertLayoutZoneComponent, companyId?: string): Promise<LayoutZoneComponent> {
+    console.log(`➕ [Storage] Creating component: ${insertComponent.componentName}, zoneId: ${insertComponent.zoneId}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify zone ownership if companyId provided
+    if (companyId) {
+      const zone = await this.getLayoutZoneById(insertComponent.zoneId, companyId);
+      if (!zone) {
+        console.log(`❌ [Storage] Zone not found or unauthorized`);
+        throw new Error("Zone not found or unauthorized");
+      }
+    }
     
     const [component] = await db
       .insert(layoutZoneComponents)
@@ -1371,31 +1460,58 @@ export class DatabaseStorage implements IStorage {
     return component;
   }
 
-  async updateComponent(id: string, updateData: Partial<InsertLayoutZoneComponent>): Promise<LayoutZoneComponent | undefined> {
-    console.log(`🔄 [Storage] Updating component: ${id}`);
+  async updateComponent(id: string, updateData: Partial<InsertLayoutZoneComponent>, companyId?: string): Promise<LayoutZoneComponent | undefined> {
+    console.log(`🔄 [Storage] Updating component: ${id}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify component ownership if companyId provided
+    const existingComponent = await this.getComponentById(id, companyId);
+    if (!existingComponent) {
+      console.log(`❌ [Storage] Component not found or unauthorized`);
+      return undefined;
+    }
+    
     const [component] = await db
       .update(layoutZoneComponents)
       .set(updateData)
       .where(eq(layoutZoneComponents.id, id))
       .returning();
+    
     console.log(`${component ? '✅' : '❌'} [Storage] Component ${component ? 'updated' : 'not found'}`);
     return component;
   }
 
-  async deleteComponent(id: string): Promise<boolean> {
-    console.log(`🗑️ [Storage] Deleting component: ${id}`);
+  async deleteComponent(id: string, companyId?: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting component: ${id}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify component ownership if companyId provided
+    const component = await this.getComponentById(id, companyId);
+    if (!component) {
+      console.log(`❌ [Storage] Component not found or unauthorized`);
+      return false;
+    }
+    
     const result = await db
       .delete(layoutZoneComponents)
       .where(eq(layoutZoneComponents.id, id))
       .returning();
+    
     console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Component ${result.length > 0 ? 'deleted' : 'not found'}`);
     return result.length > 0;
   }
 
   // === COMPONENT DEFECTS ===
 
-  async getComponentDefects(componentId: string): Promise<ComponentDefect[]> {
-    console.log(`📊 [Storage] getComponentDefects - componentId: ${componentId}`);
+  async getComponentDefects(componentId: string, companyId?: string): Promise<ComponentDefect[]> {
+    console.log(`📊 [Storage] getComponentDefects - componentId: ${componentId}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify component ownership if companyId provided
+    if (companyId) {
+      const component = await this.getComponentById(componentId, companyId);
+      if (!component) {
+        console.log(`❌ [Storage] Component not found or unauthorized`);
+        throw new Error("Component not found or unauthorized");
+      }
+    }
     
     const result = await db.select()
       .from(componentDefects)
@@ -1406,15 +1522,40 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getComponentDefectById(id: string): Promise<ComponentDefect | undefined> {
-    console.log(`🔍 [Storage] getComponentDefectById - id: ${id}`);
-    const [result] = await db.select().from(componentDefects).where(eq(componentDefects.id, id));
-    console.log(`${result ? '✅' : '❌'} [Storage] Component defect ${result ? 'found' : 'not found'}`);
-    return result;
+  async getComponentDefectById(id: string, companyId?: string): Promise<ComponentDefect | undefined> {
+    console.log(`🔍 [Storage] getComponentDefectById - id: ${id}, companyId: ${companyId || 'ANY'}`);
+    
+    const [defect] = await db.select().from(componentDefects).where(eq(componentDefects.id, id));
+    
+    if (!defect) {
+      console.log(`❌ [Storage] Component defect not found`);
+      return undefined;
+    }
+    
+    // Verify component ownership if companyId provided
+    if (companyId) {
+      const component = await this.getComponentById(defect.componentId, companyId);
+      if (!component) {
+        console.log(`❌ [Storage] Defect found but unauthorized (wrong company)`);
+        return undefined;
+      }
+    }
+    
+    console.log(`✅ [Storage] Component defect found`);
+    return defect;
   }
 
-  async createComponentDefect(insertDefect: InsertComponentDefect): Promise<ComponentDefect> {
-    console.log(`➕ [Storage] Creating component defect: ${insertDefect.defectName}, componentId: ${insertDefect.componentId}`);
+  async createComponentDefect(insertDefect: InsertComponentDefect, companyId?: string): Promise<ComponentDefect> {
+    console.log(`➕ [Storage] Creating component defect: ${insertDefect.defectName}, componentId: ${insertDefect.componentId}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify component ownership if companyId provided
+    if (companyId) {
+      const component = await this.getComponentById(insertDefect.componentId, companyId);
+      if (!component) {
+        console.log(`❌ [Storage] Component not found or unauthorized`);
+        throw new Error("Component not found or unauthorized");
+      }
+    }
     
     const [defect] = await db
       .insert(componentDefects)
@@ -1425,25 +1566,55 @@ export class DatabaseStorage implements IStorage {
     return defect;
   }
 
-  async updateComponentDefect(id: string, updateData: Partial<InsertComponentDefect>): Promise<ComponentDefect | undefined> {
-    console.log(`🔄 [Storage] Updating component defect: ${id}`);
+  async updateComponentDefect(id: string, updateData: Partial<InsertComponentDefect>, companyId?: string): Promise<ComponentDefect | undefined> {
+    console.log(`🔄 [Storage] Updating component defect: ${id}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify defect ownership if companyId provided
+    const existingDefect = await this.getComponentDefectById(id, companyId);
+    if (!existingDefect) {
+      console.log(`❌ [Storage] Component defect not found or unauthorized`);
+      return undefined;
+    }
+    
     const [defect] = await db
       .update(componentDefects)
       .set(updateData)
       .where(eq(componentDefects.id, id))
       .returning();
+    
     console.log(`${defect ? '✅' : '❌'} [Storage] Component defect ${defect ? 'updated' : 'not found'}`);
     return defect;
   }
 
-  async deleteComponentDefect(id: string): Promise<boolean> {
-    console.log(`🗑️ [Storage] Deleting component defect: ${id}`);
+  async deleteComponentDefect(id: string, companyId?: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting component defect: ${id}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify defect ownership if companyId provided
+    const defect = await this.getComponentDefectById(id, companyId);
+    if (!defect) {
+      console.log(`❌ [Storage] Component defect not found or unauthorized`);
+      return false;
+    }
+    
     const result = await db
       .delete(componentDefects)
       .where(eq(componentDefects.id, id))
       .returning();
+    
     console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Component defect ${result.length > 0 ? 'deleted' : 'not found'}`);
     return result.length > 0;
+  }
+
+  async layoutHasAssets(layoutId: string): Promise<boolean> {
+    console.log(`🔍 [Storage] layoutHasAssets - layoutId: ${layoutId}`);
+    
+    const result = await db.select({ count: sql<number>`count(*)::int` })
+      .from(assets)
+      .where(eq(assets.layout, layoutId));
+    
+    const count = result[0]?.count || 0;
+    console.log(`${count > 0 ? '⚠️' : '✅'} [Storage] Layout has ${count} dependent assets`);
+    return count > 0;
   }
 
   async getInspectionTypeLayouts(inspectionTypeId: string): Promise<string[]> {
