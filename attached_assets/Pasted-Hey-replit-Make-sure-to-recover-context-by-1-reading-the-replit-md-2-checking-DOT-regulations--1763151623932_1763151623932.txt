@@ -1,0 +1,62 @@
+Hey replit,
+
+Make sure to recover context by:
+
+1) reading the replit.md
+2) checking DOT regulations on inspections
+3) look at the database schema
+4) and look at the code
+
+Things are going well, testing with the device. today we are doing a stretch goal.
+
+To remind you:
+ The app is really divided into 2. The data receiving part, the inspection list and defects, and the configuration part.
+These are not connected. Experience tells me that the data coming from the devices needs to be loaded, no matter if it diverged from the config. So the config, assets, inspection types, and users are for download, and that is it. We do not correlate them to inspections and defects; if they diverge, that is fine. If inspections have assets we do not have in the DB, that is fine, even users.
+
+So today we will add more config entities, and finally make the service to download to the device, but the latter we will do later.
+
+Today, we are finishing the layout entity.
+
+In the user interface, we will create a new main menu titled "Layouts." 
+
+Look at the layouts, it is only a table in the db with name and a blob of data. we will replace the blob with table data.
+The layout tells the device which zones and components the vehicle has. The final hierarchy in the db will look like this:
+
+layout->zone-> component->component_defects
+
+So here is our tasks:
+
+A) in layouts remove the data column
+B) create a new table called layout_zones this will contain
+
+1 zone_id uuid
+2 zone_name string the name
+3 zone_tag  string the tag rfid code
+4 fk to the parent layout
+
+c) create a new table called layout_zone_components with
+
+1 coponent_id uuid
+2 component_name  string
+3 component_inspecton_instructions  string
+4 fk to parent zone
+
+d) create a new table called component_defects with
+1 defect_id uuid
+2 defect_name string
+3 defect_max_severity ( int 1 to 10 )
+4 defect_instructions
+
+UI
+
+In the user interface, we will create a new main menu titled "Layouts."  We should examine the other main pages and follow their structure to display layouts, including a title, filters, and a sortable and paginated list. 
+
+The modal layout detail screen will contain the layout fields, which should include the name, layout ID, and UUID. Additionally, there will be a list of zones. We must have the capability to add, edit, and delete these zones. 
+
+When you click on a zone, a new modal detail will open, displaying the list of components for that zone, along with all relevant fields and options to add, edit, and view details. 
+
+Finally, if you click on a component, another modal will pop up with defect details, including the defect name, maximum severity, instructions, and any other relevant information from the table.
+
+So that is the task. 
+
+The issue where i need your advice before we start is on the chain of modals from  layout-component-defect. They are too many. I whish in the layout , where we have the list of components that you could click and expand the components to show its defects, instead of a new modal. But then each row in the view will need the add/edit/delete tools and i am concerned this would be too complicated and fragile. What do you think?
