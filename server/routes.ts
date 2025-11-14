@@ -4,13 +4,31 @@ import { storage } from "./storage";
 import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema } from "@shared/schema";
 import { z } from "zod";
 import { parseBrickInspection } from "./brickParser";
+import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
+import { requireAuth as requireJWTAuth, rateLimitLogin, resetLoginRateLimit, logLoginFailure, type AuthRequest } from "./auth/middleware";
 
-// Authentication middleware
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: "Not authenticated" });
+// Dual-mode authentication middleware (supports both session and JWT during migration)
+function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
+  // Try JWT first
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return requireJWTAuth(req, res, next);
   }
-  next();
+  
+  // Fall back to session (legacy)
+  if (req.session.userId) {
+    console.log(`⚠️  [Auth] Using legacy session auth for user: ${req.session.userId}`);
+    // Populate req.auth from session for compatibility
+    req.auth = {
+      userId: req.session.userId,
+      companyId: req.session.companyId || null,
+      isSuperuser: req.session.companyId === null,
+      isDeviceToken: false,
+    };
+    return next();
+  }
+  
+  return res.status(401).json({ error: "Not authenticated" });
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -89,8 +107,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     password: z.string().min(1),
   });
 
-  // Auth: Login
-  app.post("/api/auth/login", async (req, res) => {
+  // Auth: Login (with rate limiting)
+  app.post("/api/auth/login", rateLimitLogin, async (req, res) => {
     console.log(`🔐 [Routes] POST /api/auth/login - Attempting login for user: ${req.body?.userId || 'UNKNOWN'}`);
     
     try {
@@ -101,18 +119,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         console.log(`❌ [Routes] Login failed - Invalid credentials for user: ${userId}`);
+        logLoginFailure(req, userId);
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
-      // Set session
-      req.session.userId = user.userId;
-      req.session.companyId = user.companyId;
-      console.log(`✅ [Routes] Session created - userId: ${user.userId}, companyId: ${user.companyId || 'null (superuser)'}`);
-      
-      // Return user info (without password)
-      res.json({
+      // Generate JWT token
+      const token = await generateAccessToken({
         userId: user.userId,
         companyId: user.companyId,
+        isSuperuser: user.companyId === null,
+      });
+      
+      // Reset rate limit on successful login
+      resetLoginRateLimit(req);
+      console.log(`✅ [Routes] JWT token generated - userId: ${user.userId}, companyId: ${user.companyId || 'null (superuser)'}`);
+      
+      // Return token and user info
+      res.json({
+        token,
+        user: {
+          userId: user.userId,
+          companyId: user.companyId,
+          isSuperuser: user.companyId === null,
+        },
       });
       console.log(`✅ [Routes] Login successful for user: ${userId}`);
     } catch (error) {
@@ -125,9 +154,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Device: Upload inspection (no authentication required for device)
-  app.post("/api/device/inspections", async (req, res) => {
+  // Auth: Generate device token (for mobile devices)
+  app.post("/api/auth/device-token", requireAuth, async (req: AuthRequest, res) => {
+    console.log(`📱 [Routes] POST /api/auth/device-token - Generating device token`);
+    
+    try {
+      if (!req.auth) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const { userId, companyId, isSuperuser } = req.auth;
+      
+      // Device tokens cannot be for superusers
+      if (isSuperuser) {
+        console.log(`❌ [Routes] Superusers cannot generate device tokens`);
+        return res.status(403).json({ error: "Superusers cannot generate device tokens" });
+      }
+      
+      // Generate perpetual device token
+      const token = await generateDeviceToken({
+        userId,
+        companyId: companyId!,
+        isSuperuser: false,
+      });
+      
+      console.log(`✅ [Routes] Device token generated for company: ${companyId}`);
+      
+      res.json({
+        token,
+        companyId,
+        expiresIn: "10 years",
+      });
+    } catch (error) {
+      console.error("❌ [Routes] Error generating device token:", error);
+      res.status(500).json({ error: "Failed to generate device token" });
+    }
+  });
+
+  // Device: Upload inspection (requires device token)
+  app.post("/api/device/inspections", requireAuth, async (req: AuthRequest, res) => {
     console.log(`📱 [Routes] POST /api/device/inspections - Receiving inspection data from device`);
+    
+    // Verify this is a device token
+    if (!req.auth || !req.auth.isDeviceToken) {
+      console.log(`❌ [Routes] Device upload rejected - not a device token`);
+      return res.status(403).json({ error: "Device token required for this endpoint" });
+    }
+    
+    console.log(`✅ [Routes] Device token verified for company: ${req.auth.companyId}`);
     
     let rawData: string = '';
     let parsed: any = null;
@@ -301,15 +375,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all companies (protected)
   app.get("/api/companies", requireAuth, async (req, res) => {
-    console.log(`🏢 [Routes] GET /api/companies - User: ${req.session.userId}, CompanyId: ${req.session.companyId || 'null (superuser)'}`);
+    console.log(`🏢 [Routes] GET /api/companies - User: ${req.session.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
     
     try {
       const companies = await storage.getCompanies();
       
       // If user has a specific company, only return that company
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Filtering to single company: ${req.session.companyId}`);
-        const filteredCompanies = companies.filter(c => c.id === req.session.companyId);
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Filtering to single company: ${req.auth?.companyId}`);
+        const filteredCompanies = companies.filter(c => c.id === req.auth?.companyId);
         res.json(filteredCompanies);
       } else {
         // Superuser (avazquez) sees all companies
@@ -330,10 +404,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Enforce company scoping: use session's companyId unless user is superuser
-      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      const companyId = req.auth?.companyId || (req.query.companyId as string | undefined);
       
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping for user filter values - Company: ${req.session.companyId}`);
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for user filter values - Company: ${req.auth?.companyId}`);
       } else {
         console.log(`👑 [Routes] Superuser access - getting user filter values for company: ${companyId || 'ALL'}`);
       }
@@ -354,9 +428,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const params = userQueryParamsSchema.parse(req.query);
       
       // Enforce company scoping
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
-        params.companyId = req.session.companyId;
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.auth?.companyId}`);
+        params.companyId = req.auth?.companyId;
       } else {
         console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
       }
@@ -380,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userData = insertUserSchema.parse(req.body);
       
       // Enforce company scoping: non-superusers can only create users in their own company
-      if (req.session.companyId && userData.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && userData.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - User can only create users in their own company`);
         return res.status(403).json({ error: "Cannot create users in other companies" });
       }
@@ -421,7 +495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping
-      if (req.session.companyId && existingUser.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && existingUser.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot update user from another company`);
         return res.status(403).json({ error: "Cannot update users from other companies" });
       }
@@ -463,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping
-      if (req.session.companyId && existingUser.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && existingUser.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot delete user from another company`);
         return res.status(403).json({ error: "Cannot delete users from other companies" });
       }
@@ -495,10 +569,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Enforce company scoping: use session's companyId unless user is superuser
-      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      const companyId = req.auth?.companyId || (req.query.companyId as string | undefined);
       
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping for asset filter values - Company: ${req.session.companyId}`);
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for asset filter values - Company: ${req.auth?.companyId}`);
       } else {
         console.log(`👑 [Routes] Superuser access - getting asset filter values for company: ${companyId || 'ALL'}`);
       }
@@ -519,9 +593,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const params = assetQueryParamsSchema.parse(req.query);
       
       // Enforce company scoping
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
-        params.companyId = req.session.companyId;
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.auth?.companyId}`);
+        params.companyId = req.auth?.companyId;
       } else {
         console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
       }
@@ -545,13 +619,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assetData = insertAssetSchema.parse(req.body);
       
       // Enforce company scoping: non-superusers must create assets in their own company
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping - Asset will be created in: ${req.session.companyId}`);
-        assetData.companyId = req.session.companyId;
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - Asset will be created in: ${req.auth?.companyId}`);
+        assetData.companyId = req.auth?.companyId;
       }
       
       // Additional check: if no session company and submitted company is different, reject
-      if (!req.session.companyId && !assetData.companyId) {
+      if (!req.auth?.companyId && !assetData.companyId) {
         console.log(`❌ [Routes] Cannot create asset without company ID`);
         return res.status(400).json({ error: "Company ID is required" });
       }
@@ -580,7 +654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get the existing asset to check authorization (fetch all assets to avoid pagination issues)
       const existingAssets = await storage.getAssets({ 
-        companyId: req.session.companyId || undefined,
+        companyId: req.auth?.companyId || undefined,
         limit: 10000 // Large limit to get all assets for authorization check
       });
       const existingAsset = existingAssets.data.find(a => a.assetId === assetId);
@@ -591,7 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping
-      if (req.session.companyId && existingAsset.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && existingAsset.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot update asset from another company`);
         return res.status(403).json({ error: "Cannot update assets from other companies" });
       }
@@ -619,7 +693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`📋 [Routes] GET /api/layouts - User: ${req.session.userId}`);
     
     try {
-      const companyId = req.session.companyId || (req.query.companyId as string);
+      const companyId = req.auth?.companyId || (req.query.companyId as string);
       
       if (!companyId) {
         console.log(`❌ [Routes] Company ID is required`);
@@ -627,7 +701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping for non-superusers
-      if (req.session.companyId && req.session.companyId !== companyId) {
+      if (req.auth?.companyId && req.auth?.companyId !== companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot access layouts from another company`);
         return res.status(403).json({ error: "Cannot access layouts from other companies" });
       }
@@ -647,7 +721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🔍 [Routes] GET /api/layouts/${layoutId} - User: ${req.session.userId}`);
     
     try {
-      const layout = await storage.getLayoutById(layoutId, req.session.companyId || undefined);
+      const layout = await storage.getLayoutById(layoutId, req.auth?.companyId || undefined);
       
       if (!layout) {
         console.log(`❌ [Routes] Layout not found: ${layoutId}`);
@@ -670,8 +744,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const insertData = insertLayoutSchema.parse(req.body);
       
       // Enforce company scoping
-      if (req.session.companyId) {
-        insertData.companyId = req.session.companyId;
+      if (req.auth?.companyId) {
+        insertData.companyId = req.auth?.companyId;
       }
       
       if (!insertData.companyId) {
@@ -700,7 +774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData = insertLayoutSchema.partial().parse(req.body);
       
       // Verify layout exists and check permissions
-      const existingLayout = await storage.getLayoutById(layoutId, req.session.companyId || undefined);
+      const existingLayout = await storage.getLayoutById(layoutId, req.auth?.companyId || undefined);
       
       if (!existingLayout) {
         console.log(`❌ [Routes] Layout not found: ${layoutId}`);
@@ -733,7 +807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Layout not found" });
       }
       
-      if (req.session.companyId && layout.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && layout.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot delete layout from another company`);
         return res.status(403).json({ error: "Cannot delete layouts from other companies" });
       }
@@ -763,14 +837,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Verify layout exists and check permissions
-      const layout = await storage.getLayoutById(layoutId, req.session.companyId || undefined);
+      const layout = await storage.getLayoutById(layoutId, req.auth?.companyId || undefined);
       
       if (!layout) {
         console.log(`❌ [Routes] Layout not found: ${layoutId}`);
         return res.status(404).json({ error: "Layout not found" });
       }
       
-      const zones = await storage.getLayoutZones(layout.id, req.session.companyId || undefined);
+      const zones = await storage.getLayoutZones(layout.id, req.auth?.companyId || undefined);
       console.log(`✅ [Routes] Returning ${zones.length} zones`);
       res.json(zones);
     } catch (error) {
@@ -786,7 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Verify layout exists and check permissions
-      const layout = await storage.getLayoutById(layoutId, req.session.companyId || undefined);
+      const layout = await storage.getLayoutById(layoutId, req.auth?.companyId || undefined);
       
       if (!layout) {
         console.log(`❌ [Routes] Layout not found: ${layoutId}`);
@@ -798,7 +872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         layoutId: layout.id,
       });
       
-      const zone = await storage.createLayoutZone(insertData, req.session.companyId || undefined);
+      const zone = await storage.createLayoutZone(insertData, req.auth?.companyId || undefined);
       console.log(`✅ [Routes] Zone created successfully`);
       res.json(zone);
     } catch (error) {
@@ -818,7 +892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updateData = insertLayoutZoneSchema.partial().parse(req.body);
       
-      const zone = await storage.updateLayoutZone(id, updateData, req.session.companyId || undefined);
+      const zone = await storage.updateLayoutZone(id, updateData, req.auth?.companyId || undefined);
       
       if (!zone) {
         console.log(`❌ [Routes] Zone not found or unauthorized`);
@@ -842,7 +916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🗑️ [Routes] DELETE /api/zones/${id} - Deleting zone`);
     
     try {
-      const deleted = await storage.deleteLayoutZone(id, req.session.companyId || undefined);
+      const deleted = await storage.deleteLayoutZone(id, req.auth?.companyId || undefined);
       
       if (!deleted) {
         console.log(`❌ [Routes] Zone not found or unauthorized`);
@@ -863,7 +937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`📋 [Routes] GET /api/zones/${zoneId}/components - Fetching components`);
     
     try {
-      const components = await storage.getZoneComponents(zoneId, req.session.companyId || undefined);
+      const components = await storage.getZoneComponents(zoneId, req.auth?.companyId || undefined);
       console.log(`✅ [Routes] Returning ${components.length} components`);
       res.json(components);
     } catch (error) {
@@ -887,7 +961,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         zoneId,
       });
       
-      const component = await storage.createComponent(insertData, req.session.companyId || undefined);
+      const component = await storage.createComponent(insertData, req.auth?.companyId || undefined);
       console.log(`✅ [Routes] Component created successfully`);
       res.json(component);
     } catch (error) {
@@ -910,7 +984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const updateData = insertLayoutZoneComponentSchema.partial().parse(req.body);
-      const component = await storage.updateComponent(id, updateData, req.session.companyId || undefined);
+      const component = await storage.updateComponent(id, updateData, req.auth?.companyId || undefined);
       
       if (!component) {
         console.log(`❌ [Routes] Component not found or unauthorized`);
@@ -934,7 +1008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🗑️ [Routes] DELETE /api/components/${id} - Deleting component`);
     
     try {
-      const deleted = await storage.deleteComponent(id, req.session.companyId || undefined);
+      const deleted = await storage.deleteComponent(id, req.auth?.companyId || undefined);
       
       if (!deleted) {
         console.log(`❌ [Routes] Component not found or unauthorized`);
@@ -955,7 +1029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`📋 [Routes] GET /api/components/${componentId}/defects - Fetching defects`);
     
     try {
-      const defects = await storage.getComponentDefects(componentId, req.session.companyId || undefined);
+      const defects = await storage.getComponentDefects(componentId, req.auth?.companyId || undefined);
       console.log(`✅ [Routes] Returning ${defects.length} defects`);
       res.json(defects);
     } catch (error) {
@@ -979,7 +1053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         componentId,
       });
       
-      const defect = await storage.createComponentDefect(insertData, req.session.companyId || undefined);
+      const defect = await storage.createComponentDefect(insertData, req.auth?.companyId || undefined);
       console.log(`✅ [Routes] Defect created successfully`);
       res.json(defect);
     } catch (error) {
@@ -1002,7 +1076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const updateData = insertComponentDefectSchema.partial().parse(req.body);
-      const defect = await storage.updateComponentDefect(id, updateData, req.session.companyId || undefined);
+      const defect = await storage.updateComponentDefect(id, updateData, req.auth?.companyId || undefined);
       
       if (!defect) {
         console.log(`❌ [Routes] Defect not found or unauthorized`);
@@ -1026,7 +1100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🗑️ [Routes] DELETE /api/component-defects/${id} - Deleting defect`);
     
     try {
-      const deleted = await storage.deleteComponentDefect(id, req.session.companyId || undefined);
+      const deleted = await storage.deleteComponentDefect(id, req.auth?.companyId || undefined);
       
       if (!deleted) {
         console.log(`❌ [Routes] Defect not found or unauthorized`);
@@ -1048,10 +1122,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🔍 [Routes] GET /api/inspection-types/filter-values - User: ${req.session.userId}`);
     
     try {
-      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      const companyId = req.auth?.companyId || (req.query.companyId as string | undefined);
       
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping for inspection type filter values - Company: ${req.session.companyId}`);
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for inspection type filter values - Company: ${req.auth?.companyId}`);
       } else {
         console.log(`👑 [Routes] Superuser access - getting inspection type filter values for company: ${companyId || 'ALL'}`);
       }
@@ -1072,9 +1146,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const params = inspectionTypeQueryParamsSchema.parse(req.query);
       
       // Enforce company scoping
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
-        params.companyId = req.session.companyId;
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.auth?.companyId}`);
+        params.companyId = req.auth?.companyId;
       } else {
         console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
       }
@@ -1097,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Pass companyId to ensure we get the right inspection type when business IDs are shared across companies
-      const companyId = req.session.companyId || undefined;
+      const companyId = req.auth?.companyId || undefined;
       const inspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
       
       if (!inspectionType) {
@@ -1106,7 +1180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping (already filtered by getInspectionTypeById, but double-check for superusers)
-      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspectionType.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot access inspection type from another company`);
         return res.status(403).json({ error: "Cannot access inspection types from other companies" });
       }
@@ -1128,9 +1202,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inspectionTypeData = insertInspectionTypeSchema.parse(inspectionTypeBody);
       
       // Enforce company scoping: non-superusers must create inspection types in their own company
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping - Inspection type will be created in: ${req.session.companyId}`);
-        inspectionTypeData.companyId = req.session.companyId;
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - Inspection type will be created in: ${req.auth?.companyId}`);
+        inspectionTypeData.companyId = req.auth?.companyId;
       }
       
       if (!inspectionTypeData.companyId) {
@@ -1169,7 +1243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData = insertInspectionTypeSchema.partial().parse(inspectionTypeBody);
       
       // Get the existing inspection type to check authorization (use companyId for proper scoping)
-      const companyId = req.session.companyId || undefined;
+      const companyId = req.auth?.companyId || undefined;
       const existingInspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
       
       if (!existingInspectionType) {
@@ -1178,7 +1252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping (already filtered by getInspectionTypeById, but double-check for superusers)
-      if (req.session.companyId && existingInspectionType.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && existingInspectionType.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot update inspection type from another company`);
         return res.status(403).json({ error: "Cannot update inspection types from other companies" });
       }
@@ -1213,7 +1287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Verify the inspection type exists and user has access (use companyId for proper scoping)
-      const companyId = req.session.companyId || undefined;
+      const companyId = req.auth?.companyId || undefined;
       const inspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
       if (!inspectionType) {
         console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
@@ -1221,7 +1295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping (already filtered by getInspectionTypeById, but double-check for superusers)
-      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspectionType.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot access form fields from another company`);
         return res.status(403).json({ error: "Cannot access inspection types from other companies" });
       }
@@ -1242,7 +1316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Verify the inspection type exists and user has access (use companyId for proper scoping)
-      const companyId = req.session.companyId || undefined;
+      const companyId = req.auth?.companyId || undefined;
       const inspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
       if (!inspectionType) {
         console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
@@ -1250,7 +1324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping
-      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspectionType.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot add form fields to inspection type from another company`);
         return res.status(403).json({ error: "Cannot modify inspection types from other companies" });
       }
@@ -1297,7 +1371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping
-      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspectionType.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot update form field from another company`);
         return res.status(403).json({ error: "Cannot modify form fields from other companies" });
       }
@@ -1339,7 +1413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Enforce company scoping
-      if (req.session.companyId && inspectionType.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspectionType.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot delete form field from another company`);
         return res.status(403).json({ error: "Cannot delete form fields from other companies" });
       }
@@ -1361,14 +1435,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get available filter values for inspections (protected)
   app.get("/api/inspections/filter-values", requireAuth, async (req, res) => {
-    console.log(`🔍 [Routes] GET /api/inspections/filter-values - User: ${req.session.userId}, CompanyId: ${req.session.companyId || 'null (superuser)'}`);
+    console.log(`🔍 [Routes] GET /api/inspections/filter-values - User: ${req.session.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
     
     try {
       // Enforce company scoping: use session's companyId unless user is superuser
-      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      const companyId = req.auth?.companyId || (req.query.companyId as string | undefined);
       
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping for filter values - Company: ${req.session.companyId}`);
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for filter values - Company: ${req.auth?.companyId}`);
       } else {
         console.log(`👑 [Routes] Superuser access - getting filter values for company: ${companyId || 'ALL'}`);
       }
@@ -1390,9 +1464,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Enforce company scoping: override companyId with session's companyId
       // unless user is superuser (companyId is null, like avazquez)
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
-        params.companyId = req.session.companyId;
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.auth?.companyId}`);
+        params.companyId = req.auth?.companyId;
       } else {
         console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
       }
@@ -1415,8 +1489,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const params = queryParamsSchema.parse(req.query);
       
       // Enforce company scoping
-      if (req.session.companyId) {
-        params.companyId = req.session.companyId;
+      if (req.auth?.companyId) {
+        params.companyId = req.auth?.companyId;
       }
       
       // Override limit to max 100 for printing
@@ -1577,7 +1651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify user has access to this inspection's company
-      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspection.companyId !== req.auth?.companyId) {
         return res.status(403).send("<html><body><h1>Access denied</h1></body></html>");
       }
       
@@ -1734,7 +1808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify user has access to this inspection's company
-      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspection.companyId !== req.auth?.companyId) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -1751,7 +1825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertInspectionSchema.parse(req.body);
       
       // Enforce company scoping: user can only create inspections for their company
-      if (req.session.companyId && validatedData.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && validatedData.companyId !== req.auth?.companyId) {
         return res.status(403).json({ error: "Access denied: cannot create inspection for other company" });
       }
       
@@ -1775,7 +1849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Inspection not found" });
       }
       
-      if (req.session.companyId && existingInspection.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && existingInspection.companyId !== req.auth?.companyId) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -1806,7 +1880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Inspection not found" });
       }
       
-      if (req.session.companyId && existingInspection.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && existingInspection.companyId !== req.auth?.companyId) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -1822,14 +1896,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get available filter values for defects (protected)
   app.get("/api/defects/filter-values", requireAuth, async (req, res) => {
-    console.log(`🔍 [Routes] GET /api/defects/filter-values - User: ${req.session.userId}, CompanyId: ${req.session.companyId || 'null (superuser)'}`);
+    console.log(`🔍 [Routes] GET /api/defects/filter-values - User: ${req.session.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
     
     try {
       // Enforce company scoping: use session's companyId unless user is superuser
-      const companyId = req.session.companyId || (req.query.companyId as string | undefined);
+      const companyId = req.auth?.companyId || (req.query.companyId as string | undefined);
       
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping for filter values - Company: ${req.session.companyId}`);
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping for filter values - Company: ${req.auth?.companyId}`);
       } else {
         console.log(`👑 [Routes] Superuser access - getting filter values for company: ${companyId || 'ALL'}`);
       }
@@ -1851,9 +1925,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Enforce company scoping: override companyId with session's companyId
       // unless user is superuser (companyId is null, like avazquez)
-      if (req.session.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.session.companyId}`);
-        params.companyId = req.session.companyId;
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - User restricted to: ${req.auth?.companyId}`);
+        params.companyId = req.auth?.companyId;
       } else {
         console.log(`👑 [Routes] Superuser access - allowing companyId: ${params.companyId || 'ALL'}`);
       }
@@ -1880,7 +1954,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Inspection not found" });
       }
       
-      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspection.companyId !== req.auth?.companyId) {
         return res.status(403).json({ error: "Access denied: cannot create defect for other company's inspection" });
       }
       
@@ -1911,7 +1985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Inspection not found" });
       }
       
-      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspection.companyId !== req.auth?.companyId) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -1949,7 +2023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Inspection not found" });
       }
       
-      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspection.companyId !== req.auth?.companyId) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -1970,7 +2044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Inspection not found" });
       }
       
-      if (req.session.companyId && inspection.companyId !== req.session.companyId) {
+      if (req.auth?.companyId && inspection.companyId !== req.auth?.companyId) {
         return res.status(403).json({ error: "Access denied" });
       }
       
