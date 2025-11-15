@@ -90,14 +90,10 @@ export async function generateBrickConfig(
         // Get defects for this component
         const defects = await storage.getComponentDefects(component.id);
         
-        // Build ZONECOMP line: componentName*defect1*defect2*...*instructions
+        // Build ZONECOMP line: componentName*instructions*defect1*defect2*...
+        // Always include instructions field (even if empty) after componentName
         const defectNames = defects.map(d => sanitize(d.defectName, 'defectName'));
-        const parts = [componentName, ...defectNames];
-        
-        // Add instructions as last field if present
-        if (componentInstructions) {
-          parts.push(componentInstructions);
-        }
+        const parts = [componentName, componentInstructions, ...defectNames];
         
         lines.push(`ZONECOMP*${parts.join('*')}`);
       }
