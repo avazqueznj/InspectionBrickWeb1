@@ -861,30 +861,30 @@ export async function runSeed() {
   
   const multiAssetDefects = [
     // NEC Inspection 1: Tractor + Dolly + Trailer
-    { inspectionId: necMultiAssetInspections[0].id, assetId: "127", zoneName: "Brakes", componentName: "Front Brake Pads", defect: "Worn brake pads", severity: 85, status: "open" as const, driverNotes: "Tractor brakes need attention" },
-    { inspectionId: necMultiAssetInspections[0].id, assetId: "DOLLY-5", zoneName: "Tires", componentName: "Left Tire", defect: "Low tire pressure", severity: 45, status: "open" as const, driverNotes: "Dolly tire needs inflation" },
-    { inspectionId: necMultiAssetInspections[0].id, assetId: "TRAILER-101", zoneName: "Lights", componentName: "Brake Lights", defect: "Broken brake light", severity: 75, status: "pending" as const, driverNotes: "Trailer light not working" },
+    { inspectionId: necMultiAssetInspections[0].id, assetId: "127", zoneName: "Brakes", componentName: "Front Brake Pads", defect: "Worn brake pads", severity: 9, status: "open" as const, driverNotes: "Tractor brakes need attention" },
+    { inspectionId: necMultiAssetInspections[0].id, assetId: "DOLLY-5", zoneName: "Tires", componentName: "Left Tire", defect: "Low tire pressure", severity: 5, status: "open" as const, driverNotes: "Dolly tire needs inflation" },
+    { inspectionId: necMultiAssetInspections[0].id, assetId: "TRAILER-101", zoneName: "Lights", componentName: "Brake Lights", defect: "Broken brake light", severity: 8, status: "pending" as const, driverNotes: "Trailer light not working" },
     
     // NEC Inspection 2: Tractor + Trailer
-    { inspectionId: necMultiAssetInspections[1].id, assetId: "127", zoneName: "Engine", componentName: "Oil Level", defect: "Oil level low", severity: 60, status: "repaired" as const, driverNotes: "Tractor oil topped up", repairNotes: "Added 2 quarts" },
-    { inspectionId: necMultiAssetInspections[1].id, assetId: "TRAILER-102", zoneName: "Cargo Area", componentName: "Tie-Down Points", defect: "Rusty tie-down anchor", severity: 50, status: "open" as const, driverNotes: "Trailer cargo anchors need inspection" },
+    { inspectionId: necMultiAssetInspections[1].id, assetId: "127", zoneName: "Engine", componentName: "Oil Level", defect: "Oil level low", severity: 6, status: "repaired" as const, driverNotes: "Tractor oil topped up", repairNotes: "Added 2 quarts" },
+    { inspectionId: necMultiAssetInspections[1].id, assetId: "TRAILER-102", zoneName: "Cargo Area", componentName: "Tie-Down Points", defect: "Rusty tie-down anchor", severity: 5, status: "open" as const, driverNotes: "Trailer cargo anchors need inspection" },
     
     // WALMART Inspection 1: Truck + Trailer
-    { inspectionId: walmartMultiAssetInspections[0].id, assetId: "TRUCK-5001", zoneName: "Steering", componentName: "Power Steering", defect: "Steering fluid leak", severity: 80, status: "pending" as const, driverNotes: "Truck steering issue", repairNotes: "Scheduled for repair" },
-    { inspectionId: walmartMultiAssetInspections[0].id, assetId: "TRAILER-W50", zoneName: "Suspension", componentName: "Leaf Springs", defect: "Cracked leaf spring", severity: 70, status: "open" as const, driverNotes: "Trailer suspension damaged" },
+    { inspectionId: walmartMultiAssetInspections[0].id, assetId: "TRUCK-5001", zoneName: "Steering", componentName: "Power Steering", defect: "Steering fluid leak", severity: 8, status: "pending" as const, driverNotes: "Truck steering issue", repairNotes: "Scheduled for repair" },
+    { inspectionId: walmartMultiAssetInspections[0].id, assetId: "TRAILER-W50", zoneName: "Suspension", componentName: "Leaf Springs", defect: "Cracked leaf spring", severity: 7, status: "open" as const, driverNotes: "Trailer suspension damaged" },
     
     // WALMART Inspection 2: Van + Equipment
-    { inspectionId: walmartMultiAssetInspections[1].id, assetId: "VAN-1145", zoneName: "Electrical", componentName: "Battery", defect: "Weak battery", severity: 55, status: "open" as const, driverNotes: "Van battery needs testing" },
-    { inspectionId: walmartMultiAssetInspections[1].id, assetId: "LOADER-22", zoneName: "Hydraulics", componentName: "Lift Cylinder", defect: "Hydraulic leak", severity: 90, status: "open" as const, driverNotes: "Loader hydraulics leaking" },
+    { inspectionId: walmartMultiAssetInspections[1].id, assetId: "VAN-1145", zoneName: "Electrical", componentName: "Battery", defect: "Weak battery", severity: 6, status: "open" as const, driverNotes: "Van battery needs testing" },
+    { inspectionId: walmartMultiAssetInspections[1].id, assetId: "LOADER-22", zoneName: "Hydraulics", componentName: "Lift Cylinder", defect: "Hydraulic leak", severity: 9, status: "open" as const, driverNotes: "Loader hydraulics leaking" },
     
     // FEDEX Inspection 1: Van + Dolly + Trailer
-    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "VAN-8803", zoneName: "Cabin", componentName: "Driver Seat", defect: "Torn seat cover", severity: 25, status: "open" as const, driverNotes: "Van seat needs repair" },
-    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "DOLLY-F2", zoneName: "Brakes", componentName: "Brake Lines", defect: "Corroded brake line", severity: 95, status: "pending" as const, driverNotes: "Dolly brake line critical", repairNotes: "Emergency repair scheduled" },
-    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "TRAILER-F10", zoneName: "Body", componentName: "Door Seals", defect: "Damaged door seal", severity: 40, status: "open" as const, driverNotes: "Trailer door seal worn" },
+    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "VAN-8803", zoneName: "Cabin", componentName: "Driver Seat", defect: "Torn seat cover", severity: 3, status: "open" as const, driverNotes: "Van seat needs repair" },
+    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "DOLLY-F2", zoneName: "Brakes", componentName: "Brake Lines", defect: "Corroded brake line", severity: 10, status: "pending" as const, driverNotes: "Dolly brake line critical", repairNotes: "Emergency repair scheduled" },
+    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "TRAILER-F10", zoneName: "Body", componentName: "Door Seals", defect: "Damaged door seal", severity: 4, status: "open" as const, driverNotes: "Trailer door seal worn" },
     
     // FEDEX Inspection 2: Truck + Trailer
-    { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRUCK-5503", zoneName: "Tires", componentName: "Front Tires", defect: "Uneven tire wear", severity: 65, status: "open" as const, driverNotes: "Truck tires need rotation" },
-    { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRAILER-F11", zoneName: "Lights", componentName: "Marker Lights", defect: "Missing marker light cover", severity: 35, status: "repaired" as const, driverNotes: "Trailer light cover replaced", repairNotes: "New cover installed" },
+    { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRUCK-5503", zoneName: "Tires", componentName: "Front Tires", defect: "Uneven tire wear", severity: 7, status: "open" as const, driverNotes: "Truck tires need rotation" },
+    { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRAILER-F11", zoneName: "Lights", componentName: "Marker Lights", defect: "Missing marker light cover", severity: 4, status: "repaired" as const, driverNotes: "Trailer light cover replaced", repairNotes: "New cover installed" },
   ];
   
   await db.insert(defects).values(multiAssetDefects);
@@ -896,30 +896,30 @@ export async function runSeed() {
   
   // Defect templates for variety
   const defectTemplates = [
-    // Critical Safety Defects (Severity 70-100)
-    { zoneName: "Brakes", componentName: "Front Brake Pads", defect: "Brake pads worn below minimum thickness (2mm remaining)", severity: 90, status: "open" as const, driverNotes: "Grinding noise when braking, requires immediate attention" },
-    { zoneName: "Steering", componentName: "Power Steering Pump", defect: "Power steering fluid leak detected at pump seal", severity: 85, status: "pending" as const, driverNotes: "Leak rate approximately 10ml/hour, steering becoming stiff", repairNotes: "Parts ordered, scheduled for replacement" },
-    { zoneName: "Lights", componentName: "Brake Lights", defect: "Both rear brake lights not functioning", severity: 95, status: "open" as const, driverNotes: "Critical safety issue - vehicle not road safe" },
-    { zoneName: "Tires", componentName: "Front Right Tire", defect: "Tire tread depth below legal minimum (1.6mm), visible steel belts", severity: 100, status: "pending" as const, driverNotes: "Tire failure risk - immediate replacement required", repairNotes: "New tire on order" },
+    // Critical Safety Defects (Severity 8-10)
+    { zoneName: "Brakes", componentName: "Front Brake Pads", defect: "Brake pads worn below minimum thickness (2mm remaining)", severity: 9, status: "open" as const, driverNotes: "Grinding noise when braking, requires immediate attention" },
+    { zoneName: "Steering", componentName: "Power Steering Pump", defect: "Power steering fluid leak detected at pump seal", severity: 9, status: "pending" as const, driverNotes: "Leak rate approximately 10ml/hour, steering becoming stiff", repairNotes: "Parts ordered, scheduled for replacement" },
+    { zoneName: "Lights", componentName: "Brake Lights", defect: "Both rear brake lights not functioning", severity: 10, status: "open" as const, driverNotes: "Critical safety issue - vehicle not road safe" },
+    { zoneName: "Tires", componentName: "Front Right Tire", defect: "Tire tread depth below legal minimum (1.6mm), visible steel belts", severity: 10, status: "pending" as const, driverNotes: "Tire failure risk - immediate replacement required", repairNotes: "New tire on order" },
     
-    // Moderate Defects (Severity 40-69)
-    { zoneName: "Engine", componentName: "Air Filter", defect: "Air filter heavily contaminated, restricting airflow", severity: 50, status: "repaired" as const, driverNotes: "Reduced engine performance noted", repairNotes: "Air filter replaced with OEM part" },
-    { zoneName: "Suspension", componentName: "Shock Absorbers", defect: "Front left shock absorber leaking hydraulic fluid", severity: 65, status: "pending" as const, driverNotes: "Vehicle handling affected, bouncing on rough roads", repairNotes: "Repair scheduled for next maintenance window" },
-    { zoneName: "Electrical", componentName: "Battery Terminals", defect: "Battery terminals corroded, loose connection on positive terminal", severity: 55, status: "repaired" as const, driverNotes: "Intermittent starting issues reported", repairNotes: "Terminals cleaned and tightened, protective coating applied" },
-    { zoneName: "Windshield", componentName: "Wiper Blades", defect: "Wiper blades cracked and torn, leaving streaks", severity: 45, status: "repaired" as const, driverNotes: "Poor visibility during rain", repairNotes: "Both wiper blades replaced" },
-    { zoneName: "Cabin", componentName: "Driver Seat", defect: "Driver seat adjustment mechanism jammed, seat will not move", severity: 40, status: "open" as const, driverNotes: "Unable to adjust seat position for proper driving posture" },
+    // Moderate Defects (Severity 4-7)
+    { zoneName: "Engine", componentName: "Air Filter", defect: "Air filter heavily contaminated, restricting airflow", severity: 5, status: "repaired" as const, driverNotes: "Reduced engine performance noted", repairNotes: "Air filter replaced with OEM part" },
+    { zoneName: "Suspension", componentName: "Shock Absorbers", defect: "Front left shock absorber leaking hydraulic fluid", severity: 7, status: "pending" as const, driverNotes: "Vehicle handling affected, bouncing on rough roads", repairNotes: "Repair scheduled for next maintenance window" },
+    { zoneName: "Electrical", componentName: "Battery Terminals", defect: "Battery terminals corroded, loose connection on positive terminal", severity: 6, status: "repaired" as const, driverNotes: "Intermittent starting issues reported", repairNotes: "Terminals cleaned and tightened, protective coating applied" },
+    { zoneName: "Windshield", componentName: "Wiper Blades", defect: "Wiper blades cracked and torn, leaving streaks", severity: 5, status: "repaired" as const, driverNotes: "Poor visibility during rain", repairNotes: "Both wiper blades replaced" },
+    { zoneName: "Cabin", componentName: "Driver Seat", defect: "Driver seat adjustment mechanism jammed, seat will not move", severity: 4, status: "open" as const, driverNotes: "Unable to adjust seat position for proper driving posture" },
     
-    // Minor Defects (Severity 10-39)
-    { zoneName: "Exterior", componentName: "Side Mirror", defect: "Passenger side mirror glass has small crack in lower corner", severity: 25, status: "pending" as const, driverNotes: "Does not affect visibility significantly", repairNotes: "Replacement mirror ordered" },
-    { zoneName: "Interior", componentName: "Door Handle", defect: "Interior door handle loose, requires extra force to open", severity: 15, status: "open" as const, driverNotes: "Minor inconvenience, handle still functional" },
-    { zoneName: "Fluids", componentName: "Windshield Washer Fluid", defect: "Windshield washer fluid reservoir empty", severity: 10, status: "repaired" as const, driverNotes: "Unable to clean windshield during inspection", repairNotes: "Reservoir refilled with winter formula" },
-    { zoneName: "Body", componentName: "Front Bumper", defect: "Minor cosmetic damage - small dent on front bumper", severity: 20, status: "open" as const, driverNotes: "Cosmetic only, no structural damage" },
-    { zoneName: "Lights", componentName: "License Plate Light", defect: "License plate light bulb burned out", severity: 30, status: "repaired" as const, driverNotes: "May result in traffic citation", repairNotes: "Bulb replaced" },
+    // Minor Defects (Severity 1-3)
+    { zoneName: "Exterior", componentName: "Side Mirror", defect: "Passenger side mirror glass has small crack in lower corner", severity: 3, status: "pending" as const, driverNotes: "Does not affect visibility significantly", repairNotes: "Replacement mirror ordered" },
+    { zoneName: "Interior", componentName: "Door Handle", defect: "Interior door handle loose, requires extra force to open", severity: 2, status: "open" as const, driverNotes: "Minor inconvenience, handle still functional" },
+    { zoneName: "Fluids", componentName: "Windshield Washer Fluid", defect: "Windshield washer fluid reservoir empty", severity: 1, status: "repaired" as const, driverNotes: "Unable to clean windshield during inspection", repairNotes: "Reservoir refilled with winter formula" },
+    { zoneName: "Body", componentName: "Front Bumper", defect: "Minor cosmetic damage - small dent on front bumper", severity: 2, status: "open" as const, driverNotes: "Cosmetic only, no structural damage" },
+    { zoneName: "Lights", componentName: "License Plate Light", defect: "License plate light bulb burned out", severity: 3, status: "repaired" as const, driverNotes: "May result in traffic citation", repairNotes: "Bulb replaced" },
     
     // Equipment-Specific Defects
-    { zoneName: "Hydraulics", componentName: "Lift Cylinder", defect: "Hydraulic lift cylinder showing slow leak at rod seal", severity: 70, status: "pending" as const, driverNotes: "Lift operation becoming sluggish, safety concern", repairNotes: "Seal replacement parts requisitioned" },
-    { zoneName: "Safety Equipment", componentName: "Fire Extinguisher", defect: "Fire extinguisher pressure gauge in red zone, expired inspection tag", severity: 75, status: "open" as const, driverNotes: "Fire extinguisher may not function properly in emergency" },
-    { zoneName: "Cargo Area", componentName: "Tie-Down Points", defect: "Two cargo tie-down anchors showing signs of stress fractures", severity: 60, status: "pending" as const, driverNotes: "Load securing capability compromised", repairNotes: "Structural engineer assessment scheduled" },
+    { zoneName: "Hydraulics", componentName: "Lift Cylinder", defect: "Hydraulic lift cylinder showing slow leak at rod seal", severity: 7, status: "pending" as const, driverNotes: "Lift operation becoming sluggish, safety concern", repairNotes: "Seal replacement parts requisitioned" },
+    { zoneName: "Safety Equipment", componentName: "Fire Extinguisher", defect: "Fire extinguisher pressure gauge in red zone, expired inspection tag", severity: 8, status: "open" as const, driverNotes: "Fire extinguisher may not function properly in emergency" },
+    { zoneName: "Cargo Area", componentName: "Tie-Down Points", defect: "Two cargo tie-down anchors showing signs of stress fractures", severity: 6, status: "pending" as const, driverNotes: "Load securing capability compromised", repairNotes: "Structural engineer assessment scheduled" },
   ];
   
   let totalDefects = 0;
