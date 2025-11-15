@@ -76,8 +76,11 @@ export default function Users() {
       return await apiRequest("POST", "/api/users", data);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/users"], type: 'active' });
+      // Invalidate all queries that start with /api/users
+      await queryClient.invalidateQueries({ 
+        queryKey: ["/api/users"],
+        exact: false 
+      });
       toast({
         title: "Success",
         description: "User created successfully",
@@ -100,8 +103,11 @@ export default function Users() {
       return await apiRequest("PATCH", `/api/users/${data.userId}`, data);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/users"], type: 'active' });
+      // Invalidate all queries that start with /api/users
+      await queryClient.invalidateQueries({ 
+        queryKey: ["/api/users"],
+        exact: false 
+      });
       toast({
         title: "Success",
         description: "User updated successfully",

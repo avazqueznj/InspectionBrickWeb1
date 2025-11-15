@@ -574,6 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userFullName: user.userFullName,
         userTag: user.userTag,
         status: user.status,
+        webAccess: user.webAccess,
         companyId: user.companyId,
       });
     } catch (error) {
@@ -620,6 +621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userFullName: updatedUser.userFullName,
         userTag: updatedUser.userTag,
         status: updatedUser.status,
+        webAccess: updatedUser.webAccess,
         companyId: updatedUser.companyId,
       });
     } catch (error) {

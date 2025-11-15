@@ -322,6 +322,7 @@ export class DatabaseStorage implements IStorage {
         userFullName: users.userFullName,
         userTag: users.userTag,
         status: users.status,
+        webAccess: users.webAccess,
         companyId: users.companyId,
       })
       .from(users)
