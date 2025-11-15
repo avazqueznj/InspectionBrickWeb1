@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionTypeLayouts, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects } from "@shared/schema";
 import { storage } from "./storage";
 
 async function seed() {
@@ -50,35 +50,35 @@ async function seed() {
     // Create inspection types with form fields
     console.log("📋 Creating inspection types...");
     
-    // NEC Inspection Types
+    // NEC Inspection Types (with layout mappings)
     const necInspectionTypesData = [
       {
         inspectionTypeName: "preflight",
-        inspectionLayout: "ALL",
+        layoutKeys: [], // Empty array = ALL layouts
         status: "ACTIVE" as const,
         companyId: "NEC",
       },
       {
         inspectionTypeName: "pre-trip",
-        inspectionLayout: "TRUCK",
+        layoutKeys: ["TRUCK"],
         status: "ACTIVE" as const,
         companyId: "NEC",
       },
       {
         inspectionTypeName: "post-trip",
-        inspectionLayout: "TRUCK",
+        layoutKeys: ["TRUCK"],
         status: "ACTIVE" as const,
         companyId: "NEC",
       },
       {
         inspectionTypeName: "10000-mile-check",
-        inspectionLayout: "TRUCK",
+        layoutKeys: ["TRUCK"],
         status: "ACTIVE" as const,
         companyId: "NEC",
       },
       {
         inspectionTypeName: "crane-daily",
-        inspectionLayout: "CRANE",
+        layoutKeys: ["CRANE"],
         status: "ACTIVE" as const,
         companyId: "NEC",
       },
@@ -88,25 +88,25 @@ async function seed() {
     const walmartInspectionTypesData = [
       {
         inspectionTypeName: "warehouse-safety",
-        inspectionLayout: "ALL",
+        layoutKeys: [], // Empty array = ALL layouts
         status: "ACTIVE" as const,
         companyId: "WALMART",
       },
       {
         inspectionTypeName: "forklift-daily",
-        inspectionLayout: "FORKLIFT",
+        layoutKeys: ["FORKLIFT"],
         status: "ACTIVE" as const,
         companyId: "WALMART",
       },
       {
         inspectionTypeName: "delivery-pre-trip",
-        inspectionLayout: "VAN",
+        layoutKeys: ["VAN"],
         status: "ACTIVE" as const,
         companyId: "WALMART",
       },
       {
         inspectionTypeName: "equipment-monthly",
-        inspectionLayout: "ALL",
+        layoutKeys: [], // Empty array = ALL layouts
         status: "INACTIVE" as const,
         companyId: "WALMART",
       },
@@ -116,25 +116,30 @@ async function seed() {
     const fedexInspectionTypesData = [
       {
         inspectionTypeName: "sortation-check",
-        inspectionLayout: "SORTATION-UNIT",
+        layoutKeys: ["SORTATION-UNIT"],
         status: "ACTIVE" as const,
         companyId: "FEDEX",
       },
       {
         inspectionTypeName: "van-pre-route",
-        inspectionLayout: "VAN",
+        layoutKeys: ["VAN"],
         status: "ACTIVE" as const,
         companyId: "FEDEX",
       },
       {
         inspectionTypeName: "conveyor-weekly",
-        inspectionLayout: "CONVEYOR",
+        layoutKeys: ["CONVEYOR"],
         status: "ACTIVE" as const,
         companyId: "FEDEX",
       },
     ];
     
-    const createdInspectionTypes = await db.insert(inspectionTypes).values([...necInspectionTypesData, ...walmartInspectionTypesData, ...fedexInspectionTypesData]).returning();
+    // Insert inspection types (without layoutKeys field)
+    const createdInspectionTypes = await db.insert(inspectionTypes).values([
+      ...necInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
+      ...walmartInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
+      ...fedexInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
+    ]).returning();
     console.log(`✅ Created ${necInspectionTypesData.length + walmartInspectionTypesData.length + fedexInspectionTypesData.length} inspection types`);
     
     // Create a mapping from (companyId + business inspectionTypeName) to UUID id
@@ -339,6 +344,44 @@ async function seed() {
       layoutMap.set(`${layout.companyId}:${layout.layoutName}`, layout.id);
     }
     console.log(`✅ Created ${createdLayouts.length} layouts with UUID mapping`);
+
+    // Create inspection type to layout mappings in junction table
+    console.log("🔗 Creating inspection type to layout mappings...");
+    const allInspectionTypesData = [...necInspectionTypesData, ...walmartInspectionTypesData, ...fedexInspectionTypesData];
+    const inspectionTypeLayoutMappings: Array<{ inspectionTypeId: string; layoutId: string }> = [];
+    
+    for (const itData of allInspectionTypesData) {
+      // Find the created inspection type UUID
+      const createdIT = createdInspectionTypes.find(
+        it => it.companyId === itData.companyId && it.inspectionTypeName === itData.inspectionTypeName
+      );
+      
+      if (!createdIT) {
+        throw new Error(`Inspection type not found: ${itData.companyId}:${itData.inspectionTypeName}`);
+      }
+      
+      // If layoutKeys is empty, it means ALL layouts (no junction records needed)
+      // If layoutKeys has values, create junction records for each layout
+      if (itData.layoutKeys.length > 0) {
+        for (const layoutKey of itData.layoutKeys) {
+          const layoutId = layoutMap.get(`${itData.companyId}:${layoutKey}`);
+          if (!layoutId) {
+            throw new Error(`Layout not found for ${itData.companyId}:${layoutKey}`);
+          }
+          inspectionTypeLayoutMappings.push({
+            inspectionTypeId: createdIT.id,
+            layoutId,
+          });
+        }
+      }
+    }
+    
+    if (inspectionTypeLayoutMappings.length > 0) {
+      await db.insert(inspectionTypeLayouts).values(inspectionTypeLayoutMappings);
+      console.log(`✅ Created ${inspectionTypeLayoutMappings.length} inspection type to layout mappings`);
+    } else {
+      console.log("✅ No specific layout mappings needed (all inspection types apply to ALL layouts)");
+    }
 
     // Create layout zones, components, and defects based on NJ DOT inspection form
     console.log("🔧 Creating layout structures (zones, components, defects)...");
