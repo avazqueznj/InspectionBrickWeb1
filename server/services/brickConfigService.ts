@@ -51,12 +51,8 @@ export async function generateBrickConfig(
     const assetId = sanitize(asset.assetId, 'assetId');
     const assetTag = sanitize(asset.licensePlate || '', 'licensePlate');
     
-    // Build asset line: AS*assetId*layoutName*assetTag
-    // If assetTag is empty, include it but without trailing delimiter
-    const assetLine = assetTag 
-      ? `AS*${assetId}*${layoutName}*${assetTag}`
-      : `AS*${assetId}*${layoutName}`;
-    
+    // Include all delimiters even when fields are empty
+    const assetLine = `AS*${assetId}*${layoutName}*${assetTag}`;
     console.log(`📦 [BrickConfig] Asset line: ${assetLine}`);
     lines.push(assetLine);
   }
