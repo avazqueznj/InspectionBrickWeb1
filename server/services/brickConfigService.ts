@@ -177,7 +177,7 @@ export async function generateBrickConfig(
   
   for (const user of usersResult.data) {
     // Note: We need to get the user with password for device sync
-    const fullUser = await storage.getUserById(user.id);
+    const fullUser = await storage.getUserById(user.userId);
     if (fullUser) {
       const fullName = sanitize(fullUser.userFullName, 'userFullName');
       const userId = sanitize(fullUser.userId, 'userId');
