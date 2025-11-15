@@ -5,7 +5,8 @@ import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAss
 import { z } from "zod";
 import { parseBrickInspection } from "./brickParser";
 import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
-import { requireAuth as requireJWTAuth, rateLimitLogin, resetLoginRateLimit, logLoginFailure, type AuthRequest } from "./auth/middleware";
+import { requireAuth as requireJWTAuth, requireSuperuser, rateLimitLogin, resetLoginRateLimit, logLoginFailure, type AuthRequest } from "./auth/middleware";
+import { runSeed } from "./services/seedService";
 
 // Dual-mode authentication middleware (supports both session and JWT during migration)
 function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
@@ -366,6 +367,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ [Routes] Logout successful for user: ${userId}`);
       res.json({ success: true });
     });
+  });
+
+  // Admin: Reseed database (superuser only)
+  app.post("/api/admin/reseed", requireSuperuser, async (req: AuthRequest, res) => {
+    console.log(`🌱 [Routes] POST /api/admin/reseed - Superuser: ${req.auth?.userId}`);
+    
+    try {
+      await runSeed();
+      console.log(`✅ [Routes] Database reseed completed successfully by ${req.auth?.userId}`);
+      res.status(202).json({ 
+        success: true,
+        message: "Database reseeded successfully",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("❌ [Routes] Error during database reseed:", error);
+      res.status(500).json({ 
+        error: "Failed to reseed database",
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
   });
 
   // Auth: Get current user
