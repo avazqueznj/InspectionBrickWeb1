@@ -182,8 +182,8 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
                     </FormControl>
                     <SelectContent>
                       {layouts.map((layout) => (
-                        <SelectItem key={layout.id} value={layout.id}>
-                          {layout.layoutId}
+                        <SelectItem key={layout.id} value={layout.id} data-testid={`select-option-layout-${layout.layoutName}`}>
+                          {layout.layoutName}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { type InspectionType, type InsertInspectionType, type Company } from "@shared/schema";
+import { type InspectionType, type InspectionTypeWithFormFields, type InsertInspectionType, type Company } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ type SortField = "inspectionTypeName" | "inspectionLayout" | "status";
 type SortDirection = "asc" | "desc";
 
 interface PaginatedResponse {
-  data: InspectionType[];
+  data: InspectionTypeWithFormFields[];
   total: number;
   page: number;
   totalPages: number;
@@ -41,7 +41,7 @@ export default function InspectionTypes() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE");
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedInspectionType, setSelectedInspectionType] = useState<InspectionType | null>(null);
+  const [selectedInspectionType, setSelectedInspectionType] = useState<InspectionTypeWithFormFields | null>(null);
   const itemsPerPage = 10;
 
   // Reset to page 1 when search query, status filter, or company changes
@@ -165,7 +165,7 @@ export default function InspectionTypes() {
     setModalOpen(true);
   };
 
-  const handleEditInspectionType = (inspectionType: InspectionType) => {
+  const handleEditInspectionType = (inspectionType: InspectionTypeWithFormFields) => {
     setSelectedInspectionType(inspectionType);
     setModalOpen(true);
   };

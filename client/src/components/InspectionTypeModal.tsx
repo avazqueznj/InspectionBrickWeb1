@@ -7,7 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertInspectionTypeSchema, type InsertInspectionType, type InspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type Layout } from "@shared/schema";
+import { insertInspectionTypeSchema, type InsertInspectionType, type InspectionTypeWithFormFields, type InspectionTypeFormField, type InsertInspectionTypeFormField, type Layout } from "@shared/schema";
 import { X, Plus, Pencil, Trash2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 
 interface InspectionTypeModalProps {
-  inspectionType: InspectionType | null;
+  inspectionType: InspectionTypeWithFormFields | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: InsertInspectionType) => void;
@@ -217,7 +217,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
   const form = useForm<InsertInspectionType>({
     resolver: zodResolver(insertInspectionTypeSchema),
     defaultValues: {
-      inspectionTypeId: "",
+      inspectionTypeName: "",
       status: "ACTIVE",
       companyId: currentCompanyId || "",
     },
@@ -658,7 +658,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
           open={formFieldDialogOpen}
           onOpenChange={setFormFieldDialogOpen}
           formField={selectedFormField}
-          inspectionTypeId={inspectionType.inspectionTypeId}
+          inspectionTypeId={inspectionType.id}
           onSuccess={refetchFormFields}
         />
       )}
