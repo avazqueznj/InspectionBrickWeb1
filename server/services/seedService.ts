@@ -232,6 +232,7 @@ export async function runSeed() {
     password: "password123",
     userFullName: "Antonio Vazquez",
     status: "ACTIVE",
+    webAccess: true,
     companyId: null,
   });
   console.log("   ✅ Created superuser: avazquez (companyId: null)");
@@ -243,6 +244,7 @@ export async function runSeed() {
     userFullName: "John Smith",
     userTag: "SUPERVISOR",
     status: "ACTIVE",
+    webAccess: true,
     companyId: "NEC",
   });
   console.log("   ✅ Created user: john_nec (companyId: NEC)");
@@ -253,6 +255,7 @@ export async function runSeed() {
     userFullName: "Sarah Johnson",
     userTag: "MECHANIC",
     status: "ACTIVE",
+    webAccess: true,
     companyId: "WALMART",
   });
   console.log("   ✅ Created user: sarah_walmart (companyId: WALMART)");
@@ -262,6 +265,7 @@ export async function runSeed() {
     password: "password123",
     userFullName: "Mike Davis",
     status: "ACTIVE",
+    webAccess: true,
     companyId: "FEDEX",
   });
   console.log("   ✅ Created user: mike_fedex (companyId: FEDEX)");
@@ -272,6 +276,7 @@ export async function runSeed() {
     password: "password123",
     userFullName: "Adriana Lopez",
     status: "ACTIVE",
+    webAccess: true,
     companyId: "WALMART",
   });
   console.log("   ✅ Created user: adrianal (companyId: WALMART)");
@@ -282,6 +287,7 @@ export async function runSeed() {
     password: "password123",
     userFullName: "Bob Inactive",
     status: "INACTIVE",
+    webAccess: false,
     companyId: "NEC",
   });
   console.log("   ✅ Created inactive user: bob_inactive (companyId: NEC)");
@@ -291,6 +297,7 @@ export async function runSeed() {
     password: "password123",
     userFullName: "Jane Former",
     status: "INACTIVE",
+    webAccess: false,
     companyId: "FEDEX",
   });
   console.log("   ✅ Created inactive user: jane_former (companyId: FEDEX)");
