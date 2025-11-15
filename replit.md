@@ -125,13 +125,19 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 **Multi-Tenant ID Architecture:**
 Uses UUID primary keys and human-readable business IDs unique per company, allowing multiple companies to use identical business IDs without conflict. Foreign keys use UUIDs.
 
+**Business Key Naming Convention:**
+- Business keys use noun-based naming (e.g., `inspectionTypeName`, `layoutName`, `userTag`)
+- Business keys are **immutable identifiers** - disabled in edit mode to maintain data integrity
+- All foreign key relationships use UUIDs, never business keys
+- Business keys are unique within company scope but can be reused across companies
+
 **Core Tables:**
 - **Companies:** Stores company details, including `dotNumber`.
-- **Users:** User authentication and company association.
+- **Users:** User authentication and company association. Includes `userTag` for role/classification (e.g., SUPERVISOR, MECHANIC).
 - **Assets:** Equipment/vehicle details, including `licensePlate`.
-- **Inspection Types:** Defines types of inspections.
+- **Inspection Types:** Defines types of inspections using `inspectionTypeName` as business key.
 - **Inspection Type Form Fields:** Configures form fields for inspection types.
-- **Layouts:** Stores EDI layout data.
+- **Layouts:** Stores EDI layout data using `layoutName` as business key.
 - **Inspection Type Layouts:** Junction table for inspection type-layout relationships.
 - **Inspections:** Stores inspection records, including `rawData` for EDI.
 - **Inspection Assets:** Junction table for multi-asset inspections.
