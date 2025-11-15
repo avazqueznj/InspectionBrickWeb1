@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   userId: text("user_id").notNull(),
   password: text("password").notNull(),
   userFullName: text("user_full_name").notNull(),
+  userTag: text("user_tag"),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
@@ -78,14 +79,14 @@ export const defects = pgTable("defects", {
 // Inspection Types table
 export const inspectionTypes = pgTable("inspection_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  inspectionTypeId: text("inspection_type_id").notNull(),
+  inspectionTypeName: text("inspection_type_name").notNull(),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
-  // Unique constraint: same inspectionTypeId can exist across companies, but not within same company
-  uniqueInspectionTypePerCompany: unique().on(table.companyId, table.inspectionTypeId),
-  // Check constraint: inspectionTypeId cannot be empty string
-  inspectionTypeIdNotEmpty: check("inspection_type_id_not_empty", sql`LENGTH(TRIM(${table.inspectionTypeId})) > 0`),
+  // Unique constraint: same inspectionTypeName can exist across companies, but not within same company
+  uniqueInspectionTypePerCompany: unique().on(table.companyId, table.inspectionTypeName),
+  // Check constraint: inspectionTypeName cannot be empty string
+  inspectionTypeNameNotEmpty: check("inspection_type_name_not_empty", sql`LENGTH(TRIM(${table.inspectionTypeName})) > 0`),
 }));
 
 // Inspection Type Form Fields table
@@ -100,13 +101,13 @@ export const inspectionTypeFormFields = pgTable("inspection_type_form_fields", {
 // Layouts table - stores layout configuration
 export const layouts = pgTable("layouts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  layoutId: text("layout_id").notNull(),
+  layoutName: text("layout_name").notNull(),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
-  // Unique constraint: same layoutId can exist across companies, but not within same company
-  uniqueLayoutPerCompany: unique().on(table.companyId, table.layoutId),
-  // Check constraint: layoutId cannot be empty string
-  layoutIdNotEmpty: check("layout_id_not_empty", sql`LENGTH(TRIM(${table.layoutId})) > 0`),
+  // Unique constraint: same layoutName can exist across companies, but not within same company
+  uniqueLayoutPerCompany: unique().on(table.companyId, table.layoutName),
+  // Check constraint: layoutName cannot be empty string
+  layoutNameNotEmpty: check("layout_name_not_empty", sql`LENGTH(TRIM(${table.layoutName})) > 0`),
 }));
 
 // Layout Zones table

@@ -18,7 +18,7 @@ import { InspectionTypeModal } from "@/components/InspectionTypeModal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-type SortField = "inspectionTypeId" | "inspectionLayout" | "status";
+type SortField = "inspectionTypeName" | "inspectionLayout" | "status";
 type SortDirection = "asc" | "desc";
 
 interface PaginatedResponse {
@@ -37,7 +37,7 @@ export default function InspectionTypes() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState<SortField>("inspectionTypeId");
+  const [sortField, setSortField] = useState<SortField>("inspectionTypeName");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE");
   const [modalOpen, setModalOpen] = useState(false);
@@ -96,7 +96,7 @@ export default function InspectionTypes() {
   // Update inspection type mutation
   const updateMutation = useMutation({
     mutationFn: async (data: InsertInspectionType) => {
-      return await apiRequest("PATCH", `/api/inspection-types/${data.inspectionTypeId}`, data);
+      return await apiRequest("PATCH", `/api/inspection-types/${data.inspectionTypeName}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inspection-types"] });
@@ -252,7 +252,7 @@ export default function InspectionTypes() {
             <table className="w-full">
               <thead className="bg-muted/50 border-b">
                 <tr>
-                  <SortableHeader field="inspectionTypeId">Inspection Type ID</SortableHeader>
+                  <SortableHeader field="inspectionTypeName">Inspection Type Name</SortableHeader>
                   <SortableHeader field="inspectionLayout">Inspection Layout</SortableHeader>
                   <SortableHeader field="status">Status</SortableHeader>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -284,30 +284,30 @@ export default function InspectionTypes() {
                 ) : (
                   inspectionTypes.map((inspectionType) => (
                     <tr 
-                      key={inspectionType.inspectionTypeId} 
+                      key={inspectionType.inspectionTypeName} 
                       className="hover-elevate"
-                      data-testid={`row-inspection-type-${inspectionType.inspectionTypeId}`}
+                      data-testid={`row-inspection-type-${inspectionType.inspectionTypeName}`}
                     >
                       <td className="px-4 py-4">
-                        <div className="font-mono text-sm" data-testid={`text-inspectionTypeId-${inspectionType.inspectionTypeId}`}>
-                          {inspectionType.inspectionTypeId}
+                        <div className="font-mono text-sm" data-testid={`text-inspectionTypeName-${inspectionType.inspectionTypeName}`}>
+                          {inspectionType.inspectionTypeName}
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-sm font-medium" data-testid={`text-inspectionLayout-${inspectionType.inspectionTypeId}`}>
+                        <div className="text-sm font-medium" data-testid={`text-inspectionLayout-${inspectionType.inspectionTypeName}`}>
                           {inspectionType.inspectionLayout}
                         </div>
                       </td>
                       <td className="px-4 py-4">
                         <Badge
                           variant={inspectionType.status === "ACTIVE" ? "default" : "secondary"}
-                          data-testid={`badge-status-${inspectionType.inspectionTypeId}`}
+                          data-testid={`badge-status-${inspectionType.inspectionTypeName}`}
                         >
                           {inspectionType.status}
                         </Badge>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-sm" data-testid={`text-companyId-${inspectionType.inspectionTypeId}`}>
+                        <div className="text-sm" data-testid={`text-companyId-${inspectionType.inspectionTypeName}`}>
                           {inspectionType.companyId}
                         </div>
                       </td>
@@ -316,7 +316,7 @@ export default function InspectionTypes() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEditInspectionType(inspectionType)}
-                          data-testid={`button-edit-${inspectionType.inspectionTypeId}`}
+                          data-testid={`button-edit-${inspectionType.inspectionTypeName}`}
                           title="Edit Inspection Type"
                         >
                           <Pencil className="h-4 w-4" />

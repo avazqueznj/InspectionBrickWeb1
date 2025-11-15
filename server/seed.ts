@@ -53,31 +53,31 @@ async function seed() {
     // NEC Inspection Types
     const necInspectionTypesData = [
       {
-        inspectionTypeId: "preflight",
+        inspectionTypeName: "preflight",
         inspectionLayout: "ALL",
         status: "ACTIVE" as const,
         companyId: "NEC",
       },
       {
-        inspectionTypeId: "pre-trip",
+        inspectionTypeName: "pre-trip",
         inspectionLayout: "TRUCK",
         status: "ACTIVE" as const,
         companyId: "NEC",
       },
       {
-        inspectionTypeId: "post-trip",
+        inspectionTypeName: "post-trip",
         inspectionLayout: "TRUCK",
         status: "ACTIVE" as const,
         companyId: "NEC",
       },
       {
-        inspectionTypeId: "10000-mile-check",
+        inspectionTypeName: "10000-mile-check",
         inspectionLayout: "TRUCK",
         status: "ACTIVE" as const,
         companyId: "NEC",
       },
       {
-        inspectionTypeId: "crane-daily",
+        inspectionTypeName: "crane-daily",
         inspectionLayout: "CRANE",
         status: "ACTIVE" as const,
         companyId: "NEC",
@@ -87,25 +87,25 @@ async function seed() {
     // WALMART Inspection Types
     const walmartInspectionTypesData = [
       {
-        inspectionTypeId: "warehouse-safety",
+        inspectionTypeName: "warehouse-safety",
         inspectionLayout: "ALL",
         status: "ACTIVE" as const,
         companyId: "WALMART",
       },
       {
-        inspectionTypeId: "forklift-daily",
+        inspectionTypeName: "forklift-daily",
         inspectionLayout: "FORKLIFT",
         status: "ACTIVE" as const,
         companyId: "WALMART",
       },
       {
-        inspectionTypeId: "delivery-pre-trip",
+        inspectionTypeName: "delivery-pre-trip",
         inspectionLayout: "VAN",
         status: "ACTIVE" as const,
         companyId: "WALMART",
       },
       {
-        inspectionTypeId: "equipment-monthly",
+        inspectionTypeName: "equipment-monthly",
         inspectionLayout: "ALL",
         status: "INACTIVE" as const,
         companyId: "WALMART",
@@ -115,19 +115,19 @@ async function seed() {
     // FEDEX Inspection Types
     const fedexInspectionTypesData = [
       {
-        inspectionTypeId: "sortation-check",
+        inspectionTypeName: "sortation-check",
         inspectionLayout: "SORTATION-UNIT",
         status: "ACTIVE" as const,
         companyId: "FEDEX",
       },
       {
-        inspectionTypeId: "van-pre-route",
+        inspectionTypeName: "van-pre-route",
         inspectionLayout: "VAN",
         status: "ACTIVE" as const,
         companyId: "FEDEX",
       },
       {
-        inspectionTypeId: "conveyor-weekly",
+        inspectionTypeName: "conveyor-weekly",
         inspectionLayout: "CONVEYOR",
         status: "ACTIVE" as const,
         companyId: "FEDEX",
@@ -137,11 +137,11 @@ async function seed() {
     const createdInspectionTypes = await db.insert(inspectionTypes).values([...necInspectionTypesData, ...walmartInspectionTypesData, ...fedexInspectionTypesData]).returning();
     console.log(`✅ Created ${necInspectionTypesData.length + walmartInspectionTypesData.length + fedexInspectionTypesData.length} inspection types`);
     
-    // Create a mapping from (companyId + business inspectionTypeId) to UUID id
+    // Create a mapping from (companyId + business inspectionTypeName) to UUID id
     // Use composite key to handle multiple companies using same business ID
     const inspectionTypeIdMap = new Map<string, string>();
     for (const it of createdInspectionTypes) {
-      const compositeKey = `${it.companyId}:${it.inspectionTypeId}`;
+      const compositeKey = `${it.companyId}:${it.inspectionTypeName}`;
       inspectionTypeIdMap.set(compositeKey, it.id);
     }
     
@@ -210,7 +210,7 @@ async function seed() {
       { formFieldName: "alignment-check", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
     ];
     
-    // Map business IDs to UUID FKs using composite key (companyId:inspectionTypeId)
+    // Map business IDs to UUID FKs using composite key (companyId:inspectionTypeName)
     const formFields = formFieldsData.map(ff => ({
       formFieldName: ff.formFieldName,
       formFieldType: ff.formFieldType,
@@ -239,6 +239,7 @@ async function seed() {
       userId: "john_nec",
       password: "password123",
       userFullName: "John Smith",
+      userTag: "SUPERVISOR",
       status: "ACTIVE",
       companyId: "NEC",
     });
@@ -248,6 +249,7 @@ async function seed() {
       userId: "sarah_walmart",
       password: "password123",
       userFullName: "Sarah Johnson",
+      userTag: "MECHANIC",
       status: "ACTIVE",
       companyId: "WALMART",
     });
@@ -297,44 +299,44 @@ async function seed() {
     console.log("📐 Creating layouts...");
     const layoutsData = [
       // NEC layouts
-      { layoutId: "SCHOOL-BUS", layoutData: "School Bus layout configuration", companyId: "NEC" },
-      { layoutId: "TRUCK", layoutData: "Truck layout configuration", companyId: "NEC" },
-      { layoutId: "VAN", layoutData: "Van layout configuration", companyId: "NEC" },
-      { layoutId: "FORKLIFT", layoutData: "Forklift layout configuration", companyId: "NEC" },
-      { layoutId: "CRANE", layoutData: "Crane layout configuration", companyId: "NEC" },
-      { layoutId: "PALLET-JACK", layoutData: "Pallet Jack layout configuration", companyId: "NEC" },
+      { layoutName: "SCHOOL-BUS", companyId: "NEC" },
+      { layoutName: "TRUCK", companyId: "NEC" },
+      { layoutName: "VAN", companyId: "NEC" },
+      { layoutName: "FORKLIFT", companyId: "NEC" },
+      { layoutName: "CRANE", companyId: "NEC" },
+      { layoutName: "PALLET-JACK", companyId: "NEC" },
       // WALMART layouts
-      { layoutId: "SCHOOL-BUS", layoutData: "School Bus layout configuration", companyId: "WALMART" },
-      { layoutId: "TRUCK", layoutData: "Truck layout configuration", companyId: "WALMART" },
-      { layoutId: "VAN", layoutData: "Van layout configuration", companyId: "WALMART" },
-      { layoutId: "EXCAVATOR", layoutData: "Excavator layout configuration", companyId: "WALMART" },
-      { layoutId: "LOADER", layoutData: "Loader layout configuration", companyId: "WALMART" },
-      { layoutId: "FORKLIFT", layoutData: "Forklift layout configuration", companyId: "WALMART" },
-      { layoutId: "CONVEYOR", layoutData: "Conveyor layout configuration", companyId: "WALMART" },
-      { layoutId: "PALLET-JACK", layoutData: "Pallet Jack layout configuration", companyId: "WALMART" },
+      { layoutName: "SCHOOL-BUS", companyId: "WALMART" },
+      { layoutName: "TRUCK", companyId: "WALMART" },
+      { layoutName: "VAN", companyId: "WALMART" },
+      { layoutName: "EXCAVATOR", companyId: "WALMART" },
+      { layoutName: "LOADER", companyId: "WALMART" },
+      { layoutName: "FORKLIFT", companyId: "WALMART" },
+      { layoutName: "CONVEYOR", companyId: "WALMART" },
+      { layoutName: "PALLET-JACK", companyId: "WALMART" },
       // FEDEX layouts
-      { layoutId: "SCHOOL-BUS", layoutData: "School Bus layout configuration", companyId: "FEDEX" },
-      { layoutId: "CONVEYOR", layoutData: "Conveyor layout configuration", companyId: "FEDEX" },
-      { layoutId: "SORTATION-UNIT", layoutData: "Sortation Unit layout configuration", companyId: "FEDEX" },
-      { layoutId: "VAN", layoutData: "Van layout configuration", companyId: "FEDEX" },
-      { layoutId: "TRUCK", layoutData: "Truck layout configuration", companyId: "FEDEX" },
-      { layoutId: "FORKLIFT", layoutData: "Forklift layout configuration", companyId: "FEDEX" },
-      { layoutId: "LOADER", layoutData: "Loader layout configuration", companyId: "FEDEX" },
-      { layoutId: "PALLET-JACK", layoutData: "Pallet Jack layout configuration", companyId: "FEDEX" },
-      { layoutId: "CRANE", layoutData: "Crane layout configuration", companyId: "FEDEX" },
+      { layoutName: "SCHOOL-BUS", companyId: "FEDEX" },
+      { layoutName: "CONVEYOR", companyId: "FEDEX" },
+      { layoutName: "SORTATION-UNIT", companyId: "FEDEX" },
+      { layoutName: "VAN", companyId: "FEDEX" },
+      { layoutName: "TRUCK", companyId: "FEDEX" },
+      { layoutName: "FORKLIFT", companyId: "FEDEX" },
+      { layoutName: "LOADER", companyId: "FEDEX" },
+      { layoutName: "PALLET-JACK", companyId: "FEDEX" },
+      { layoutName: "CRANE", companyId: "FEDEX" },
       // Multi-asset layouts
-      { layoutId: "DOLLY", layoutData: "Dolly layout configuration", companyId: "NEC" },
-      { layoutId: "TRAILER", layoutData: "Trailer layout configuration", companyId: "NEC" },
-      { layoutId: "TRAILER", layoutData: "Trailer layout configuration", companyId: "WALMART" },
-      { layoutId: "DOLLY", layoutData: "Dolly layout configuration", companyId: "FEDEX" },
-      { layoutId: "TRAILER", layoutData: "Trailer layout configuration", companyId: "FEDEX" },
+      { layoutName: "DOLLY", companyId: "NEC" },
+      { layoutName: "TRAILER", companyId: "NEC" },
+      { layoutName: "TRAILER", companyId: "WALMART" },
+      { layoutName: "DOLLY", companyId: "FEDEX" },
+      { layoutName: "TRAILER", companyId: "FEDEX" },
     ];
     const createdLayouts = await db.insert(layouts).values(layoutsData).returning();
     
-    // Create layout mapping: "{companyId}:{layoutId}" → UUID
+    // Create layout mapping: "{companyId}:{layoutName}" → UUID
     const layoutMap = new Map<string, string>();
     for (const layout of createdLayouts) {
-      layoutMap.set(`${layout.companyId}:${layout.layoutId}`, layout.id);
+      layoutMap.set(`${layout.companyId}:${layout.layoutName}`, layout.id);
     }
     console.log(`✅ Created ${createdLayouts.length} layouts with UUID mapping`);
 

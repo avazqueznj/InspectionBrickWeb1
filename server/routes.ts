@@ -75,7 +75,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const inspectionTypeQueryParamsSchema = z.object({
     companyId: z.string().optional(),
     search: z.string().optional(),
-    sortField: z.enum(["inspectionTypeId", "inspectionLayout", "status"]).optional(),
+    sortField: z.enum(["inspectionTypeName", "inspectionLayout", "status"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
@@ -481,6 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         userId: user.userId,
         userFullName: user.userFullName,
+        userTag: user.userTag,
         status: user.status,
         companyId: user.companyId,
       });
@@ -526,6 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         userId: updatedUser.userId,
         userFullName: updatedUser.userFullName,
+        userTag: updatedUser.userTag,
         status: updatedUser.status,
         companyId: updatedUser.companyId,
       });
@@ -734,20 +736,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get layout by layoutId (protected)
-  app.get("/api/layouts/:layoutId", requireAuth, async (req: AuthRequest, res) => {
-    const { layoutId } = req.params;
-    console.log(`🔍 [Routes] GET /api/layouts/${layoutId} - User: ${req.session.userId}`);
+  // Get layout by layoutName (protected)
+  app.get("/api/layouts/:layoutName", requireAuth, async (req: AuthRequest, res) => {
+    const { layoutName } = req.params;
+    console.log(`🔍 [Routes] GET /api/layouts/${layoutName} - User: ${req.session.userId}`);
     
     try {
-      const layout = await storage.getLayoutById(layoutId, req.auth?.companyId || undefined);
+      const layout = await storage.getLayoutById(layoutName, req.auth?.companyId || undefined);
       
       if (!layout) {
-        console.log(`❌ [Routes] Layout not found: ${layoutId}`);
+        console.log(`❌ [Routes] Layout not found: ${layoutName}`);
         return res.status(404).json({ error: "Layout not found" });
       }
       
-      console.log(`✅ [Routes] Returning layout: ${layoutId}`);
+      console.log(`✅ [Routes] Returning layout: ${layoutName}`);
       res.json(layout);
     } catch (error) {
       console.error("❌ [Routes] Error fetching layout:", error);
@@ -757,7 +759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Create layout (protected)
   app.post("/api/layouts", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`➕ [Routes] POST /api/layouts - Creating layout: ${req.body?.layoutId || 'UNKNOWN'}, User: ${req.auth?.userId}, isSuperuser: ${req.auth?.isSuperuser || false}`);
+    console.log(`➕ [Routes] POST /api/layouts - Creating layout: ${req.body?.layoutName || 'UNKNOWN'}, User: ${req.auth?.userId}, isSuperuser: ${req.auth?.isSuperuser || false}`);
     
     try {
       const insertData = insertLayoutSchema.parse(req.body);
@@ -782,7 +784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const layout = await storage.createLayout(insertData);
-      console.log(`✅ [Routes] Layout created successfully: ${layout.layoutId} for company: ${layout.companyId}`);
+      console.log(`✅ [Routes] Layout created successfully: ${layout.layoutName} for company: ${layout.companyId}`);
       res.json(layout);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -796,7 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Handle common database errors
         if (dbError.code === '23505') { // Unique violation
-          return res.status(409).json({ error: "Layout ID already exists for this company" });
+          return res.status(409).json({ error: "Layout name already exists for this company" });
         } else if (dbError.code === '23502' || dbError.code === '23503') { // NOT NULL or FK violation
           return res.status(400).json({ error: "Invalid company ID or missing required field" });
         }
@@ -806,23 +808,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update layout (protected)
-  app.patch("/api/layouts/:layoutId", requireAuth, async (req: AuthRequest, res) => {
-    const { layoutId } = req.params;
-    console.log(`🔄 [Routes] PATCH /api/layouts/${layoutId} - Updating layout`);
+  app.patch("/api/layouts/:layoutName", requireAuth, async (req: AuthRequest, res) => {
+    const { layoutName } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/layouts/${layoutName} - Updating layout`);
     
     try {
       const updateData = insertLayoutSchema.partial().parse(req.body);
       
       // Verify layout exists and check permissions
-      const existingLayout = await storage.getLayoutById(layoutId, req.auth?.companyId || undefined);
+      const existingLayout = await storage.getLayoutById(layoutName, req.auth?.companyId || undefined);
       
       if (!existingLayout) {
-        console.log(`❌ [Routes] Layout not found: ${layoutId}`);
+        console.log(`❌ [Routes] Layout not found: ${layoutName}`);
         return res.status(404).json({ error: "Layout not found" });
       }
       
-      const updatedLayout = await storage.updateLayout(layoutId, updateData);
-      console.log(`✅ [Routes] Layout updated successfully: ${layoutId}`);
+      const updatedLayout = await storage.updateLayout(layoutName, updateData);
+      console.log(`✅ [Routes] Layout updated successfully: ${layoutName}`);
       res.json(updatedLayout);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -891,7 +893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const zones = await storage.getLayoutZones(layout.id, layout.companyId);
-      console.log(`✅ [Routes] Returning ${zones.length} zones for layout ${layout.layoutId}`);
+      console.log(`✅ [Routes] Returning ${zones.length} zones for layout ${layout.layoutName}`);
       res.json(zones);
     } catch (error) {
       console.error("❌ [Routes] Error fetching zones:", error);
@@ -925,7 +927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const zone = await storage.createLayoutZone(insertData, layout.companyId);
-      console.log(`✅ [Routes] Zone created successfully for layout ${layout.layoutId} (${layout.id})`);
+      console.log(`✅ [Routes] Zone created successfully for layout ${layout.layoutName} (${layout.id})`);
       res.json(zone);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1217,17 +1219,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get a single inspection type with form fields (protected)
-  app.get("/api/inspection-types/:inspectionTypeId", requireAuth, async (req: AuthRequest, res) => {
-    const { inspectionTypeId } = req.params;
-    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeId} - User: ${req.session.userId}`);
+  app.get("/api/inspection-types/:inspectionTypeName", requireAuth, async (req: AuthRequest, res) => {
+    const { inspectionTypeName } = req.params;
+    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName} - User: ${req.session.userId}`);
     
     try {
       // Pass companyId to ensure we get the right inspection type when business IDs are shared across companies
       const companyId = req.auth?.companyId || undefined;
-      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
+      const inspectionType = await storage.getInspectionTypeById(inspectionTypeName, companyId);
       
       if (!inspectionType) {
-        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
+        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeName}`);
         return res.status(404).json({ error: "Inspection type not found" });
       }
       
@@ -1237,7 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Cannot access inspection types from other companies" });
       }
       
-      console.log(`✅ [Routes] Inspection type found: ${inspectionTypeId}`);
+      console.log(`✅ [Routes] Inspection type found: ${inspectionTypeName}`);
       res.json(inspectionType);
     } catch (error) {
       console.error("❌ [Routes] Error fetching inspection type:", error);
@@ -1247,7 +1249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Create a new inspection type (protected)
   app.post("/api/inspection-types", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`➕ [Routes] POST /api/inspection-types - Creating inspection type: ${req.body?.inspectionTypeId || 'UNKNOWN'}`);
+    console.log(`➕ [Routes] POST /api/inspection-types - Creating inspection type: ${req.body?.inspectionTypeName || 'UNKNOWN'}`);
     
     try {
       const { layoutIds, ...inspectionTypeBody } = req.body;
@@ -1265,7 +1267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const inspectionType = await storage.createInspectionType(inspectionTypeData);
-      console.log(`✅ [Routes] Inspection type created successfully: ${inspectionType.inspectionTypeId}`);
+      console.log(`✅ [Routes] Inspection type created successfully: ${inspectionType.inspectionTypeName}`);
       
       // Handle layout associations (empty array = all layouts)
       if (layoutIds !== undefined) {
@@ -1286,9 +1288,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update an inspection type (protected)
-  app.patch("/api/inspection-types/:inspectionTypeId", requireAuth, async (req: AuthRequest, res) => {
-    const { inspectionTypeId } = req.params;
-    console.log(`🔄 [Routes] PATCH /api/inspection-types/${inspectionTypeId} - Updating inspection type`);
+  app.patch("/api/inspection-types/:inspectionTypeName", requireAuth, async (req: AuthRequest, res) => {
+    const { inspectionTypeName } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/inspection-types/${inspectionTypeName} - Updating inspection type`);
     
     try {
       const { layoutIds, ...inspectionTypeBody } = req.body;
@@ -1296,10 +1298,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get the existing inspection type to check authorization (use companyId for proper scoping)
       const companyId = req.auth?.companyId || undefined;
-      const existingInspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
+      const existingInspectionType = await storage.getInspectionTypeById(inspectionTypeName, companyId);
       
       if (!existingInspectionType) {
-        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
+        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeName}`);
         return res.status(404).json({ error: "Inspection type not found" });
       }
       
@@ -1309,7 +1311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Cannot update inspection types from other companies" });
       }
       
-      const updatedInspectionType = await storage.updateInspectionType(inspectionTypeId, updateData);
+      const updatedInspectionType = await storage.updateInspectionType(inspectionTypeName, updateData);
       if (!updatedInspectionType) {
         return res.status(404).json({ error: "Inspection type not found" });
       }
@@ -1321,7 +1323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ [Routes] Layout associations updated: ${layoutIdsArray.length === 0 ? 'ALL' : layoutIdsArray.length} layout(s)`);
       }
       
-      console.log(`✅ [Routes] Inspection type updated successfully: ${inspectionTypeId}`);
+      console.log(`✅ [Routes] Inspection type updated successfully: ${inspectionTypeName}`);
       res.json(updatedInspectionType);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1333,16 +1335,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get form fields for an inspection type (protected)
-  app.get("/api/inspection-types/:inspectionTypeId/form-fields", requireAuth, async (req: AuthRequest, res) => {
-    const { inspectionTypeId } = req.params;
-    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeId}/form-fields - Fetching form fields`);
+  app.get("/api/inspection-types/:inspectionTypeName/form-fields", requireAuth, async (req: AuthRequest, res) => {
+    const { inspectionTypeName } = req.params;
+    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName}/form-fields - Fetching form fields`);
     
     try {
       // Verify the inspection type exists and user has access (use companyId for proper scoping)
       const companyId = req.auth?.companyId || undefined;
-      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
+      const inspectionType = await storage.getInspectionTypeById(inspectionTypeName, companyId);
       if (!inspectionType) {
-        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
+        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeName}`);
         return res.status(404).json({ error: "Inspection type not found" });
       }
       
@@ -1362,16 +1364,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new form field for an inspection type (protected)
-  app.post("/api/inspection-types/:inspectionTypeId/form-fields", requireAuth, async (req: AuthRequest, res) => {
-    const { inspectionTypeId } = req.params;
-    console.log(`➕ [Routes] POST /api/inspection-types/${inspectionTypeId}/form-fields - Creating form field`);
+  app.post("/api/inspection-types/:inspectionTypeName/form-fields", requireAuth, async (req: AuthRequest, res) => {
+    const { inspectionTypeName } = req.params;
+    console.log(`➕ [Routes] POST /api/inspection-types/${inspectionTypeName}/form-fields - Creating form field`);
     
     try {
       // Verify the inspection type exists and user has access (use companyId for proper scoping)
       const companyId = req.auth?.companyId || undefined;
-      const inspectionType = await storage.getInspectionTypeById(inspectionTypeId, companyId);
+      const inspectionType = await storage.getInspectionTypeById(inspectionTypeName, companyId);
       if (!inspectionType) {
-        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeId}`);
+        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeName}`);
         return res.status(404).json({ error: "Inspection type not found" });
       }
       
@@ -1383,7 +1385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const formFieldData = insertInspectionTypeFormFieldSchema.parse({
         ...req.body,
-        inspectionTypeId: inspectionType.id, // Use UUID id, not business inspectionTypeId
+        inspectionTypeId: inspectionType.id, // Use UUID id, not business inspectionTypeName
       });
       
       const formField = await storage.createInspectionTypeFormField(formFieldData);

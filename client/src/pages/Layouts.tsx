@@ -36,7 +36,7 @@ import { Plus, Trash2, Edit2, FolderTree, Pencil } from "lucide-react";
 
 interface Layout {
   id: string;
-  layoutId: string;
+  layoutName: string;
   companyId: string;
 }
 
@@ -67,7 +67,7 @@ export default function Layouts() {
   const { toast } = useToast();
   const [selectedLayout, setSelectedLayout] = useState<Layout | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newLayoutId, setNewLayoutId] = useState("");
+  const [newLayoutName, setNewLayoutName] = useState("");
   const [deleteLayoutId, setDeleteLayoutId] = useState<string | null>(null);
 
   // Fetch layouts
@@ -93,8 +93,8 @@ export default function Layouts() {
 
   // Create layout mutation
   const createLayoutMutation = useMutation({
-    mutationFn: async (layoutId: string) => {
-      return apiRequest("POST", "/api/layouts", { layoutId, companyId: selectedCompany });
+    mutationFn: async (layoutName: string) => {
+      return apiRequest("POST", "/api/layouts", { layoutName, companyId: selectedCompany });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/layouts"] });
@@ -103,7 +103,7 @@ export default function Layouts() {
         description: "Layout created successfully",
       });
       setIsCreateDialogOpen(false);
-      setNewLayoutId("");
+      setNewLayoutName("");
     },
     onError: (error: any) => {
       toast({
@@ -141,15 +141,15 @@ export default function Layouts() {
   });
 
   const handleCreateLayout = () => {
-    if (!newLayoutId.trim()) {
+    if (!newLayoutName.trim()) {
       toast({
         title: "Error",
-        description: "Layout ID is required",
+        description: "Layout Name is required",
         variant: "destructive",
       });
       return;
     }
-    createLayoutMutation.mutate(newLayoutId);
+    createLayoutMutation.mutate(newLayoutName);
   };
 
   const handleDeleteLayout = () => {
@@ -189,13 +189,13 @@ export default function Layouts() {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="layoutId">Layout ID</Label>
+                    <Label htmlFor="layoutName">Layout Name</Label>
                     <Input
-                      id="layoutId"
+                      id="layoutName"
                       placeholder="e.g., TRAILER, TRUCK, PALLET-JACK"
-                      value={newLayoutId}
-                      onChange={(e) => setNewLayoutId(e.target.value)}
-                      data-testid="input-layout-id"
+                      value={newLayoutName}
+                      onChange={(e) => setNewLayoutName(e.target.value)}
+                      data-testid="input-layout-name"
                     />
                   </div>
                 </div>
@@ -239,14 +239,14 @@ export default function Layouts() {
                     selectedLayout?.id === layout.id ? "border-primary" : ""
                   }`}
                   onClick={() => setSelectedLayout(layout)}
-                  data-testid={`card-layout-${layout.layoutId}`}
+                  data-testid={`card-layout-${layout.layoutName}`}
                 >
                   <CardHeader className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <FolderTree className="h-4 w-4 text-muted-foreground" />
                         <CardTitle className="text-sm font-medium">
-                          {layout.layoutId}
+                          {layout.layoutName}
                         </CardTitle>
                       </div>
                       <Button
@@ -257,7 +257,7 @@ export default function Layouts() {
                           e.stopPropagation();
                           setDeleteLayoutId(layout.id);
                         }}
-                        data-testid={`button-delete-layout-${layout.layoutId}`}
+                        data-testid={`button-delete-layout-${layout.layoutName}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -332,7 +332,7 @@ function LayoutBuilder({ layout }: { layout: Layout }) {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold mb-2">{layout.layoutId}</h2>
+        <h2 className="text-2xl font-semibold mb-2">{layout.layoutName}</h2>
         <p className="text-sm text-muted-foreground">
           Configure zones, components, and defects for this layout
         </p>

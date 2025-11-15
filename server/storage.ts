@@ -133,10 +133,10 @@ export interface IStorage {
   
   // Inspection Types
   getInspectionTypes(params?: InspectionTypeQueryParams): Promise<PaginatedResult<InspectionTypeWithFormFields>>;
-  getInspectionTypeById(inspectionTypeId: string, companyId?: string): Promise<InspectionTypeWithFormFields | undefined>;
+  getInspectionTypeById(inspectionTypeName: string, companyId?: string): Promise<InspectionTypeWithFormFields | undefined>;
   getInspectionTypeByUUID(id: string): Promise<InspectionTypeWithFormFields | undefined>;
   createInspectionType(inspectionType: InsertInspectionType): Promise<InspectionType>;
-  updateInspectionType(inspectionTypeId: string, inspectionType: Partial<InsertInspectionType>): Promise<InspectionType | undefined>;
+  updateInspectionType(inspectionTypeName: string, inspectionType: Partial<InsertInspectionType>): Promise<InspectionType | undefined>;
   getInspectionTypeFilterValues(companyId?: string): Promise<InspectionTypeFilterValues>;
   
   // Inspection Type Form Fields
@@ -171,10 +171,10 @@ export interface IStorage {
   
   // Layouts
   getLayouts(companyId: string): Promise<Layout[]>;
-  getLayoutById(layoutId: string, companyId?: string): Promise<Layout | undefined>;
+  getLayoutById(layoutName: string, companyId?: string): Promise<Layout | undefined>;
   getLayoutByUUID(id: string): Promise<Layout | undefined>;
   createLayout(layout: InsertLayout): Promise<Layout>;
-  updateLayout(layoutId: string, layout: Partial<InsertLayout>): Promise<Layout | undefined>;
+  updateLayout(layoutName: string, layout: Partial<InsertLayout>): Promise<Layout | undefined>;
   deleteLayout(id: string): Promise<boolean>;
   
   // Layout Zones  
@@ -320,6 +320,7 @@ export class DatabaseStorage implements IStorage {
         id: users.id,
         userId: users.userId,
         userFullName: users.userFullName,
+        userTag: users.userTag,
         status: users.status,
         companyId: users.companyId,
       })
@@ -400,12 +401,12 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(assets.companyId, companyId));
     }
     
-    // Add search conditions - search in assetId, assetName, and layout.layoutId
+    // Add search conditions - search in assetId, assetName, and layout.layoutName
     if (search) {
       conditions.push(
         or(
           ilike(assets.assetId, `%${search}%`),
-          ilike(layouts.layoutId, `%${search}%`),
+          ilike(layouts.layoutName, `%${search}%`),
           ilike(assets.assetName, `%${search}%`)
         )!
       );
@@ -421,7 +422,7 @@ export class DatabaseStorage implements IStorage {
     // Determine sort order based on sortField
     const sortColumnMap = {
       assetId: assets.assetId,
-      assetConfig: layouts.layoutId,
+      assetConfig: layouts.layoutName,
       assetName: assets.assetName,
       status: assets.status,
     };
@@ -444,7 +445,7 @@ export class DatabaseStorage implements IStorage {
         id: assets.id,
         assetId: assets.assetId,
         layout: assets.layout,
-        layoutId: layouts.layoutId,
+        layoutName: layouts.layoutName,
         assetName: assets.assetName,
         status: assets.status,
         companyId: assets.companyId,
@@ -456,7 +457,7 @@ export class DatabaseStorage implements IStorage {
       .limit(limit)
       .offset(offset);
 
-    // Map results to Asset type with layoutId added
+    // Map results to Asset type with layoutName added
     const data = results.map(r => ({
       id: r.id,
       assetId: r.assetId,
@@ -464,7 +465,7 @@ export class DatabaseStorage implements IStorage {
       assetName: r.assetName,
       status: r.status,
       companyId: r.companyId,
-      layoutId: r.layoutId,
+      layoutName: r.layoutName,
     })) as any;
 
     console.log(`✅ [Storage] getAssets - Found ${results.length} of ${total} total assets`);
@@ -523,7 +524,7 @@ export class DatabaseStorage implements IStorage {
     const { 
       companyId, 
       search, 
-      sortField = "inspectionTypeId", 
+      sortField = "inspectionTypeName", 
       sortDirection = "asc", 
       page = 1, 
       limit = 10,
@@ -543,7 +544,7 @@ export class DatabaseStorage implements IStorage {
     // Add search conditions
     if (search) {
       conditions.push(
-        ilike(inspectionTypes.inspectionTypeId, `%${search}%`)
+        ilike(inspectionTypes.inspectionTypeName, `%${search}%`)
       );
     }
     
@@ -556,11 +557,11 @@ export class DatabaseStorage implements IStorage {
 
     // Determine sort order based on sortField
     const sortColumnMap = {
-      inspectionTypeId: inspectionTypes.inspectionTypeId,
+      inspectionTypeName: inspectionTypes.inspectionTypeName,
       status: inspectionTypes.status,
     };
     
-    const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspectionTypes.inspectionTypeId;
+    const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspectionTypes.inspectionTypeName;
     const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
 
     // Get total count
@@ -592,11 +593,11 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getInspectionTypeById(inspectionTypeId: string, companyId?: string): Promise<InspectionTypeWithFormFields | undefined> {
-    console.log(`🔍 [Storage] getInspectionTypeById - id: ${inspectionTypeId}, companyId: ${companyId || 'ANY'}`);
+  async getInspectionTypeById(inspectionTypeName: string, companyId?: string): Promise<InspectionTypeWithFormFields | undefined> {
+    console.log(`🔍 [Storage] getInspectionTypeById - name: ${inspectionTypeName}, companyId: ${companyId || 'ANY'}`);
     
-    // Build where condition: match business ID and optionally company ID
-    const conditions = [eq(inspectionTypes.inspectionTypeId, inspectionTypeId)];
+    // Build where condition: match business name and optionally company ID
+    const conditions = [eq(inspectionTypes.inspectionTypeName, inspectionTypeName)];
     if (companyId) {
       conditions.push(eq(inspectionTypes.companyId, companyId));
     }
@@ -638,23 +639,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInspectionType(insertInspectionType: InsertInspectionType): Promise<InspectionType> {
-    console.log(`➕ [Storage] Creating inspection type: ${insertInspectionType.inspectionTypeId}, companyId: ${insertInspectionType.companyId}`);
+    console.log(`➕ [Storage] Creating inspection type: ${insertInspectionType.inspectionTypeName}, companyId: ${insertInspectionType.companyId}`);
     
     const [inspectionType] = await db
       .insert(inspectionTypes)
       .values(insertInspectionType)
       .returning();
     
-    console.log(`✅ [Storage] Inspection type created successfully: ${insertInspectionType.inspectionTypeId}`);
+    console.log(`✅ [Storage] Inspection type created successfully: ${insertInspectionType.inspectionTypeName}`);
     return inspectionType;
   }
 
-  async updateInspectionType(inspectionTypeId: string, updateData: Partial<InsertInspectionType>): Promise<InspectionType | undefined> {
-    console.log(`🔄 [Storage] Updating inspection type: ${inspectionTypeId}`);
+  async updateInspectionType(inspectionTypeName: string, updateData: Partial<InsertInspectionType>): Promise<InspectionType | undefined> {
+    console.log(`🔄 [Storage] Updating inspection type: ${inspectionTypeName}`);
     const [inspectionType] = await db
       .update(inspectionTypes)
       .set(updateData)
-      .where(eq(inspectionTypes.inspectionTypeId, inspectionTypeId))
+      .where(eq(inspectionTypes.inspectionTypeName, inspectionTypeName))
       .returning();
     console.log(`${inspectionType ? '✅' : '❌'} [Storage] Inspection type ${inspectionType ? 'updated' : 'not found'}`);
     return inspectionType;
@@ -1227,17 +1228,17 @@ export class DatabaseStorage implements IStorage {
     
     const result = await db.query.layouts.findMany({
       where: eq(layouts.companyId, companyId),
-      orderBy: [asc(layouts.layoutId)],
+      orderBy: [asc(layouts.layoutName)],
     });
     
     console.log(`✅ [Storage] Found ${result.length} layouts`);
     return result as Layout[];
   }
 
-  async getLayoutById(layoutId: string, companyId?: string): Promise<Layout | undefined> {
-    console.log(`🔍 [Storage] getLayoutById - layoutId: ${layoutId}, companyId: ${companyId || 'ANY'}`);
+  async getLayoutById(layoutName: string, companyId?: string): Promise<Layout | undefined> {
+    console.log(`🔍 [Storage] getLayoutById - layoutName: ${layoutName}, companyId: ${companyId || 'ANY'}`);
     
-    const conditions = [eq(layouts.layoutId, layoutId)];
+    const conditions = [eq(layouts.layoutName, layoutName)];
     if (companyId) {
       conditions.push(eq(layouts.companyId, companyId));
     }
@@ -1255,23 +1256,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLayout(insertLayout: InsertLayout): Promise<Layout> {
-    console.log(`➕ [Storage] Creating layout: ${insertLayout.layoutId}, companyId: ${insertLayout.companyId}`);
+    console.log(`➕ [Storage] Creating layout: ${insertLayout.layoutName}, companyId: ${insertLayout.companyId}`);
     
     const [layout] = await db
       .insert(layouts)
       .values(insertLayout)
       .returning();
     
-    console.log(`✅ [Storage] Layout created successfully: ${insertLayout.layoutId}`);
+    console.log(`✅ [Storage] Layout created successfully: ${insertLayout.layoutName}`);
     return layout;
   }
 
-  async updateLayout(layoutId: string, updateData: Partial<InsertLayout>): Promise<Layout | undefined> {
-    console.log(`🔄 [Storage] Updating layout: ${layoutId}`);
+  async updateLayout(layoutName: string, updateData: Partial<InsertLayout>): Promise<Layout | undefined> {
+    console.log(`🔄 [Storage] Updating layout: ${layoutName}`);
     const [layout] = await db
       .update(layouts)
       .set(updateData)
-      .where(eq(layouts.layoutId, layoutId))
+      .where(eq(layouts.layoutName, layoutName))
       .returning();
     console.log(`${layout ? '✅' : '❌'} [Storage] Layout ${layout ? 'updated' : 'not found'}`);
     return layout;

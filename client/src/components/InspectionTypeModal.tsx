@@ -239,29 +239,29 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
 
   // Fetch full inspection type details (including layoutIds) when editing
   const { data: fullInspectionType } = useQuery({
-    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeId],
+    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeName],
     queryFn: async () => {
-      if (!inspectionType?.inspectionTypeId) return null;
-      const response = await fetch(`/api/inspection-types/${inspectionType.inspectionTypeId}`);
+      if (!inspectionType?.inspectionTypeName) return null;
+      const response = await fetch(`/api/inspection-types/${inspectionType.inspectionTypeName}`);
       if (!response.ok) {
         throw new Error("Failed to fetch inspection type");
       }
       return response.json();
     },
-    enabled: !!inspectionType?.inspectionTypeId && open && isEdit,
+    enabled: !!inspectionType?.inspectionTypeName && open && isEdit,
   });
 
   // Fetch form fields for this inspection type
   const { data: formFields = [], refetch: refetchFormFields } = useQuery<InspectionTypeFormField[]>({
-    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeId, "form-fields"],
+    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeName, "form-fields"],
     queryFn: async () => {
-      const response = await fetch(`/api/inspection-types/${inspectionType?.inspectionTypeId}/form-fields`);
+      const response = await fetch(`/api/inspection-types/${inspectionType?.inspectionTypeName}/form-fields`);
       if (!response.ok) {
         throw new Error("Failed to fetch form fields");
       }
       return response.json();
     },
-    enabled: isEdit && !!inspectionType?.inspectionTypeId,
+    enabled: isEdit && !!inspectionType?.inspectionTypeName,
   });
 
   // Delete form field mutation
@@ -270,7 +270,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
       return await apiRequest("DELETE", `/api/inspection-type-form-fields/${id}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeId, "form-fields"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeName, "form-fields"] });
       toast({
         title: "Success",
         description: "Form field deleted successfully",
@@ -290,7 +290,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
     if (open && inspectionType) {
       // Editing existing inspection type
       form.reset({
-        inspectionTypeId: inspectionType.inspectionTypeId,
+        inspectionTypeName: inspectionType.inspectionTypeName,
         status: inspectionType.status,
         companyId: currentCompanyId || "",
       });
@@ -308,7 +308,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
     } else if (open && !inspectionType) {
       // Creating new inspection type - default to "All Layouts"
       form.reset({
-        inspectionTypeId: "",
+        inspectionTypeName: "",
         status: "ACTIVE",
         companyId: currentCompanyId || "",
       });
@@ -317,7 +317,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
     } else if (!open) {
       // Modal closed - reset everything
       form.reset({
-        inspectionTypeId: "",
+        inspectionTypeName: "",
         status: "ACTIVE",
         companyId: currentCompanyId || "",
       });
@@ -379,7 +379,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
                 </DialogTitle>
                 {isEdit && (
                   <p className="text-sm text-muted-foreground font-mono mt-1">
-                    {inspectionType.inspectionTypeId}
+                    {inspectionType.inspectionTypeName}
                   </p>
                 )}
               </div>
@@ -399,16 +399,16 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="inspectionTypeId"
+                  name="inspectionTypeName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Inspection Type ID</FormLabel>
+                      <FormLabel>Inspection Type Name</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
                           disabled={isEdit}
-                          placeholder="Enter inspection type ID"
-                          data-testid="input-inspectionTypeId"
+                          placeholder="Enter inspection type name"
+                          data-testid="input-inspectionTypeName"
                         />
                       </FormControl>
                       <FormMessage />
@@ -502,13 +502,13 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
                           checked={selectedLayoutIds.includes(layout.id)}
                           onCheckedChange={(checked) => handleLayoutToggle(layout.id, checked as boolean)}
                           disabled={allLayoutsChecked}
-                          data-testid={`checkbox-layout-${layout.layoutId}`}
+                          data-testid={`checkbox-layout-${layout.layoutName}`}
                         />
                         <label
                           htmlFor={`layout-${layout.id}`}
                           className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                         >
-                          {layout.layoutId}
+                          {layout.layoutName}
                         </label>
                       </div>
                     ))}

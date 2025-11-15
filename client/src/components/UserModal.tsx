@@ -40,6 +40,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
       userId: "",
       password: "",
       userFullName: "",
+      userTag: "",
       status: "ACTIVE",
       companyId: currentCompanyId,
     },
@@ -52,6 +53,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         userId: user.userId,
         password: "", // Never pre-fill password
         userFullName: user.userFullName,
+        userTag: user.userTag || "",
         status: user.status,
         companyId: currentCompanyId, // Always use current company context in edit mode
       });
@@ -60,6 +62,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         userId: "",
         password: "",
         userFullName: "",
+        userTag: "",
         status: "ACTIVE",
         companyId: currentCompanyId, // Default to current company in create mode
       });
@@ -134,6 +137,24 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                       {...field}
                       placeholder="Enter full name"
                       data-testid="input-userFullName"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="userTag"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>User Tag (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Enter user tag"
+                      data-testid="input-userTag"
                     />
                   </FormControl>
                   <FormMessage />

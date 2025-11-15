@@ -254,6 +254,9 @@ export default function Users() {
                 <tr>
                   <SortableHeader field="userId">User ID</SortableHeader>
                   <SortableHeader field="userFullName">Full Name</SortableHeader>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    User Tag
+                  </th>
                   <SortableHeader field="status">Status</SortableHeader>
                   <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Actions
@@ -264,14 +267,14 @@ export default function Users() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      <td className="px-4 py-4" colSpan={4}>
+                      <td className="px-4 py-4" colSpan={5}>
                         <Skeleton className="h-8 w-full" />
                       </td>
                     </tr>
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-12 text-center">
+                    <td colSpan={5} className="px-4 py-12 text-center">
                       <div className="text-muted-foreground">
                         <p className="text-sm">No users found</p>
                         <p className="text-xs mt-1">Try adjusting your search or filters</p>
@@ -293,6 +296,11 @@ export default function Users() {
                       <td className="px-4 py-4">
                         <div className="text-sm font-medium" data-testid={`text-userFullName-${user.userId}`}>
                           {user.userFullName}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-muted-foreground" data-testid={`text-userTag-${user.userId}`}>
+                          {user.userTag || "—"}
                         </div>
                       </td>
                       <td className="px-4 py-4">
