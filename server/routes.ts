@@ -168,26 +168,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Not authenticated" });
       }
       
-      const { userId, companyId, isSuperuser } = req.auth;
+      const { userId, companyId: authCompanyId, isSuperuser } = req.auth;
       
-      // Device tokens cannot be for superusers
-      if (isSuperuser) {
-        console.log(`❌ [Routes] Superusers cannot generate device tokens`);
-        return res.status(403).json({ error: "Superusers cannot generate device tokens" });
+      // Allow admins to specify companyId, otherwise use their own company
+      const targetCompanyId = req.body.companyId || authCompanyId;
+      
+      // If user is not a superuser, they can only generate tokens for their own company
+      if (!isSuperuser && targetCompanyId !== authCompanyId) {
+        console.log(`❌ [Routes] Non-admin cannot generate tokens for other companies`);
+        return res.status(403).json({ error: "Cannot generate device tokens for other companies" });
       }
       
-      // Generate perpetual device token
+      if (!targetCompanyId) {
+        console.log(`❌ [Routes] No company ID available`);
+        return res.status(400).json({ error: "Company ID required" });
+      }
+      
+      // Generate perpetual device token (not for superuser, but for device)
       const token = await generateDeviceToken({
         userId,
-        companyId: companyId!,
+        companyId: targetCompanyId,
         isSuperuser: false,
       });
       
-      console.log(`✅ [Routes] Device token generated for company: ${companyId}`);
+      console.log(`✅ [Routes] Device token generated for company: ${targetCompanyId} by ${isSuperuser ? 'admin' : 'user'} ${userId}`);
       
       res.json({
         token,
-        companyId,
+        companyId: targetCompanyId,
         expiresIn: "10 years",
       });
     } catch (error) {

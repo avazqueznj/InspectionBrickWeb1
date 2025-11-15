@@ -12,6 +12,7 @@ const menuItems = [
   { path: "/users", label: "Users" },
   { path: "/inspection-types", label: "Inspection Types" },
   { path: "/layouts", label: "Layouts" },
+  { path: "/device-tokens", label: "Device Tokens", adminOnly: true },
 ];
 
 export function TopBar() {
@@ -32,6 +33,9 @@ export function TopBar() {
           
           <nav className="hidden md:flex items-center gap-1">
             {menuItems.map((item) => {
+              if (item.adminOnly && !user?.isSuperuser) {
+                return null;
+              }
               const isActive = location === item.path;
               return (
                 <Link
