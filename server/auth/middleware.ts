@@ -144,3 +144,19 @@ export function logLoginFailure(req: Request, userId: string) {
 export function getAuthFailures(limit: number = 100): AuthFailureLog[] {
   return authFailures.slice(-limit);
 }
+
+/**
+ * Middleware to require superuser access (wraps requireAuth)
+ */
+export async function requireSuperuser(req: AuthRequest, res: Response, next: NextFunction) {
+  // First verify authentication
+  await requireAuth(req, res, () => {
+    // Then check if user is superuser
+    if (!req.auth?.isSuperuser) {
+      console.log(`❌ [Auth] Superuser access denied for user: ${req.auth?.userId}`);
+      return res.status(403).json({ error: "Superuser access required" });
+    }
+    
+    next();
+  });
+}
