@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,6 +43,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
       userFullName: "",
       userTag: "",
       status: "ACTIVE",
+      webAccess: false,
       companyId: currentCompanyId,
     },
   });
@@ -55,6 +57,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         userFullName: user.userFullName,
         userTag: user.userTag || "",
         status: user.status,
+        webAccess: user.webAccess,
         companyId: currentCompanyId, // Always use current company context in edit mode
       });
     } else if (!open) {
@@ -64,6 +67,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         userFullName: "",
         userTag: "",
         status: "ACTIVE",
+        webAccess: false,
         companyId: currentCompanyId, // Default to current company in create mode
       });
     }
@@ -231,6 +235,28 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                     </SelectContent>
                   </Select>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="webAccess"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Web Access</FormLabel>
+                    <div className="text-sm text-muted-foreground">
+                      Allow this user to log in to the web application
+                    </div>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="switch-webAccess"
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />
