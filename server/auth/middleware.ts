@@ -146,17 +146,57 @@ export function getAuthFailures(limit: number = 100): AuthFailureLog[] {
 }
 
 /**
- * Middleware to require superuser access (wraps requireAuth)
+ * Middleware to require superuser access (supports both JWT and session auth)
  */
 export async function requireSuperuser(req: AuthRequest, res: Response, next: NextFunction) {
-  // First verify authentication
-  await requireAuth(req, res, () => {
-    // Then check if user is superuser
-    if (!req.auth?.isSuperuser) {
-      console.log(`❌ [Auth] Superuser access denied for user: ${req.auth?.userId}`);
+  // Try JWT first
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.substring(7);
+      const verified = await verifyToken(token);
+      req.auth = verified;
+      
+      // Check if user is superuser
+      if (!verified.isSuperuser) {
+        console.log(`❌ [Auth] Superuser access denied for JWT user: ${verified.userId}`);
+        return res.status(403).json({ error: "Superuser access required" });
+      }
+      
+      return next();
+    } catch (error) {
+      console.error('❌ [Auth] JWT authentication failed:', error);
+      logAuthFailure(req, error instanceof Error ? error.message : 'Unknown error');
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+  }
+  
+  // Fall back to session (legacy)
+  if (req.session.userId) {
+    console.log(`⚠️  [Auth] Using legacy session auth for user: ${req.session.userId}`);
+    
+    // Check if session user is superuser (companyId must be EXPLICITLY null, not undefined)
+    if (req.session.companyId !== null) {
+      console.log(`❌ [Auth] Superuser access denied for session user: ${req.session.userId} (companyId: ${req.session.companyId || 'undefined'})`);
       return res.status(403).json({ error: "Superuser access required" });
     }
     
-    next();
-  });
+    // Double-check: companyId must be explicitly null (not undefined)
+    if (req.session.companyId === undefined) {
+      console.log(`❌ [Auth] Superuser access denied for session user: ${req.session.userId} (companyId is undefined, not null)`);
+      return res.status(403).json({ error: "Superuser access required" });
+    }
+    
+    // Populate req.auth from session for compatibility
+    req.auth = {
+      userId: req.session.userId,
+      companyId: null,
+      isSuperuser: true,
+      isDeviceToken: false,
+    };
+    return next();
+  }
+  
+  console.log(`❌ [Auth] No authentication provided`);
+  return res.status(401).json({ error: "Authentication required" });
 }

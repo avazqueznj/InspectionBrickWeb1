@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,14 +20,29 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AdminSettings() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Redirect non-superusers
+  // Redirect non-superusers via useEffect (not during render)
+  useEffect(() => {
+    if (!isLoading && !user?.isSuperuser) {
+      setLocation("/");
+    }
+  }, [user, isLoading, setLocation]);
+
+  // Show loading state while auth is resolving
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Return null while redirecting
   if (!user?.isSuperuser) {
-    setLocation("/");
     return null;
   }
 
