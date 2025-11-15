@@ -258,6 +258,9 @@ export default function Users() {
                     User Tag
                   </th>
                   <SortableHeader field="status">Status</SortableHeader>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Web Access
+                  </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Actions
                   </th>
@@ -267,14 +270,14 @@ export default function Users() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      <td className="px-4 py-4" colSpan={5}>
+                      <td className="px-4 py-4" colSpan={6}>
                         <Skeleton className="h-8 w-full" />
                       </td>
                     </tr>
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center">
+                    <td colSpan={6} className="px-4 py-12 text-center">
                       <div className="text-muted-foreground">
                         <p className="text-sm">No users found</p>
                         <p className="text-xs mt-1">Try adjusting your search or filters</p>
@@ -309,6 +312,14 @@ export default function Users() {
                           data-testid={`badge-status-${user.userId}`}
                         >
                           {user.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-4">
+                        <Badge
+                          variant={user.webAccess ? "default" : "secondary"}
+                          data-testid={`badge-webAccess-${user.userId}`}
+                        >
+                          {user.webAccess ? "Enabled" : "Disabled"}
                         </Badge>
                       </td>
                       <td className="px-4 py-4 text-right">
