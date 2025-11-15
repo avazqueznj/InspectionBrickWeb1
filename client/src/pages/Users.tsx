@@ -75,8 +75,9 @@ export default function Users() {
     mutationFn: async (data: InsertUser) => {
       return await apiRequest("POST", "/api/users", data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/users"], type: 'active' });
       toast({
         title: "Success",
         description: "User created successfully",
@@ -98,8 +99,9 @@ export default function Users() {
     mutationFn: async (data: InsertUser) => {
       return await apiRequest("PATCH", `/api/users/${data.userId}`, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/users"], type: 'active' });
       toast({
         title: "Success",
         description: "User updated successfully",

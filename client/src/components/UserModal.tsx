@@ -157,6 +157,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                   <FormControl>
                     <Input
                       {...field}
+                      value={field.value || ""}
                       placeholder="Enter user tag"
                       data-testid="input-userTag"
                     />

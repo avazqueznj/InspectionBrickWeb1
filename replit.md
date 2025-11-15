@@ -54,6 +54,11 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - **JWT-based authentication** with RS256 signing using RSA key pair stored in Replit Secrets
 - **Access tokens**: 8-hour expiration, no refresh tokens (users re-login when expired)
 - **Device tokens**: 10-year expiration for mobile inspection devices (perpetual, company-scoped)
+- **Web Access Control**: Users have a `webAccess` boolean flag (default: false) that controls web application login
+  - Users with `webAccess = false` cannot log in to the web application (returns 403 Forbidden)
+  - Allows organizations to restrict web access while still enabling device-only users
+  - Toggle available in user edit modal for administrators
+  - Status visible in users list table as "Enabled/Disabled" badge
 - **Dual-mode support**: JWT preferred (Authorization Bearer header), session fallback for migration
 - **Rate limiting**: 5 login attempts per 15 minutes (in-memory, local only)
 - **Audit logging**: Failed login attempts logged locally with IP, timestamp, user ID
