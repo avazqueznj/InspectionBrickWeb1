@@ -20,8 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 
 type SortField = "assetId" | "assetConfig" | "assetName" | "status";
 
-// Extended asset type with layoutId for display
-type AssetWithLayout = Asset & { layoutId?: string };
+// Extended asset type with layoutName for display
+type AssetWithLayout = Asset & { layoutName?: string };
 type SortDirection = "asc" | "desc";
 
 interface PaginatedResponse {
@@ -301,7 +301,7 @@ export default function Assets() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-sm font-mono" data-testid={`text-layout-${asset.assetId}`}>
-                          {asset.layoutId || asset.layout}
+                          {asset.layoutName || "N/A"}
                         </div>
                       </td>
                       <td className="px-4 py-4">

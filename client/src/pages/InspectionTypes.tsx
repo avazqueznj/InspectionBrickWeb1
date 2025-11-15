@@ -294,8 +294,8 @@ export default function InspectionTypes() {
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-sm font-medium" data-testid={`text-inspectionLayout-${inspectionType.inspectionTypeName}`}>
-                          {inspectionType.inspectionLayout}
+                        <div className="text-sm font-mono" data-testid={`text-inspectionLayout-${inspectionType.inspectionTypeName}`}>
+                          {inspectionType.layoutNames || "N/A"}
                         </div>
                       </td>
                       <td className="px-4 py-4">

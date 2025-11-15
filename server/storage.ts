@@ -571,22 +571,45 @@ export class DatabaseStorage implements IStorage {
       .where(whereConditions);
     const total = countResult[0]?.count || 0;
 
-    // Get paginated data with form fields
+    // Get paginated data with form fields and layouts
     const offset = (page - 1) * limit;
     const data = await db.query.inspectionTypes.findMany({
       where: whereConditions,
       with: {
         formFields: true,
+        layouts: {
+          with: {
+            layout: true,
+          },
+        },
       },
       orderBy: [orderBy],
       limit,
       offset,
     });
 
+    // Transform data to include layout details
+    const transformedData = data.map(it => {
+      const layoutDetails = it.layouts?.map(l => ({
+        id: l.layout.id,
+        layoutName: l.layout.layoutName,
+      })) || [];
+      
+      const layoutNames = layoutDetails.map(l => l.layoutName).join(", ") || "N/A";
+      
+      return {
+        ...it,
+        layouts: layoutDetails,
+        layoutNames,
+        layoutIds: layoutDetails.map(l => l.id),
+        allLayouts: layoutDetails.length === 0,
+      };
+    });
+
     console.log(`✅ [Storage] getInspectionTypes - Found ${data.length} of ${total} total inspection types`);
     
     return {
-      data: data as InspectionTypeWithFormFields[],
+      data: transformedData as InspectionTypeWithFormFields[],
       total,
       page,
       totalPages: Math.ceil(total / limit),

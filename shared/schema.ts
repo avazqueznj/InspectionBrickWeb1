@@ -388,6 +388,8 @@ export type InspectionTypeWithFormFields = InspectionType & {
   formFields: InspectionTypeFormField[];
   layoutIds?: string[]; // Array of layout IDs, empty array means "All Layouts"
   allLayouts?: boolean; // Flag indicating if all layouts are selected
+  layouts?: Array<{ id: string; layoutName: string }>; // Layout details for display
+  layoutNames?: string; // Comma-separated layout names for display in list view
 };
 
 // Extended type for defect with inspection details
