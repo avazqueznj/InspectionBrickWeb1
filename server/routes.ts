@@ -7,6 +7,7 @@ import { parseBrickInspection } from "./brickParser";
 import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
 import { requireAuth as requireJWTAuth, requireSuperuser, rateLimitLogin, resetLoginRateLimit, logLoginFailure, type AuthRequest } from "./auth/middleware";
 import { runSeed } from "./services/seedService";
+import { generateBrickConfig } from "./services/brickConfigService";
 
 // Dual-mode authentication middleware (supports both session and JWT during migration)
 function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
@@ -350,6 +351,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Failed to parse or store inspection data",
         message: errorMessage,
         stack: errorStack
+      });
+    }
+  });
+
+  // Device: Download configuration (requires device token)
+  app.get("/api/device/config", requireAuth, async (req: AuthRequest, res) => {
+    console.log(`📱 [Routes] GET /api/device/config - Downloading config for device`);
+    
+    // Verify this is a device token
+    if (!req.auth || !req.auth.isDeviceToken) {
+      console.log(`❌ [Routes] Config download rejected - not a device token`);
+      return res.status(403).json({ error: "Device token required for this endpoint" });
+    }
+    
+    const tokenCompanyId = req.auth.companyId;
+    const requestedCompanyId = req.query.company as string | undefined;
+    
+    console.log(`🔍 [Routes] Device token company: ${tokenCompanyId}, Requested company: ${requestedCompanyId || 'NONE'}`);
+    
+    // Validate company ID matches token
+    if (requestedCompanyId && requestedCompanyId !== tokenCompanyId) {
+      console.log(`❌ [Routes] SECURITY VIOLATION - Device token company (${tokenCompanyId}) does not match requested company (${requestedCompanyId})`);
+      return res.status(403).json({ 
+        error: "Company ID mismatch",
+        message: "Device token does not authorize config download for this company" 
+      });
+    }
+    
+    // Use token's company ID (ignore query param if it matches, or use token if not provided)
+    const companyId = tokenCompanyId;
+    
+    if (!companyId) {
+      console.log(`❌ [Routes] No company ID in device token`);
+      return res.status(400).json({ error: "Device token must be associated with a company" });
+    }
+    
+    console.log(`✅ [Routes] Company ID verified - generating config for: ${companyId}`);
+    
+    try {
+      const configData = await generateBrickConfig(storage, companyId);
+      
+      console.log(`✅ [Routes] Config generated successfully - ${configData.length} bytes`);
+      
+      // Return as plain text
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.send(configData);
+    } catch (error) {
+      console.error("❌ [Routes] Error generating device config:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      return res.status(500).json({ 
+        error: "Failed to generate configuration",
+        message: errorMessage
       });
     }
   });

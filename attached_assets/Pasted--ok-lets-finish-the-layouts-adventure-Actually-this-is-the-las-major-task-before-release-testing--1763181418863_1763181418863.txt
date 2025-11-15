@@ -1,0 +1,235 @@
+
+ok lets finish the layouts adventure. Actually, this is the las major task before release testing.
+
+As usual:
+
+Make sure to recover context by:
+
+1) reading the replit.md
+2) checking DOT regulations on inspections
+3) look at the database schema
+4) look at the code
+5) and previous comments in this conversation
+
+Layouts was the las thing needed by the device. at the moment i have a server serving hardcoded configurations.
+
+Now we need a real endpoint for devices to read the config based on the entities we have created. The endpont will serve the below config in the format described. A simplified EDI. 
+
+This endpoint will be accessed by the devices using the  device token. The machine will send a GET with the company as a get parm: ? company=ABC, but of course you should check the company id in the token, and while we are at it , lets check that the post also validates the company in the token, which should already be done.
+
+So here is the config sample:
+
+BRICKCONFIG*2
+
+
+ASSETS
+AS*121*TRUCK*123
+AS*122*TRUCK*123456
+AS*123*TRUCK*123456
+AS*127*TRUCK*123456
+AS*128*LIGHT DUTY*123456
+AS*129*LIGHT DUTY*123456
+AS*130*LIGHT DUTY*123456
+AS*131*MIXER*123
+AS*132*MIXER*123456
+AS*133*MIXER*123456
+AS*220*TRUCK*123
+AS*221TAG2*TRUCK*::4:111:48:2:177:115:128
+AS*222*TRUCK*123456
+AS*223*TRUCK*123456
+AS*227*TRUCK*123456
+AS*228*LIGHT DUTY*123456
+AS*229*LIGHT DUTY*123456
+AS*230*LIGHT DUTY*123456
+AS*231TAG3*MIXER*::130:47:106:5
+AS*232*MIXER*123456
+AS*233*MIXER*123456
+AS*322*TRUCK*123456
+AS*323*TRUCK*123456
+AS*327*TRUCK*123456
+AS*328*LIGHT DUTY*123456
+AS*329*LIGHT DUTY*123456
+AS*330*LIGHT DUTY*123456
+AS*331*MIXER*123
+AS*332*MIXER*123456
+AS*333*MIXER*123456
+
+
+LAYOUTS
+
+
+
+LAY*TRUCK
+
+LAYZONE*1*front
+ZONECOMP*light left*broken*missing*blown
+ZONECOMP*light right*broken*missing*blown
+
+LAYZONE*2*engine
+ZONECOMP*oil*low*leaking
+ZONECOMP*break fluid*low*leaking
+
+LAYZONE*3*cabin
+ZONECOMP*license*missing*coffee stain
+ZONECOMP*wind shield*broken
+ZONECOMP*seat*damaged*missing
+ZONECOMP*wind shield1*broken2
+
+
+LAYZONE*4*cargo area
+ZONECOMP*cargo*loose*missing*damaged
+
+LAYZONE*5*cargo area 2
+ZONECOMP*cargo*loose*missing*damaged
+
+LAYZONE*6*rear
+ZONECOMP*light left*broken*missing*blown
+ZONECOMP*light right*broken*missing*blown
+
+
+LAY*LIGHT DUTY
+
+LAYZONE*1*front
+ZONECOMP*light left*broken*missing*blown
+ZONECOMP*light right*broken*missing*blown
+
+LAYZONE*2*engine
+ZONECOMP*oil*low*leaking
+ZONECOMP*break fluid*low*leaking
+
+LAYZONE*3*cabin
+ZONECOMP*license*missing*coffee stain
+ZONECOMP*wind shield*broken
+ZONECOMP*seat*damaged*missing
+
+LAYZONE*4*rear
+ZONECOMP*light left*broken*missing*blown
+ZONECOMP*light right*broken*missing*blown
+
+
+LAY*MIXER
+
+LAYZONE*1*front
+ZONECOMP*light left*broken*missing*blown
+ZONECOMP*light right*broken*missing*blown
+
+LAYZONE*2*engine
+ZONECOMP*oil*low*leaking
+ZONECOMP*break fluid*low*leaking
+
+LAYZONE*3*cabin
+ZONECOMP*license*missing*coffee stain
+ZONECOMP*wind shield*broken
+ZONECOMP*seat*damaged*missing
+
+LAYZONE*4*mixer
+ZONECOMP*mixer container*leaking*damaged
+ZONECOMP*mixer control*damaged*failed
+
+LAYZONE*5*rear
+ZONECOMP*light left*broken*missing*blown
+ZONECOMP*light right*broken*missing*blown
+
+
+INSPTYPES
+
+INSP*pre-trip*ALL
+INSPFF*Odometer*text*10
+INSPFF*Fuel level*text*15
+INSPFF*Route*int*10
+INSPFF*Cost*usd*15
+INSPFF*Test2*usd*15
+
+INSP*post-trip*TRUCK*LIGHT DUTY
+INSPFF*Odometer*text*10
+INSPFF*Fuel level*text*15
+
+INSP*mixer weight*MIXER
+INSPFF*Odometer*text*10
+INSPFF*mix weight*text*10
+
+USERS
+
+USER*Alejandro Vazquez*123*456
+USER*Peter Smith*111*222
+
+END
+
+-----
+
+And here is how to build it:
+
+1) empty lines are ignored, but put spaces between sections to help me debug.
+
+2) for each line
+Note that this is also an EDI type forman. each line begins with a key that tells what it is and what follows, fields separated with *.
+
+So, there should not be '*' in the data. Period simple. I do not know how to solve that bad decision of  me, but for now make sure to filter out any * you see in data.
+
+So instructions to build the file:
+
+BRICKCONFIG*2  <--- hard coded begin marker
+
+
+ASSETS  <----  section start
+AS*121*TRUCK*123  <--------- [AS]asset record * asset_id (not theuuid) * layout_name * asset_tag  
+
+AS*331*MIXER*123
+AS*332*MIXER*123456
+AS*333*MIXER*123456
+
+
+LAYOUTS  <---- section start
+
+
+
+LAY*TRUCK  <--- layout name
+
+LAYZONE*1*front    <--- zone tag, zone name
+ZONECOMP*light left*broken*missing*blown  <--- component name, and defect names , last item let it be the component-instructions ( not in this example i will implement the device side while you do this part...
+ZONECOMP*light right*broken*missing*blown
+
+LAYZONE*2*engine
+ZONECOMP*oil*low*leaking
+ZONECOMP*break fluid*low*leaking
+
+
+
+
+LAY*LIGHT DUTY
+
+LAYZONE*1*front
+ZONECOMP*light left*broken*missing*blown
+ZONECOMP*light right*broken*missing*blown
+
+LAYZONE*2*engine
+ZONECOMP*oil*low*leaking
+ZONECOMP*break fluid*low*leaking
+
+
+
+INSPTYPES  <-- new section inspection types
+
+INSP*pre-trip*ALL   <- inspection name and list of applicable  layout_names or ALL
+INSPFF*Odometer*text*10  <--- form  field, name, type and size
+INSPFF*Fuel level*text*15
+INSPFF*Route*int*10
+INSPFF*Cost*usd*15
+INSPFF*Test2*usd*15
+
+INSP*post-trip*TRUCK*LIGHT DUTY
+INSPFF*Odometer*text*10
+INSPFF*Fuel level*text*15
+
+INSP*mixer weight*MIXER
+INSPFF*Odometer*text*10
+INSPFF*mix weight*text*10
+
+USERS  <--- new section
+
+USER*Peter Smith*111*222   -->  user_fullname , user_id,  user_password
+USER*Alejandro Vazquez*123*456   
+
+END
+
+
