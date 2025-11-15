@@ -359,9 +359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/device/config", requireAuth, async (req: AuthRequest, res) => {
     console.log(`📱 [Routes] GET /api/device/config - Downloading config for device`);
     
-    // Verify this is a device token
+    // Verify this is a device token (auth already verified by middleware)
     if (!req.auth || !req.auth.isDeviceToken) {
-      console.log(`❌ [Routes] Config download rejected - not a device token`);
+      console.log(`❌ [Routes] Config download rejected - not a device token (regular user/access token)`);
       return res.status(403).json({ error: "Device token required for this endpoint" });
     }
     
