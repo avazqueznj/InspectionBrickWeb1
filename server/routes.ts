@@ -125,6 +125,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
+      // Check web access flag
+      if (!user.webAccess) {
+        console.log(`❌ [Routes] Login failed - Web access denied for user: ${userId}`);
+        logLoginFailure(req, userId);
+        return res.status(403).json({ error: "Web access denied" });
+      }
+      
       // Generate JWT token
       const token = await generateAccessToken({
         userId: user.userId,
