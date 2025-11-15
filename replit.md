@@ -104,9 +104,12 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - **UUID-based REST API:** All routes use UUIDs for consistent routing (/api/layouts/{uuid}/zones, etc.)
 - **Superuser Query Params:** GET /api/layouts?companyId=NEC allows superusers to manage any company's layouts
 - **Full CRUD Hierarchy:** Create, read, update, delete operations at all levels with cascade delete enabled
+- **Edit Functionality:** All hierarchy levels (zones, components, defects) support inline editing via dialog forms
+- **State Management:** Edit dialogs use useEffect hooks to sync form state when opened, preventing stale values
 - **Severity Configuration:** Defects have configurable max severity (1-10) with color-coded display (red/orange/yellow/blue)
 - **Company Scoping:** Regular users limited to their company; superusers specify companyId in request body/query params
 - **Database Tables:** layout_zones, layout_zone_components, component_defects with proper FK constraints and cascade delete
+- **Seed Data:** Template-driven approach creates realistic layouts for SCHOOL-BUS, TRUCK, and TRAILER vehicles based on NJ DOT inspection form requirements, with zones (Before Operating, During Warm-Up, Exterior Walkaround, Coupling, Brake System), components (tires, brakes, lights, emergency equipment), and defects with appropriate severity levels (1-10 scale) and repair instructions
 
 **Key Features:**
 - **Multi-Asset Inspection Support:** Full support for inspections involving multiple assets, with `assetId` in defects and an `inspection_assets` junction table.
