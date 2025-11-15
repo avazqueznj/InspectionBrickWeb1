@@ -1,19 +1,53 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Key } from "lucide-react";
+import { Copy, Key, ShieldAlert } from "lucide-react";
 import type { Company } from "@shared/schema";
 
 export default function DeviceTokens() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [generatedToken, setGeneratedToken] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
+
+  // Authorization guard - only superusers can access this page
+  // Note: Auth state is loaded synchronously from localStorage, so user is immediately available
+  if (!user?.isSuperuser) {
+    return (
+      <div className="container mx-auto p-6 max-w-4xl">
+        <Card className="border-destructive">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <ShieldAlert className="h-8 w-8 text-destructive" />
+              <div>
+                <CardTitle>Access Denied</CardTitle>
+                <CardDescription className="text-destructive">
+                  This feature is only available to administrators.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              You don't have permission to generate device tokens. Please contact your administrator if you need access.
+            </p>
+            <Button onClick={() => setLocation("/")} data-testid="button-back-home">
+              Back to Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const { data: companies = [] } = useQuery<Company[]>({
     queryKey: ["/api/companies"],
