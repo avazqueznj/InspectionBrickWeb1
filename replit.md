@@ -72,8 +72,10 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 
 **Device Integration:**
 - **STM32 Device Upload Endpoint:** `POST /api/device/inspections` for BRICKINSPECTION EDI format (requires device token authentication).
+- **Device Config Download Endpoint:** `GET /api/device/config?company={companyId}` returns BRICKCONFIG EDI format with company-scoped data (assets, layouts, inspection types, users) for device initialization.
 - **Device Token Authentication:** 10-year JWT device tokens issued via `POST /api/auth/device-token`, sent as Authorization Bearer header.
-- **Company ID Validation:** Upload endpoint verifies parsed company ID matches device token company ID (prevents cross-tenant uploads).
+- **Company ID Validation:** Both upload and config endpoints verify device token company ID matches requested company ID (prevents cross-tenant data access).
+- **BRICKCONFIG Format:** EDI format with sections for ASSETS, LAYOUTS (with zones/components/defects), INSPTYPES (with form fields), and USERS; sanitizes asterisks by replacing with hyphens.
 - **UUID-based Inspection IDs:** Devices generate UUIDs for inspections.
 - **UTC Timestamp Storage:** All timestamps stored in UTC with offset/DST metadata.
 - **Raw Data Storage:** Original BRICKINSPECTION EDI data is stored for debugging and audit.
@@ -118,6 +120,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - **Security:** Double-check ensures only sessions with `companyId === null` (not undefined) can access admin endpoints
 - **Danger Zone UI:** AlertDialog confirmation with detailed warnings about data loss
 - **Development Tool:** Admin reseed button should be removed before production deployment
+- **Device Config Preview:** Admin page includes preview tool to test device config endpoint with real device tokens; dialog prompts for company selection and device token, then opens BRICKCONFIG EDI in new tab (useful for debugging device data issues)
 
 **Key Features:**
 - **Multi-Asset Inspection Support:** Full support for inspections involving multiple assets, with `assetId` in defects and an `inspection_assets` junction table.
