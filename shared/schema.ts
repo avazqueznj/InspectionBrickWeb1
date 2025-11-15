@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean, unique, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   userFullName: text("user_full_name").notNull(),
   userTag: text("user_tag"),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
+  webAccess: boolean("web_access").notNull().default(false),
   companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
   // Unique constraint: same userId can exist across companies, but not within same company
@@ -287,6 +288,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 }).extend({
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+  webAccess: z.boolean().default(false),
 });
 
 export const insertAssetSchema = createInsertSchema(assets).omit({
