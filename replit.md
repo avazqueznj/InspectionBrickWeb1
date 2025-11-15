@@ -111,6 +111,14 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - **Database Tables:** layout_zones, layout_zone_components, component_defects with proper FK constraints and cascade delete
 - **Seed Data:** Template-driven approach creates realistic layouts for SCHOOL-BUS, TRUCK, and TRAILER vehicles based on NJ DOT inspection form requirements, with zones (Before Operating, During Warm-Up, Exterior Walkaround, Coupling, Brake System), components (tires, brakes, lights, emergency equipment), and defects with appropriate severity levels (1-10 scale) and repair instructions
 
+**Admin Tools:**
+- **Database Reseed:** Superuser-only admin page at `/admin/settings` with database reseed functionality
+- **Seed Service:** Reusable `runSeed()` function in `server/services/seedService.ts` used by both CLI and API
+- **Superuser Middleware:** `requireSuperuser` middleware supports both JWT and session authentication with strict privilege checks
+- **Security:** Double-check ensures only sessions with `companyId === null` (not undefined) can access admin endpoints
+- **Danger Zone UI:** AlertDialog confirmation with detailed warnings about data loss
+- **Development Tool:** Admin reseed button should be removed before production deployment
+
 **Key Features:**
 - **Multi-Asset Inspection Support:** Full support for inspections involving multiple assets, with `assetId` in defects and an `inspection_assets` junction table.
 - **DOT Compliance:** Includes `dotNumber` for companies and `licensePlate` for assets, displayed in print reports.
