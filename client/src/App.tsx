@@ -13,6 +13,7 @@ import InspectionTypes from "@/pages/InspectionTypes";
 import Defects from "@/pages/Defects";
 import Layouts from "@/pages/Layouts";
 import DeviceTokens from "@/pages/DeviceTokens";
+import AdminSettings from "@/pages/AdminSettings";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
@@ -27,6 +28,7 @@ function ProtectedRouter() {
       <Route path="/inspection-types" component={InspectionTypes} />
       <Route path="/layouts" component={Layouts} />
       <Route path="/device-tokens" component={DeviceTokens} />
+      <Route path="/admin/settings" component={AdminSettings} />
       <Route component={NotFound} />
     </Switch>
   );

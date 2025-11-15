@@ -13,6 +13,7 @@ const menuItems = [
   { path: "/inspection-types", label: "Inspection Types" },
   { path: "/layouts", label: "Layouts" },
   { path: "/device-tokens", label: "Device Tokens", adminOnly: true },
+  { path: "/admin/settings", label: "Admin", adminOnly: true },
 ];
 
 export function TopBar() {

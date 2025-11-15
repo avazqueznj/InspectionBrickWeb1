@@ -33,11 +33,10 @@ export default function AdminSettings() {
 
   const reseedMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/admin/reseed", {
-        method: "POST",
-      });
+      const res = await apiRequest("POST", "/api/admin/reseed");
+      return await res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: { timestamp: string }) => {
       toast({
         title: "Database Reseeded",
         description: `Successfully reseeded database at ${new Date(data.timestamp).toLocaleString()}`,
