@@ -166,6 +166,12 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
                         <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                           Status
                         </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Mechanic
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Repair Date
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -193,7 +199,13 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
                             <SeverityIndicator severity={defect.severity} />
                           </td>
                           <td className="px-4 py-3">
-                            <StatusBadge status={defect.status as "open" | "pending" | "repaired"} />
+                            <StatusBadge status={defect.status as "open" | "pending" | "repaired" | "not-needed"} />
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {defect.mechanicName || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {defect.repairDate ? new Date(defect.repairDate).toLocaleDateString() : "—"}
                           </td>
                         </tr>
                       ))}
