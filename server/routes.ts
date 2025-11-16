@@ -49,6 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     assetId: z.string().optional(),
     driverName: z.string().optional(),
     driverId: z.string().optional(),
+    location: z.string().optional(),
   });
 
   // User query params validation schema
