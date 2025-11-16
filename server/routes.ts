@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema } from "@shared/schema";
+import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema, type Defect, type InspectionWithDefects } from "@shared/schema";
 import { z } from "zod";
 import { parseBrickInspection } from "./brickParser";
 import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
@@ -2223,9 +2223,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mechanicName,
           repairDate: parsedRepairDate,
           status,
-          repairNotes: repairNotes || null,
+          repairNotes: repairNotes ?? null,
         },
-        req.auth?.companyId // Pass companyId for double-checking at storage layer
+        req.auth?.companyId ?? undefined // Pass companyId for double-checking at storage layer
       );
       
       // Verify all requested defects were updated

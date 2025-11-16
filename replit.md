@@ -23,13 +23,14 @@ Key features include real-time defect monitoring, advanced filtering and search,
 - TypeScript strict mode
 - Functional React components with hooks
 - Zod for runtime validation
-- TanStack Query for server state
+- TanStack Query for server state (NO caching - staleTime: 0, gcTime: 0)
 - data-testid attributes on all interactive elements
 
 ### Important User Requirements
 - **NO PDFs ever** - Use browser's native print (Ctrl+P/Cmd+P) instead
 - **NO complex test scripts** - Keep testing simple and manual
 - **Simple solutions preferred** - Avoid over-engineering with unnecessary libraries
+- **NO caching** - All data fetched fresh from database (React Query: staleTime: 0, gcTime: 0)
 - **Print reports:** Server-rendered HTML in new browser tabs for optimal print formatting
 
 ## System Architecture
