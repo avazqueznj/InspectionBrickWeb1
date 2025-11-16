@@ -69,6 +69,22 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 **Multi-Company Support:**
 - Data isolation is enforced at database and API levels, with a client-side company selector managing context.
 
+**Multi-Location Support:**
+- **Database Schema**: `locations` table with composite PK (location_name, company_id) eliminates join overhead; `user_locations` junction table for user-location assignments
+- **Location-Based Filtering**: UI-side filtering for locations; API accepts location parameters but doesn't enforce user access restrictions ("New Jersey style" simplicity)
+- **User Permissions**: Users can have multiple locations via junction table; users with no location assignments see all locations for their company (admin behavior)
+- **Test Data**: Comprehensive seed data with 3 locations per company (e.g., NEC: North Hub, South Yard, HQ Garage), diverse user scenarios (multi-location, single-location, no-location users), and assets assigned to specific locations
+- **UI Integration**: Location filters on Assets, Users, Inspections, and Defects pages; location column in Assets table
+
+**Test User Scenarios:**
+- **avazquez**: Superuser (companyId: null) - sees all companies and locations
+- **john_nec**: NEC user with multi-location access (North Hub, HQ Garage)
+- **testuser**: NEC user with single-location access (South Yard only)
+- **alice_nec**: NEC user with no location assignments (sees all NEC locations - admin behavior)
+- **sarah_walmart**: WALMART user with multi-location access (Distribution East, Fleet HQ)
+- **adrianal**: WALMART user with single-location access (Distribution West only)
+- **mike_fedex**: FEDEX user with no location assignments (sees all FEDEX locations - admin behavior)
+
 **Data Management:**
 - Server-side search, advanced filtering (AND logic), sorting, and pagination (10 items per page). Dynamic filter values are fetched from the server.
 

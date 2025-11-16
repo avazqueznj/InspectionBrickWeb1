@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionTypeLayouts, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionTypeLayouts, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects, locations, userLocations } from "@shared/schema";
 import { storage } from "../storage";
 
 export async function runSeed() {
@@ -15,7 +15,9 @@ export async function runSeed() {
   await db.delete(layoutZoneComponents);
   await db.delete(layoutZones);
   await db.delete(layouts);
+  await db.delete(userLocations);
   await db.delete(users);
+  await db.delete(locations);
   await db.delete(companies);
   console.log("✅ Cleared existing data");
 
@@ -43,6 +45,26 @@ export async function runSeed() {
   ]);
 
   console.log("✅ Created 3 companies");
+
+  // Create locations for each company
+  console.log("📍 Creating locations...");
+  await db.insert(locations).values([
+    // NEC locations
+    { locationName: "North Hub", companyId: "NEC", address: "100 North Industrial Dr, Newark, NJ", locationDotNumber: "NEC-NH-001" },
+    { locationName: "South Yard", companyId: "NEC", address: "250 South Service Rd, Camden, NJ", locationDotNumber: "NEC-SY-002" },
+    { locationName: "HQ Garage", companyId: "NEC", address: "1234 Industrial Blvd, Houston, TX", locationDotNumber: "NEC-HQ-003" },
+    
+    // WALMART locations
+    { locationName: "Distribution East", companyId: "WALMART", address: "500 Logistics Pkwy, Bentonville, AR", locationDotNumber: "WMT-DE-101" },
+    { locationName: "Distribution West", companyId: "WALMART", address: "1200 Western Ave, Bentonville, AR", locationDotNumber: "WMT-DW-102" },
+    { locationName: "Fleet HQ", companyId: "WALMART", address: "5678 Logistics Way, Bentonville, AR", locationDotNumber: "WMT-FH-103" },
+    
+    // FEDEX locations
+    { locationName: "Hub Memphis", companyId: "FEDEX", address: "3000 Airways Blvd, Memphis, TN", locationDotNumber: "FDX-HM-201" },
+    { locationName: "Hub Atlanta", companyId: "FEDEX", address: "4500 Hartsfield Rd, Atlanta, GA", locationDotNumber: "FDX-HA-202" },
+    { locationName: "Service Center", companyId: "FEDEX", address: "9012 Freight Dr, Memphis, TN", locationDotNumber: "FDX-SC-203" },
+  ]);
+  console.log("✅ Created 9 locations (3 per company)");
 
   // Create inspection types with form fields
   console.log("📋 Creating inspection types...");
@@ -226,8 +248,11 @@ export async function runSeed() {
   // Create users with plain text passwords (pilot configuration)
   console.log("👥 Creating users...");
   
-  // avazquez - can view all companies (no companyId assignment)
-  await storage.createUser({
+  // Track user UUIDs for location assignments
+  const userIds: Record<string, string> = {};
+  
+  // Superuser - no company, no location restrictions
+  const superuser = await storage.createUser({
     userId: "avazquez",
     password: "password123",
     userFullName: "Antonio Vazquez",
@@ -235,10 +260,11 @@ export async function runSeed() {
     webAccess: true,
     companyId: null,
   });
-  console.log("   ✅ Created superuser: avazquez (companyId: null)");
+  userIds.avazquez = superuser.id;
+  console.log("   ✅ Created superuser: avazquez (companyId: null, no location restrictions)");
   
-  // Company-specific users
-  await storage.createUser({
+  // NEC Users - diverse location scenarios
+  const john_nec = await storage.createUser({
     userId: "john_nec",
     password: "password123",
     userFullName: "John Smith",
@@ -247,9 +273,35 @@ export async function runSeed() {
     webAccess: true,
     companyId: "NEC",
   });
-  console.log("   ✅ Created user: john_nec (companyId: NEC)");
+  userIds.john_nec = john_nec.id;
+  console.log("   ✅ Created user: john_nec (NEC, will have multi-location access)");
   
-  await storage.createUser({
+  const testuser = await storage.createUser({
+    userId: "testuser",
+    password: "password123",
+    userFullName: "Test User",
+    userTag: "DISPATCHER",
+    status: "ACTIVE",
+    webAccess: true,
+    companyId: "NEC",
+  });
+  userIds.testuser = testuser.id;
+  console.log("   ✅ Created user: testuser (NEC, will have single-location access)");
+  
+  const alice_nec = await storage.createUser({
+    userId: "alice_nec",
+    password: "password123",
+    userFullName: "Alice Williams",
+    userTag: "ADMIN",
+    status: "ACTIVE",
+    webAccess: true,
+    companyId: "NEC",
+  });
+  userIds.alice_nec = alice_nec.id;
+  console.log("   ✅ Created user: alice_nec (NEC, no locations = sees all NEC locations)");
+  
+  // WALMART Users
+  const sarah_walmart = await storage.createUser({
     userId: "sarah_walmart",
     password: "password123",
     userFullName: "Sarah Johnson",
@@ -258,28 +310,33 @@ export async function runSeed() {
     webAccess: true,
     companyId: "WALMART",
   });
-  console.log("   ✅ Created user: sarah_walmart (companyId: WALMART)");
+  userIds.sarah_walmart = sarah_walmart.id;
+  console.log("   ✅ Created user: sarah_walmart (WALMART, will have multi-location access)");
   
-  await storage.createUser({
-    userId: "mike_fedex",
-    password: "password123",
-    userFullName: "Mike Davis",
-    status: "ACTIVE",
-    webAccess: true,
-    companyId: "FEDEX",
-  });
-  console.log("   ✅ Created user: mike_fedex (companyId: FEDEX)");
-  
-  // Additional user to test login (adrianal from production logs)
-  await storage.createUser({
+  const adrianal = await storage.createUser({
     userId: "adrianal",
     password: "password123",
     userFullName: "Adriana Lopez",
+    userTag: "DRIVER",
     status: "ACTIVE",
     webAccess: true,
     companyId: "WALMART",
   });
-  console.log("   ✅ Created user: adrianal (companyId: WALMART)");
+  userIds.adrianal = adrianal.id;
+  console.log("   ✅ Created user: adrianal (WALMART, will have single-location access)");
+  
+  // FEDEX Users
+  const mike_fedex = await storage.createUser({
+    userId: "mike_fedex",
+    password: "password123",
+    userFullName: "Mike Davis",
+    userTag: "MANAGER",
+    status: "ACTIVE",
+    webAccess: true,
+    companyId: "FEDEX",
+  });
+  userIds.mike_fedex = mike_fedex.id;
+  console.log("   ✅ Created user: mike_fedex (FEDEX, no locations = sees all FEDEX locations)");
   
   // Add inactive users for testing filters
   await storage.createUser({
@@ -290,7 +347,7 @@ export async function runSeed() {
     webAccess: false,
     companyId: "NEC",
   });
-  console.log("   ✅ Created inactive user: bob_inactive (companyId: NEC)");
+  console.log("   ✅ Created inactive user: bob_inactive (NEC)");
   
   await storage.createUser({
     userId: "jane_former",
@@ -300,9 +357,38 @@ export async function runSeed() {
     webAccess: false,
     companyId: "FEDEX",
   });
-  console.log("   ✅ Created inactive user: jane_former (companyId: FEDEX)");
+  console.log("   ✅ Created inactive user: jane_former (FEDEX)");
   
-  console.log("✅ Created 7 users (1 superuser + 4 active company users + 2 inactive users)");
+  console.log("✅ Created 9 users (1 superuser + 6 active company users + 2 inactive)");
+
+  // Create user-location assignments
+  console.log("📍 Assigning users to locations...");
+  await db.insert(userLocations).values([
+    // NEC: john_nec has access to North Hub and HQ Garage (multi-location)
+    { userId: userIds.john_nec, locationName: "North Hub", companyId: "NEC" },
+    { userId: userIds.john_nec, locationName: "HQ Garage", companyId: "NEC" },
+    
+    // NEC: testuser has access to only South Yard (single-location)
+    { userId: userIds.testuser, locationName: "South Yard", companyId: "NEC" },
+    
+    // NEC: alice_nec has NO location assignments = sees all NEC locations
+    
+    // WALMART: sarah_walmart has access to Distribution East and Fleet HQ (multi-location)
+    { userId: userIds.sarah_walmart, locationName: "Distribution East", companyId: "WALMART" },
+    { userId: userIds.sarah_walmart, locationName: "Fleet HQ", companyId: "WALMART" },
+    
+    // WALMART: adrianal has access to only Distribution West (single-location)
+    { userId: userIds.adrianal, locationName: "Distribution West", companyId: "WALMART" },
+    
+    // FEDEX: mike_fedex has NO location assignments = sees all FEDEX locations
+  ]);
+  console.log("✅ Created user-location assignments:");
+  console.log("   - john_nec: North Hub, HQ Garage (multi-location)");
+  console.log("   - testuser: South Yard (single-location)");
+  console.log("   - alice_nec: no assignments (sees all NEC locations)");
+  console.log("   - sarah_walmart: Distribution East, Fleet HQ (multi-location)");
+  console.log("   - adrianal: Distribution West (single-location)");
+  console.log("   - mike_fedex: no assignments (sees all FEDEX locations)");
 
   // Create layouts first (required for assets)
   console.log("📐 Creating layouts...");
@@ -594,8 +680,8 @@ export async function runSeed() {
   // Create assets for all companies
   console.log("📦 Creating assets...");
   
-  // Helper function to map asset data to include layout UUID
-  const mapAssetToLayout = (asset: {assetId: string, layoutKey: string, assetName: string, status: "ACTIVE" | "INACTIVE", companyId: string}) => {
+  // Helper function to map asset data to include layout UUID and location
+  const mapAssetToLayout = (asset: {assetId: string, layoutKey: string, assetName: string, status: "ACTIVE" | "INACTIVE", companyId: string, locationName?: string}) => {
     const layoutId = layoutMap.get(`${asset.companyId}:${asset.layoutKey}`);
     if (!layoutId) {
       throw new Error(`Layout not found for ${asset.companyId}:${asset.layoutKey}`);
@@ -604,51 +690,52 @@ export async function runSeed() {
       assetId: asset.assetId,
       layout: layoutId,
       assetName: asset.assetName,
+      locationName: asset.locationName || null,
       status: asset.status,
       companyId: asset.companyId,
     };
   };
   
-  // NEC Assets - matching the inspection data
+  // NEC Assets - distributed across locations
   const necAssetData = [
-    { assetId: "TRUCK-2401", layoutKey: "TRUCK", assetName: "Freightliner 2401", status: "ACTIVE" as const, companyId: "NEC" },
-    { assetId: "TRUCK-2402", layoutKey: "TRUCK", assetName: "Peterbilt 2402", status: "ACTIVE" as const, companyId: "NEC" },
-    { assetId: "TRUCK-2403", layoutKey: "TRUCK", assetName: "Kenworth 2403", status: "ACTIVE" as const, companyId: "NEC" },
-    { assetId: "VAN-1501", layoutKey: "VAN", assetName: "Ford Transit 1501", status: "ACTIVE" as const, companyId: "NEC" },
-    { assetId: "VAN-1502", layoutKey: "VAN", assetName: "Mercedes Sprinter 1502", status: "ACTIVE" as const, companyId: "NEC" },
-    { assetId: "FORKLIFT-089", layoutKey: "FORKLIFT", assetName: "Toyota 089", status: "ACTIVE" as const, companyId: "NEC" },
-    { assetId: "FORKLIFT-090", layoutKey: "FORKLIFT", assetName: "Caterpillar 090", status: "ACTIVE" as const, companyId: "NEC" },
-    { assetId: "CRANE-12", layoutKey: "CRANE", assetName: "Mobile Crane 12", status: "ACTIVE" as const, companyId: "NEC" },
-    { assetId: "CRANE-13", layoutKey: "CRANE", assetName: "Tower Crane 13", status: "INACTIVE" as const, companyId: "NEC" },
-    { assetId: "PALLET-JACK-05", layoutKey: "PALLET-JACK", assetName: "Electric Jack 05", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "TRUCK-2401", layoutKey: "TRUCK", assetName: "Freightliner 2401", locationName: "North Hub", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "TRUCK-2402", layoutKey: "TRUCK", assetName: "Peterbilt 2402", locationName: "North Hub", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "TRUCK-2403", layoutKey: "TRUCK", assetName: "Kenworth 2403", locationName: "HQ Garage", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "VAN-1501", layoutKey: "VAN", assetName: "Ford Transit 1501", locationName: "South Yard", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "VAN-1502", layoutKey: "VAN", assetName: "Mercedes Sprinter 1502", locationName: "South Yard", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "FORKLIFT-089", layoutKey: "FORKLIFT", assetName: "Toyota 089", locationName: "HQ Garage", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "FORKLIFT-090", layoutKey: "FORKLIFT", assetName: "Caterpillar 090", locationName: "North Hub", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "CRANE-12", layoutKey: "CRANE", assetName: "Mobile Crane 12", locationName: "HQ Garage", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "CRANE-13", layoutKey: "CRANE", assetName: "Tower Crane 13", locationName: "North Hub", status: "INACTIVE" as const, companyId: "NEC" },
+    { assetId: "PALLET-JACK-05", layoutKey: "PALLET-JACK", assetName: "Electric Jack 05", locationName: "South Yard", status: "ACTIVE" as const, companyId: "NEC" },
   ];
   
-  // WALMART Assets
+  // WALMART Assets - distributed across locations
   const walmartAssetData = [
-    { assetId: "VAN-1145", layoutKey: "VAN", assetName: "Delivery Van 1145", status: "ACTIVE" as const, companyId: "WALMART" },
-    { assetId: "VAN-1146", layoutKey: "VAN", assetName: "Delivery Van 1146", status: "ACTIVE" as const, companyId: "WALMART" },
-    { assetId: "TRUCK-5001", layoutKey: "TRUCK", assetName: "Semi Truck 5001", status: "ACTIVE" as const, companyId: "WALMART" },
-    { assetId: "TRUCK-5002", layoutKey: "TRUCK", assetName: "Semi Truck 5002", status: "ACTIVE" as const, companyId: "WALMART" },
-    { assetId: "EXCAVATOR-45", layoutKey: "EXCAVATOR", assetName: "Excavator 45", status: "INACTIVE" as const, companyId: "WALMART" },
-    { assetId: "LOADER-22", layoutKey: "LOADER", assetName: "Front Loader 22", status: "ACTIVE" as const, companyId: "WALMART" },
-    { assetId: "FORKLIFT-W01", layoutKey: "FORKLIFT", assetName: "Warehouse Forklift W01", status: "ACTIVE" as const, companyId: "WALMART" },
-    { assetId: "FORKLIFT-W02", layoutKey: "FORKLIFT", assetName: "Warehouse Forklift W02", status: "ACTIVE" as const, companyId: "WALMART" },
-    { assetId: "CONVEYOR-W3", layoutKey: "CONVEYOR", assetName: "Belt Conveyor W3", status: "ACTIVE" as const, companyId: "WALMART" },
-    { assetId: "PALLET-JACK-W10", layoutKey: "PALLET-JACK", assetName: "Manual Jack W10", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "VAN-1145", layoutKey: "VAN", assetName: "Delivery Van 1145", locationName: "Distribution East", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "VAN-1146", layoutKey: "VAN", assetName: "Delivery Van 1146", locationName: "Distribution West", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "TRUCK-5001", layoutKey: "TRUCK", assetName: "Semi Truck 5001", locationName: "Fleet HQ", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "TRUCK-5002", layoutKey: "TRUCK", assetName: "Semi Truck 5002", locationName: "Fleet HQ", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "EXCAVATOR-45", layoutKey: "EXCAVATOR", assetName: "Excavator 45", locationName: "Distribution East", status: "INACTIVE" as const, companyId: "WALMART" },
+    { assetId: "LOADER-22", layoutKey: "LOADER", assetName: "Front Loader 22", locationName: "Distribution West", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "FORKLIFT-W01", layoutKey: "FORKLIFT", assetName: "Warehouse Forklift W01", locationName: "Distribution East", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "FORKLIFT-W02", layoutKey: "FORKLIFT", assetName: "Warehouse Forklift W02", locationName: "Fleet HQ", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "CONVEYOR-W3", layoutKey: "CONVEYOR", assetName: "Belt Conveyor W3", locationName: "Distribution West", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "PALLET-JACK-W10", layoutKey: "PALLET-JACK", assetName: "Manual Jack W10", locationName: "Distribution East", status: "ACTIVE" as const, companyId: "WALMART" },
   ];
   
-  // FEDEX Assets
+  // FEDEX Assets - distributed across locations
   const fedexAssetData = [
-    { assetId: "CONVEYOR-C3", layoutKey: "CONVEYOR", assetName: "Sortation Belt C3", status: "ACTIVE" as const, companyId: "FEDEX" },
-    { assetId: "SORTATION-UNIT-4", layoutKey: "SORTATION-UNIT", assetName: "Auto Sort Unit 4", status: "ACTIVE" as const, companyId: "FEDEX" },
-    { assetId: "VAN-8803", layoutKey: "VAN", assetName: "Delivery Van 8803", status: "ACTIVE" as const, companyId: "FEDEX" },
-    { assetId: "TRUCK-5503", layoutKey: "TRUCK", assetName: "Box Truck 5503", status: "ACTIVE" as const, companyId: "FEDEX" },
-    { assetId: "FORKLIFT-F10", layoutKey: "FORKLIFT", assetName: "Hyster F10", status: "ACTIVE" as const, companyId: "FEDEX" },
-    { assetId: "LOADER-F22", layoutKey: "LOADER", assetName: "Front Loader F22", status: "ACTIVE" as const, companyId: "FEDEX" },
-    { assetId: "PALLET-JACK-F05", layoutKey: "PALLET-JACK", assetName: "Electric Jack F05", status: "ACTIVE" as const, companyId: "FEDEX" },
-    { assetId: "TRUCK-5504", layoutKey: "TRUCK", assetName: "Box Truck 5504", status: "INACTIVE" as const, companyId: "FEDEX" },
-    { assetId: "VAN-8804", layoutKey: "VAN", assetName: "Delivery Van 8804", status: "ACTIVE" as const, companyId: "FEDEX" },
-    { assetId: "CRANE-F1", layoutKey: "CRANE", assetName: "Gantry Crane F1", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "CONVEYOR-C3", layoutKey: "CONVEYOR", assetName: "Sortation Belt C3", locationName: "Hub Memphis", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "SORTATION-UNIT-4", layoutKey: "SORTATION-UNIT", assetName: "Auto Sort Unit 4", locationName: "Hub Memphis", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "VAN-8803", layoutKey: "VAN", assetName: "Delivery Van 8803", locationName: "Service Center", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "TRUCK-5503", layoutKey: "TRUCK", assetName: "Box Truck 5503", locationName: "Hub Atlanta", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "FORKLIFT-F10", layoutKey: "FORKLIFT", assetName: "Hyster F10", locationName: "Hub Memphis", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "LOADER-F22", layoutKey: "LOADER", assetName: "Front Loader F22", locationName: "Hub Atlanta", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "PALLET-JACK-F05", layoutKey: "PALLET-JACK", assetName: "Electric Jack F05", locationName: "Service Center", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "TRUCK-5504", layoutKey: "TRUCK", assetName: "Box Truck 5504", locationName: "Hub Atlanta", status: "INACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "VAN-8804", layoutKey: "VAN", assetName: "Delivery Van 8804", locationName: "Service Center", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "CRANE-F1", layoutKey: "CRANE", assetName: "Gantry Crane F1", locationName: "Hub Memphis", status: "ACTIVE" as const, companyId: "FEDEX" },
   ];
   
   // Map asset data to include layout UUIDs and insert
@@ -1014,8 +1101,9 @@ export async function runSeed() {
   console.log("🎉 Seeding completed successfully!");
   console.log("📊 Summary:");
   console.log("   - 3 companies");
-  console.log("   - 7 users (1 superuser + 4 active company users + 2 inactive users)");
-  console.log("   - 30 assets (10 per company with varied types and statuses)");
+  console.log("   - 9 locations (3 per company)");
+  console.log("   - 9 users (1 superuser + 6 active company users + 2 inactive)");
+  console.log("   - 30 assets with location assignments (10 per company)");
   console.log(`   - ${necInspections.length + walmartInspections.length + fedexInspections.length} inspections (${necInspections.length} per company)`);
   console.log(`   - ${totalDefects} defects across different statuses`);
 }

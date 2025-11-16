@@ -264,7 +264,7 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
             <SelectItem value="__clear__" data-testid="filter-location-clear">
               All locations
             </SelectItem>
-            {filterValues?.locations.map((loc) => (
+            {filterValues?.locations?.map((loc) => (
               <SelectItem key={loc} value={loc} data-testid={`filter-location-${loc}`}>
                 {loc}
               </SelectItem>
