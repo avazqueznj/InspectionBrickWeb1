@@ -12,6 +12,7 @@ import Assets from "@/pages/Assets";
 import InspectionTypes from "@/pages/InspectionTypes";
 import Defects from "@/pages/Defects";
 import Layouts from "@/pages/Layouts";
+import Locations from "@/pages/Locations";
 import DeviceTokens from "@/pages/DeviceTokens";
 import AdminSettings from "@/pages/AdminSettings";
 import Login from "@/pages/Login";
@@ -25,6 +26,7 @@ function ProtectedRouter() {
       <Route path="/defects" component={Defects} />
       <Route path="/assets" component={Assets} />
       <Route path="/users" component={Users} />
+      <Route path="/locations" component={Locations} />
       <Route path="/inspection-types" component={InspectionTypes} />
       <Route path="/layouts" component={Layouts} />
       <Route path="/device-tokens" component={DeviceTokens} />

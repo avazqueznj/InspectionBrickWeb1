@@ -10,6 +10,7 @@ const menuItems = [
   { path: "/defects", label: "Defects/Repairs" },
   { path: "/assets", label: "Assets" },
   { path: "/users", label: "Users" },
+  { path: "/locations", label: "Locations" },
   { path: "/inspection-types", label: "Inspection Types" },
   { path: "/layouts", label: "Layouts" },
   { path: "/device-tokens", label: "Device Tokens", adminOnly: true },

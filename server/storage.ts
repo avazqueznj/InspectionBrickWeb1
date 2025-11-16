@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, locations, userLocations, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset, type Location, type InsertLocation, type UserLocation, type InsertUserLocation } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and, inArray } from "drizzle-orm";
 
@@ -116,6 +116,16 @@ export interface IStorage {
   // Companies
   getCompanies(): Promise<Company[]>;
   
+  // Locations
+  getLocations(companyId: string): Promise<Location[]>;
+  createLocation(location: InsertLocation): Promise<Location>;
+  updateLocation(locationName: string, companyId: string, location: Partial<InsertLocation>): Promise<Location | undefined>;
+  deleteLocation(locationName: string, companyId: string): Promise<boolean>;
+  
+  // User Locations
+  getUserLocations(userId: string): Promise<Location[]>;
+  setUserLocations(userId: string, companyId: string, locationNames: string[]): Promise<void>;
+  
   // Users & Auth
   getUserById(userId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -213,6 +223,97 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select().from(companies).orderBy(asc(companies.name));
     console.log(`✅ [Storage] Retrieved ${result.length} companies`);
     return result;
+  }
+
+  async getLocations(companyId: string): Promise<Location[]> {
+    console.log(`📍 [Storage] Fetching locations for company: ${companyId}`);
+    const result = await db.select().from(locations)
+      .where(eq(locations.companyId, companyId))
+      .orderBy(asc(locations.locationName));
+    console.log(`✅ [Storage] Retrieved ${result.length} locations`);
+    return result;
+  }
+
+  async createLocation(location: InsertLocation): Promise<Location> {
+    console.log(`➕ [Storage] Creating location: ${location.locationName} for company: ${location.companyId}`);
+    const [newLocation] = await db.insert(locations).values(location).returning();
+    console.log(`✅ [Storage] Location created successfully`);
+    return newLocation;
+  }
+
+  async updateLocation(locationName: string, companyId: string, location: Partial<InsertLocation>): Promise<Location | undefined> {
+    console.log(`🔄 [Storage] Updating location: ${locationName} for company: ${companyId}`);
+    const [updated] = await db.update(locations)
+      .set(location)
+      .where(and(
+        eq(locations.locationName, locationName),
+        eq(locations.companyId, companyId)
+      ))
+      .returning();
+    if (updated) {
+      console.log(`✅ [Storage] Location updated successfully`);
+    } else {
+      console.log(`❌ [Storage] Location not found`);
+    }
+    return updated;
+  }
+
+  async deleteLocation(locationName: string, companyId: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting location: ${locationName} for company: ${companyId}`);
+    const result = await db.delete(locations)
+      .where(and(
+        eq(locations.locationName, locationName),
+        eq(locations.companyId, companyId)
+      ));
+    const deleted = result.rowCount > 0;
+    if (deleted) {
+      console.log(`✅ [Storage] Location deleted successfully`);
+    } else {
+      console.log(`❌ [Storage] Location not found`);
+    }
+    return deleted;
+  }
+
+  async getUserLocations(userId: string): Promise<Location[]> {
+    console.log(`📍 [Storage] Fetching locations for user: ${userId}`);
+    const result = await db
+      .select({
+        locationName: locations.locationName,
+        companyId: locations.companyId,
+        address: locations.address,
+        locationDotNumber: locations.locationDotNumber,
+      })
+      .from(userLocations)
+      .innerJoin(
+        locations,
+        and(
+          eq(userLocations.locationName, locations.locationName),
+          eq(userLocations.companyId, locations.companyId)
+        )
+      )
+      .where(eq(userLocations.userId, userId))
+      .orderBy(asc(locations.locationName));
+    console.log(`✅ [Storage] Retrieved ${result.length} locations for user`);
+    return result;
+  }
+
+  async setUserLocations(userId: string, companyId: string, locationNames: string[]): Promise<void> {
+    console.log(`🔄 [Storage] Setting locations for user: ${userId}, locations: ${locationNames.join(', ')}`);
+    
+    // First, delete all existing user locations
+    await db.delete(userLocations).where(eq(userLocations.userId, userId));
+    
+    // Then, insert new ones if any
+    if (locationNames.length > 0) {
+      const values = locationNames.map(locationName => ({
+        userId,
+        locationName,
+        companyId,
+      }));
+      await db.insert(userLocations).values(values);
+    }
+    
+    console.log(`✅ [Storage] User locations set successfully`);
   }
 
   async getUserById(userId: string): Promise<User | undefined> {

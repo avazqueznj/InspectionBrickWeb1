@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, boolean, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean, unique, check, foreignKey, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -11,6 +11,18 @@ export const companies = pgTable("companies", {
   dotNumber: text("dot_number"),
   settings: text("settings"),
 });
+
+// Locations table - composite PK (location_name, company_id)
+export const locations = pgTable("locations", {
+  locationName: text("location_name").notNull(),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  address: text("address"),
+  locationDotNumber: text("location_dot_number"),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.locationName, table.companyId] }),
+  // Check constraint: locationName cannot be empty string
+  locationNameNotEmpty: check("location_name_not_empty", sql`LENGTH(TRIM(${table.locationName})) > 0`),
+}));
 
 // Users table
 export const users = pgTable("users", {
@@ -29,6 +41,20 @@ export const users = pgTable("users", {
   userIdNotEmpty: check("user_id_not_empty", sql`LENGTH(TRIM(${table.userId})) > 0`),
 }));
 
+// User Locations junction table - many-to-many relationship
+export const userLocations = pgTable("user_locations", {
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  locationName: text("location_name").notNull(),
+  companyId: text("company_id").notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.userId, table.locationName, table.companyId] }),
+  // Foreign key to locations table (composite)
+  locationFk: foreignKey({
+    columns: [table.locationName, table.companyId],
+    foreignColumns: [locations.locationName, locations.companyId],
+  }).onDelete("cascade"),
+}));
+
 // Assets table
 export const assets = pgTable("assets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -36,6 +62,7 @@ export const assets = pgTable("assets", {
   layout: varchar("layout").notNull().references(() => layouts.id, { onDelete: "restrict" }),
   assetName: text("asset_name").notNull(),
   licensePlate: text("license_plate"),
+  locationName: text("location_name"),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
@@ -43,6 +70,11 @@ export const assets = pgTable("assets", {
   uniqueAssetPerCompany: unique().on(table.companyId, table.assetId),
   // Check constraint: assetId cannot be empty string
   assetIdNotEmpty: check("asset_id_not_empty", sql`LENGTH(TRIM(${table.assetId})) > 0`),
+  // Foreign key to locations table (composite)
+  locationFk: foreignKey({
+    columns: [table.locationName, table.companyId],
+    foreignColumns: [locations.locationName, locations.companyId],
+  }).onDelete("set null"),
 }));
 
 // Inspections table
@@ -286,6 +318,12 @@ export const inspectionTypeLayoutsRelations = relations(inspectionTypeLayouts, (
 // Insert schemas
 export const insertCompanySchema = createInsertSchema(companies);
 
+export const insertLocationSchema = createInsertSchema(locations).extend({
+  locationName: z.string().min(1, "Location name cannot be empty"),
+});
+
+export const insertUserLocationSchema = createInsertSchema(userLocations);
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 }).extend({
@@ -353,6 +391,10 @@ export const insertComponentDefectSchema = createInsertSchema(componentDefects).
 // Types
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type Location = typeof locations.$inferSelect;
+export type InsertLocation = z.infer<typeof insertLocationSchema>;
+export type UserLocation = typeof userLocations.$inferSelect;
+export type InsertUserLocation = z.infer<typeof insertUserLocationSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UserWithoutPassword = Omit<User, 'password'>;

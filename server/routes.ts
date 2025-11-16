@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema } from "@shared/schema";
+import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema, insertLocationSchema, insertUserLocationSchema } from "@shared/schema";
 import { z } from "zod";
 import { parseBrickInspection } from "./brickParser";
 import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
@@ -670,6 +670,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Routes] Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // === LOCATION ROUTES ===
+
+  // Get all locations for a company (protected)
+  app.get("/api/locations", requireAuth, async (req: AuthRequest, res) => {
+    console.log(`📍 [Routes] GET /api/locations - User: ${req.session.userId}`);
+    
+    try {
+      // Enforce company scoping
+      const companyId = req.auth?.companyId || (req.query.companyId as string | undefined);
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "Company ID is required" });
+      }
+      
+      if (req.auth?.companyId) {
+        console.log(`🔒 [Routes] Enforcing company scoping - Company: ${req.auth?.companyId}`);
+      } else {
+        console.log(`👑 [Routes] Superuser access - getting locations for company: ${companyId}`);
+      }
+      
+      const locations = await storage.getLocations(companyId);
+      res.json(locations);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching locations:", error);
+      res.status(500).json({ error: "Failed to fetch locations" });
+    }
+  });
+
+  // Create a new location (protected)
+  app.post("/api/locations", requireAuth, async (req: AuthRequest, res) => {
+    console.log(`➕ [Routes] POST /api/locations - Creating location: ${req.body?.locationName || 'UNKNOWN'}`);
+    
+    try {
+      const locationData = insertLocationSchema.parse(req.body);
+      
+      // Enforce company scoping: non-superusers can only create locations in their own company
+      if (req.auth?.companyId && locationData.companyId !== req.auth?.companyId) {
+        console.log(`❌ [Routes] Authorization failed - User can only create locations in their own company`);
+        return res.status(403).json({ error: "Cannot create locations in other companies" });
+      }
+      
+      const location = await storage.createLocation(locationData);
+      console.log(`✅ [Routes] Location created successfully: ${location.locationName}`);
+      res.json(location);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.log(`❌ [Routes] Location validation error:`, error.errors);
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error creating location:", error);
+      res.status(500).json({ error: "Failed to create location" });
+    }
+  });
+
+  // Update a location (protected)
+  app.patch("/api/locations/:locationName", requireAuth, async (req: AuthRequest, res) => {
+    const { locationName } = req.params;
+    const companyId = req.query.companyId as string;
+    console.log(`🔄 [Routes] PATCH /api/locations/${locationName} - Updating location`);
+    
+    try {
+      if (!companyId) {
+        return res.status(400).json({ error: "Company ID is required" });
+      }
+      
+      const updateData = insertLocationSchema.partial().parse(req.body);
+      
+      // Enforce company scoping
+      if (req.auth?.companyId && companyId !== req.auth?.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot update location from another company`);
+        return res.status(403).json({ error: "Cannot update locations from other companies" });
+      }
+      
+      const updatedLocation = await storage.updateLocation(locationName, companyId, updateData);
+      if (!updatedLocation) {
+        return res.status(404).json({ error: "Location not found" });
+      }
+      
+      console.log(`✅ [Routes] Location updated successfully: ${locationName}`);
+      res.json(updatedLocation);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating location:", error);
+      res.status(500).json({ error: "Failed to update location" });
+    }
+  });
+
+  // Delete a location (protected)
+  app.delete("/api/locations/:locationName", requireAuth, async (req: AuthRequest, res) => {
+    const { locationName } = req.params;
+    const companyId = req.query.companyId as string;
+    console.log(`🗑️ [Routes] DELETE /api/locations/${locationName}`);
+    
+    try {
+      if (!companyId) {
+        return res.status(400).json({ error: "Company ID is required" });
+      }
+      
+      // Enforce company scoping
+      if (req.auth?.companyId && companyId !== req.auth?.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot delete location from another company`);
+        return res.status(403).json({ error: "Cannot delete locations from other companies" });
+      }
+      
+      const success = await storage.deleteLocation(locationName, companyId);
+      if (!success) {
+        return res.status(404).json({ error: "Location not found" });
+      }
+      
+      console.log(`✅ [Routes] Location deleted successfully: ${locationName}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Routes] Error deleting location:", error);
+      res.status(500).json({ error: "Failed to delete location" });
+    }
+  });
+
+  // Get user locations (protected)
+  app.get("/api/users/:userId/locations", requireAuth, async (req: AuthRequest, res) => {
+    const { userId } = req.params;
+    console.log(`📍 [Routes] GET /api/users/${userId}/locations`);
+    
+    try {
+      const locations = await storage.getUserLocations(userId);
+      res.json(locations);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching user locations:", error);
+      res.status(500).json({ error: "Failed to fetch user locations" });
+    }
+  });
+
+  // Set user locations (protected)
+  app.put("/api/users/:userId/locations", requireAuth, async (req: AuthRequest, res) => {
+    const { userId } = req.params;
+    console.log(`🔄 [Routes] PUT /api/users/${userId}/locations`);
+    
+    try {
+      const schema = z.object({
+        companyId: z.string(),
+        locationNames: z.array(z.string()),
+      });
+      
+      const { companyId, locationNames } = schema.parse(req.body);
+      
+      // Enforce company scoping
+      if (req.auth?.companyId && companyId !== req.auth?.companyId) {
+        console.log(`❌ [Routes] Authorization failed - Cannot set locations for user in another company`);
+        return res.status(403).json({ error: "Cannot set locations for users in other companies" });
+      }
+      
+      await storage.setUserLocations(userId, companyId, locationNames);
+      console.log(`✅ [Routes] User locations set successfully`);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error setting user locations:", error);
+      res.status(500).json({ error: "Failed to set user locations" });
     }
   });
 
