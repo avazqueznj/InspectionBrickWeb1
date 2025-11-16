@@ -17,6 +17,7 @@ export interface QueryParams {
   assetId?: string;
   driverName?: string;
   driverId?: string;
+  location?: string;
 }
 
 export interface UserQueryParams {
@@ -88,6 +89,7 @@ export interface DefectQueryParams {
   componentName?: string;
   severityLevel?: "critical" | "high" | "medium" | "low";
   status?: "open" | "pending" | "repaired" | "not-needed";
+  location?: string;
 }
 
 export interface DefectFilterValues {
@@ -869,12 +871,13 @@ export class DatabaseStorage implements IStorage {
       inspectionType,
       assetId,
       driverName,
-      driverId
+      driverId,
+      location
     } = params || {};
     
     console.log(`📊 [Storage] getInspections - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}`);
-    if (dateFrom || dateTo || inspectionType || assetId || driverName || driverId) {
-      console.log(`🔍 [Storage] Filters - dateFrom: ${dateFrom || 'none'}, dateTo: ${dateTo || 'none'}, type: ${inspectionType || 'none'}, asset: ${assetId || 'none'}, driver: ${driverName || 'none'}, driverId: ${driverId || 'none'}`);
+    if (dateFrom || dateTo || inspectionType || assetId || driverName || driverId || location) {
+      console.log(`🔍 [Storage] Filters - dateFrom: ${dateFrom || 'none'}, dateTo: ${dateTo || 'none'}, type: ${inspectionType || 'none'}, asset: ${assetId || 'none'}, driver: ${driverName || 'none'}, driverId: ${driverId || 'none'}, location: ${location || 'none'}`);
     }
     
     // Build where conditions array
@@ -921,6 +924,17 @@ export class DatabaseStorage implements IStorage {
     }
     if (driverId) {
       conditions.push(eq(inspections.driverId, driverId));
+    }
+    if (location) {
+      // Filter using inspection_assets junction table and assets table to check location
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM ${inspectionAssets}
+          JOIN ${assets} ON ${assets.assetId} = ${inspectionAssets.assetId}
+          WHERE ${inspectionAssets.inspectionId} = ${inspections.id}
+          AND ${assets.location} = ${location}
+        )`
+      );
     }
     
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
@@ -1146,10 +1160,11 @@ export class DatabaseStorage implements IStorage {
       zoneName,
       componentName,
       severityLevel,
-      status
+      status,
+      location
     } = params || {};
     
-    console.log(`📊 [Storage] getDefects - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}`);
+    console.log(`📊 [Storage] getDefects - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, location: ${location || 'none'}`);
     
     // Build where conditions array
     const conditions = [];
@@ -1210,6 +1225,16 @@ export class DatabaseStorage implements IStorage {
     }
     if (status) {
       conditions.push(eq(defects.status, status));
+    }
+    if (location) {
+      // Filter by asset location
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM ${assets}
+          WHERE ${assets.assetId} = ${defects.assetId}
+          AND ${assets.location} = ${location}
+        )`
+      );
     }
     
     // Always filter out severity = 0 defects (no-issue entries)

@@ -31,6 +31,7 @@ interface Filters {
   componentName?: string;
   severityLevel?: "critical" | "high" | "medium" | "low";
   status?: "open" | "pending" | "repaired" | "not-needed";
+  location?: string;
 }
 
 interface FilterValues {
@@ -68,7 +69,8 @@ export default function Defects() {
     filters.zoneName,
     filters.componentName,
     filters.severityLevel,
-    filters.status
+    filters.status,
+    filters.location
   ]);
 
   // Fetch filter values
@@ -117,7 +119,8 @@ export default function Defects() {
       filters.zoneName,
       filters.componentName,
       filters.severityLevel,
-      filters.status
+      filters.status,
+      filters.location
     ],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
@@ -138,6 +141,7 @@ export default function Defects() {
       if (filters.componentName) queryParams.set("componentName", filters.componentName);
       if (filters.severityLevel) queryParams.set("severityLevel", filters.severityLevel);
       if (filters.status) queryParams.set("status", filters.status);
+      if (filters.location) queryParams.set("location", filters.location);
 
       const response = await fetch(`/api/defects?${queryParams.toString()}`);
       if (!response.ok) {

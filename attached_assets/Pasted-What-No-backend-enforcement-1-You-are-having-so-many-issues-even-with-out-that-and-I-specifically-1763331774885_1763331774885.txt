@@ -1,0 +1,34 @@
+What!
+No backend enforcement!!!1
+You are having so many issues even with out that and I specifically said not back end enforcememnt.
+Here are the instructions again, please follow them!
+
+->
+
+
+Now a major change.
+
+We need to support customers with multiple locations . 
+Like site 123, etc.
+
+So here is the plan . i been thinking to make it super super simple.
+
+a) add a table of locations: 
+
+1) a text label, the location name,  
+2) company_id and 
+3) address fields
+4) location DOT number
+
+The pk is the label and company_id. I don't want uuid or int to avoid having to join to fetch the name every time so make the fks to enforce integrity, but having the key as the name will avoid a join for the name every time we query. Ok?
+
+So in the assets list and edit modal add the location. show that in the asset lists with a filter.
+
+For the users it is more complex we need user to many locations so we need a junction table, and tools in the user edit to select multiple locations or none = all locations.
+
+so finally, in the inspection list, defects/repairs, assets list and users list add filters for location. If you are a super user with nothing in the junction table, you can select all; otherwise, only populate the filter with the available locations, and that filter has to be active all the time to prevent users from seeing info from other locations. 
+The reset and on open should default always to an available location if you are not a super user, super user can select all.
+
+Yea some other implementations allowed multiple locations and groups per asset and such but that is to complicated this is the most simple. Let me know if this makes sense , your concerns and  suggestions.
+
+I would like to clarify that I want a very simple approach with minimal SQL work. All filtering should be done on the UI, leaving the API mostly untouched. I don't mind if the API allows passing locations that users aren't permitted to access. It's not a major concern since we're not dealing with sensitive information like credit card data or Bitcoin. For the API related to inspecting user defects, please filter by location without enforcing user access restrictions. Is that clear?

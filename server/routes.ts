@@ -103,6 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     componentName: z.string().optional(),
     severityLevel: z.enum(["critical", "high", "medium", "low"]).optional(),
     status: z.enum(["open", "pending", "repaired", "not-needed"]).optional(),
+    location: z.string().optional(),
   });
 
   // Login schema
