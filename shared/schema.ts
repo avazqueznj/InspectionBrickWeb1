@@ -73,8 +73,10 @@ export const defects = pgTable("defects", {
   severity: integer("severity").notNull(),
   inspectedAtUtc: timestamp("inspected_at_utc"),
   driverNotes: text("driver_notes"),
-  status: text("status").notNull().$type<"open" | "pending" | "repaired">(),
+  status: text("status").notNull().$type<"open" | "pending" | "repaired" | "not-needed">(),
   repairNotes: text("repair_notes"),
+  mechanicName: text("mechanic_name"),
+  repairDate: timestamp("repair_date"),
 });
 
 // Inspection Types table
@@ -304,7 +306,7 @@ export const insertInspectionSchema = createInsertSchema(inspections).extend({
 export const insertDefectSchema = createInsertSchema(defects).omit({
   id: true,
 }).extend({
-  status: z.enum(["open", "pending", "repaired"]),
+  status: z.enum(["open", "pending", "repaired", "not-needed"]),
   severity: z.number().min(0).max(10),
 });
 
