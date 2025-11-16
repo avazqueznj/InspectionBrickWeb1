@@ -1903,6 +1903,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <th>Defect</th>
         <th>Severity</th>
         <th>Driver Notes</th>
+        <th>Status</th>
+        <th>Mechanic</th>
+        <th>Repair Date</th>
+        <th>Repair Notes</th>
         <th>Inspection Time</th>
       </tr>
     </thead>
@@ -1922,6 +1926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const inspTime = d.inspectedAtUtc 
           ? new Date(d.inspectedAtUtc).toLocaleString() 
           : new Date(inspection.datetime).toLocaleString();
+        const repairDateFormatted = d.repairDate ? new Date(d.repairDate).toLocaleDateString() : '—';
         return `
       <tr>
         <td>${d.assetId}</td>
@@ -1930,6 +1935,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <td>${d.defect}</td>
         <td>${d.severity}</td>
         <td>${d.driverNotes || '—'}</td>
+        <td>${d.status}</td>
+        <td>${d.mechanicName || '—'}</td>
+        <td>${repairDateFormatted}</td>
+        <td>${d.repairNotes || '—'}</td>
         <td>${inspTime}</td>
       </tr>
       `;
