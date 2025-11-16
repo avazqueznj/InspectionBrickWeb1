@@ -12,7 +12,7 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
-  login: (userId: string, password: string) => Promise<void>;
+  login: (userId: string, companyId: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -69,11 +69,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loginMutation = useMutation({
-    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+    mutationFn: async ({ userId, companyId, password }: { userId: string; companyId: string; password: string }) => {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, password }),
+        body: JSON.stringify({ userId, companyId, password }),
       });
       
       if (!response.ok) {
@@ -90,8 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const login = async (userId: string, password: string) => {
-    await loginMutation.mutateAsync({ userId, password });
+  const login = async (userId: string, companyId: string, password: string) => {
+    await loginMutation.mutateAsync({ userId, companyId, password });
   };
 
   const logout = () => {
