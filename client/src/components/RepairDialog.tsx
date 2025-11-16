@@ -24,7 +24,7 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
   const { user: currentUser } = useAuth();
   const [mechanicName, setMechanicName] = useState("");
   const [repairDate, setRepairDate] = useState(new Date().toISOString().split('T')[0]);
-  const [status, setStatus] = useState<"repaired" | "not-needed">("repaired");
+  const [status, setStatus] = useState<"repaired" | "not-needed" | "open">("repaired");
   const [repairNotes, setRepairNotes] = useState("");
 
   // Use companyId from props or fall back to currentUser's companyId
@@ -36,7 +36,7 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
     queryFn: async () => {
       const queryParams = new URLSearchParams();
       queryParams.set("companyId", effectiveCompanyId);
-      queryParams.set("limit", "100");
+      queryParams.set("limit", "1000");
       
       const token = getAuthToken();
       const headers: HeadersInit = {};
@@ -70,7 +70,7 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
       defectIds: string[];
       mechanicName: string;
       repairDate: string;
-      status: "repaired" | "not-needed";
+      status: "repaired" | "not-needed" | "open";
       repairNotes?: string;
     }) => {
       const response = await apiRequest("PATCH", "/api/defects/batch/repair", data);
@@ -78,9 +78,10 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/defects"] });
+      const statusText = status === "repaired" ? "repaired" : status === "not-needed" ? "not needed" : "open (reverted)";
       toast({
         title: "Success",
-        description: `${defectIds.length} defect${defectIds.length > 1 ? 's' : ''} marked as ${status === "repaired" ? "repaired" : "not needed"}`,
+        description: `${defectIds.length} defect${defectIds.length > 1 ? 's' : ''} marked as ${statusText}`,
       });
       onOpenChange(false);
       // Reset form
@@ -171,13 +172,14 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
 
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <Select value={status} onValueChange={(val) => setStatus(val as "repaired" | "not-needed")}>
+            <Select value={status} onValueChange={(val) => setStatus(val as "repaired" | "not-needed" | "open")}>
               <SelectTrigger id="status" data-testid="select-status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="repaired">Repaired</SelectItem>
                 <SelectItem value="not-needed">Repair Not Needed</SelectItem>
+                <SelectItem value="open">Open (Revert Repair)</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -41,7 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sortField: z.enum(["datetime", "inspectionType", "assetId", "driverName"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().max(100).optional(),
+    limit: z.coerce.number().int().positive().max(1000).optional(),
     // Filter parameters
     dateFrom: z.string().optional(),
     dateTo: z.string().optional(),
@@ -58,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sortField: z.enum(["userId", "userFullName", "status"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().max(100).optional(),
+    limit: z.coerce.number().int().positive().max(1000).optional(),
     status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   });
 
@@ -69,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sortField: z.enum(["assetId", "assetConfig", "assetName", "status"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().max(100).optional(),
+    limit: z.coerce.number().int().positive().max(1000).optional(),
     status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   });
 
@@ -80,7 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sortField: z.enum(["inspectionTypeName", "inspectionLayout", "status"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().max(100).optional(),
+    limit: z.coerce.number().int().positive().max(1000).optional(),
     status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   });
 
@@ -91,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sortField: z.enum(["datetime", "assetId", "driverName", "zoneName", "componentName", "defect", "severity", "status"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().max(100).optional(),
+    limit: z.coerce.number().int().positive().max(1000).optional(),
     // Filter parameters
     dateFrom: z.string().optional(),
     dateTo: z.string().optional(),
@@ -2176,7 +2176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         defectIds: z.array(z.string()).min(1, "At least one defect ID is required"),
         mechanicName: z.string().min(1, "Mechanic name is required"),
         repairDate: z.string().datetime(),
-        status: z.enum(["repaired", "not-needed"]),
+        status: z.enum(["repaired", "not-needed", "open"]),
         repairNotes: z.string().optional(),
       });
       
