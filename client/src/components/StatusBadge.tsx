@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 
 interface StatusBadgeProps {
-  status: "open" | "pending" | "repaired";
+  status: "open" | "pending" | "repaired" | "not-needed";
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
@@ -17,6 +17,10 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     repaired: {
       className: "bg-chart-2/10 text-chart-2 border-chart-2/20",
       label: "Repaired"
+    },
+    "not-needed": {
+      className: "bg-muted text-muted-foreground border-muted-foreground/20",
+      label: "Not Needed"
     }
   };
 
