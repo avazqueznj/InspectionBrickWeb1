@@ -85,13 +85,20 @@ export const inspections = pgTable("inspections", {
   inspectionType: text("inspection_type").notNull(),
   driverName: text("driver_name").notNull(),
   driverId: text("driver_id").notNull(),
+  locationName: text("location_name"),
   inspectionFormData: text("inspection_form_data"),
   inspStartTimeUtc: timestamp("insp_start_time_utc"),
   inspSubmitTimeUtc: timestamp("insp_submit_time_utc"),
   inspTimeOffset: integer("insp_time_offset"),
   inspTimeDst: integer("insp_time_dst"),
   rawData: text("raw_data"),
-});
+}, (table) => ({
+  // Foreign key to locations table (composite)
+  locationFk: foreignKey({
+    columns: [table.locationName, table.companyId],
+    foreignColumns: [locations.locationName, locations.companyId],
+  }).onDelete("set null"),
+}));
 
 // Defects table
 export const defects = pgTable("defects", {
