@@ -27,12 +27,15 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
   const [status, setStatus] = useState<"repaired" | "not-needed">("repaired");
   const [repairNotes, setRepairNotes] = useState("");
 
+  // Use companyId from props or fall back to currentUser's companyId
+  const effectiveCompanyId = companyId || currentUser?.companyId || "";
+
   // Fetch users with web access for mechanic dropdown
   const { data: users } = useQuery<User[]>({
-    queryKey: ["/api/users", companyId, "webAccess"],
+    queryKey: ["/api/users", effectiveCompanyId, "webAccess"],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
-      queryParams.set("companyId", companyId);
+      queryParams.set("companyId", effectiveCompanyId);
       queryParams.set("limit", "1000");
       
       const response = await fetch(`/api/users?${queryParams.toString()}`);
@@ -43,7 +46,7 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
       // Filter to only users with web access
       return data.data.filter((u: User) => u.webAccess);
     },
-    enabled: !!companyId && open,
+    enabled: !!effectiveCompanyId && open,
   });
 
   // Default to current user's ID when dialog opens
