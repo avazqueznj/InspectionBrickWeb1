@@ -2167,7 +2167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Batch update defects for repair (protected)
   app.patch("/api/defects/batch/repair", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`🔧 [Routes] PATCH /api/defects/batch/repair - User: ${req.auth?.userId}`);
+    console.log(`🔧 [Routes] PATCH /api/defects/batch/repair - User: ${req.auth?.userId}, Company: ${req.auth?.companyId || 'superuser'}`);
     
     try {
       const repairSchema = z.object({
@@ -2180,9 +2180,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { defectIds, mechanicName, repairDate, status, repairNotes } = repairSchema.parse(req.body);
       
+      // Validate repair date parses correctly
+      const parsedRepairDate = new Date(repairDate);
+      if (isNaN(parsedRepairDate.getTime())) {
+        return res.status(400).json({ error: "Invalid repair date format" });
+      }
+      
       console.log(`🔍 [Routes] Validating access to ${defectIds.length} defects`);
       
-      // Verify user has access to all defects
+      // Verify user has access to all defects by fetching them first
+      const defectsToCheck: Array<{ defect: Defect; inspection: InspectionWithDefects }> = [];
+      
       for (const defectId of defectIds) {
         const existingDefect = await storage.getDefectById(defectId);
         if (!existingDefect) {
@@ -2194,18 +2202,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: `Inspection for defect ${defectId} not found` });
         }
         
+        // Enforce company scoping - users can only update defects from their company
         if (req.auth?.companyId && inspection.companyId !== req.auth?.companyId) {
+          console.log(`❌ [Routes] Access denied - defect ${defectId} belongs to company ${inspection.companyId}, user is in company ${req.auth?.companyId}`);
           return res.status(403).json({ error: "Access denied: cannot update defects from other companies" });
         }
+        
+        defectsToCheck.push({ defect: existingDefect, inspection });
       }
       
-      // Update all defects with repair information
-      const updatedDefects = await storage.batchUpdateDefects(defectIds, {
-        mechanicName,
-        repairDate: new Date(repairDate),
-        status,
-        repairNotes: repairNotes || null,
-      });
+      // All defects validated - now update them with company scoping enforced at storage layer
+      const updatedDefects = await storage.batchUpdateDefects(
+        defectIds,
+        {
+          mechanicName,
+          repairDate: parsedRepairDate,
+          status,
+          repairNotes: repairNotes || null,
+        },
+        req.auth?.companyId // Pass companyId for double-checking at storage layer
+      );
+      
+      // Verify all requested defects were updated
+      if (updatedDefects.length !== defectIds.length) {
+        console.log(`⚠️ [Routes] Warning: Only ${updatedDefects.length} of ${defectIds.length} defects were updated`);
+        return res.status(500).json({ 
+          error: `Only ${updatedDefects.length} of ${defectIds.length} defects were updated. This may indicate a permissions issue.` 
+        });
+      }
       
       console.log(`✅ [Routes] Successfully updated ${updatedDefects.length} defects`);
       res.json({ success: true, updated: updatedDefects.length, defects: updatedDefects });

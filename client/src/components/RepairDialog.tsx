@@ -97,10 +97,22 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
       return;
     }
 
+    // Normalize date to UTC midnight to avoid timezone issues
+    const normalizedDate = new Date(repairDate + 'T00:00:00Z');
+    
+    if (isNaN(normalizedDate.getTime())) {
+      toast({
+        title: "Error",
+        description: "Invalid repair date",
+        variant: "destructive",
+      });
+      return;
+    }
+
     repairMutation.mutate({
       defectIds,
       mechanicName,
-      repairDate: new Date(repairDate).toISOString(),
+      repairDate: normalizedDate.toISOString(),
       status,
       repairNotes: repairNotes.trim() || undefined,
     });

@@ -164,6 +164,7 @@ export interface IStorage {
   getDefectFilterValues(companyId?: string): Promise<DefectFilterValues>;
   createDefect(defect: InsertDefect): Promise<Defect>;
   updateDefect(id: string, defect: Partial<InsertDefect>): Promise<Defect | undefined>;
+  batchUpdateDefects(ids: string[], updateData: Partial<InsertDefect>, companyId?: string): Promise<Defect[]>;
   deleteDefect(id: string): Promise<boolean>;
   
   // Upload Errors
@@ -999,14 +1000,35 @@ export class DatabaseStorage implements IStorage {
     return defect;
   }
 
-  async batchUpdateDefects(ids: string[], updateData: Partial<InsertDefect>): Promise<Defect[]> {
-    console.log(`🔄 [Storage] Batch updating ${ids.length} defects`);
+  async batchUpdateDefects(ids: string[], updateData: Partial<InsertDefect>, companyId?: string): Promise<Defect[]> {
+    console.log(`🔄 [Storage] Batch updating ${ids.length} defects${companyId ? ` for company ${companyId}` : ''}`);
+    
+    // If companyId is provided, validate that all defects belong to that company
+    if (companyId) {
+      // Join with inspections to verify company ownership
+      const result = await db
+        .update(defects)
+        .set(updateData)
+        .from(inspections)
+        .where(
+          and(
+            sql`${defects.id} = ANY(${ids})`,
+            eq(defects.inspectionId, inspections.id),
+            eq(inspections.companyId, companyId)
+          )!
+        )
+        .returning();
+      console.log(`✅ [Storage] Updated ${result.length} of ${ids.length} defects (company scoped)`);
+      return result;
+    }
+    
+    // Superuser mode - no company filtering
     const result = await db
       .update(defects)
       .set(updateData)
       .where(sql`${defects.id} = ANY(${ids})`)
       .returning();
-    console.log(`✅ [Storage] Updated ${result.length} defects`);
+    console.log(`✅ [Storage] Updated ${result.length} defects (superuser mode)`);
     return result;
   }
 
