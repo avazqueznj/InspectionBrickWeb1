@@ -458,6 +458,8 @@ export default function Defects() {
                         Driver Notes
                       </th>
                       <SortableHeader field="status">Status</SortableHeader>
+                      <SortableHeader field="mechanicName">Mechanic</SortableHeader>
+                      <SortableHeader field="repairDate">Repair Date</SortableHeader>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Repair Notes
                       </th>
@@ -512,6 +514,12 @@ export default function Defects() {
                           </td>
                           <td className="px-4 py-3 text-sm">
                             {getStatusBadge(defect.status)}
+                          </td>
+                          <td className="px-4 py-3 text-sm" data-testid={`text-mechanicName-${defect.id}`}>
+                            {defect.mechanicName || "-"}
+                          </td>
+                          <td className="px-4 py-3 text-sm" data-testid={`text-repairDate-${defect.id}`}>
+                            {defect.repairDate ? new Date(defect.repairDate).toLocaleDateString() : "-"}
                           </td>
                           <td className="px-4 py-3 text-sm text-muted-foreground" data-testid={`text-repairNotes-${defect.id}`}>
                             {defect.repairNotes || "-"}
@@ -582,7 +590,7 @@ export default function Defects() {
       {/* Repair Dialog */}
       <RepairDialog
         open={isRepairDialogOpen}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           setIsRepairDialogOpen(open);
           if (!open) {
             setSelectedDefectIds(new Set());
