@@ -105,6 +105,7 @@ export const defects = pgTable("defects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   inspectionId: varchar("inspection_id").notNull().references(() => inspections.id, { onDelete: "cascade" }),
   assetId: text("asset_id").notNull(),
+  locationName: text("location_name"),
   zoneId: integer("zone_id"),
   zoneName: text("zone_name").notNull(),
   componentName: text("component_name").notNull(),

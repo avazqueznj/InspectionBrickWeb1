@@ -928,15 +928,8 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(inspections.driverId, driverId));
     }
     if (location) {
-      // Filter using inspection_assets junction table and assets table to check location
-      conditions.push(
-        sql`EXISTS (
-          SELECT 1 FROM ${inspectionAssets}
-          JOIN ${assets} ON ${assets.assetId} = ${inspectionAssets.assetId}
-          WHERE ${inspectionAssets.inspectionId} = ${inspections.id}
-          AND ${assets.locationName} = ${location}
-        )`
-      );
+      // Filter by inspection location (inspections have their own location from device)
+      conditions.push(eq(inspections.locationName, location));
     }
     
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
@@ -1232,14 +1225,8 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(defects.status, status));
     }
     if (location) {
-      // Filter by asset location
-      conditions.push(
-        sql`EXISTS (
-          SELECT 1 FROM ${assets}
-          WHERE ${assets.assetId} = ${defects.assetId}
-          AND ${assets.locationName} = ${location}
-        )`
-      );
+      // Filter by defect location (defects have their own location from device)
+      conditions.push(eq(defects.locationName, location));
     }
     
     // Always filter out severity = 0 defects (no-issue entries)

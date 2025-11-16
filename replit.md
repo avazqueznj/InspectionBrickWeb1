@@ -102,6 +102,14 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - **Raw Data Storage:** Original BRICKINSPECTION EDI data is stored for debugging and audit.
 - **Comprehensive Error Logging:** Failed uploads are logged with raw payload and stack traces.
 - **Duplicate Detection:** Rejects duplicate inspection IDs with a 409 Conflict status.
+- **CRITICAL: Inspections/Defects NOT Linked to Master Catalogs:** 
+  - Devices have NO access to the master asset or location catalogs
+  - Inspections can contain assets and locations that don't exist in our database
+  - Inspections have their own `locationName` field (not FK to locations table)
+  - Defects have their own `locationName` field (not FK to locations table)  
+  - Asset IDs and location names in inspections/defects are just text fields from the device
+  - This allows devices to reference unknown assets/locations that may be added to master catalog later
+  - Location filtering works by matching text values, not joins to master tables
 
 **Core Concepts:**
 
