@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { type Asset, type InsertAsset, type Company } from "@shared/schema";
+import { type Asset, type InsertAsset, type Company, type Location } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { AssetModal } from "@/components/AssetModal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-type SortField = "assetId" | "assetConfig" | "assetName" | "status";
+type SortField = "assetId" | "assetConfig" | "assetName" | "status" | "locationName";
 
 // Extended asset type with layoutName for display
 type AssetWithLayout = Asset & { layoutName?: string };
@@ -43,14 +43,15 @@ export default function Assets() {
   const [sortField, setSortField] = useState<SortField>("assetId");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE");
+  const [locationFilter, setLocationFilter] = useState<string>("ALL");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const itemsPerPage = 10;
 
-  // Reset to page 1 when search query, status filter, or company changes
+  // Reset to page 1 when search query, filters, or company changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCompany, statusFilter]);
+  }, [searchQuery, selectedCompany, statusFilter, locationFilter]);
 
   // Fetch filter values
   const { data: filterValues } = useQuery<AssetFilterValues>({
@@ -74,9 +75,40 @@ export default function Assets() {
   });
 
   // Fetch current user to determine if they're a superuser
-  const { data: currentUser } = useQuery<{ userId: string; companyId: string | null }>({
+  const { data: currentUser } = useQuery<{ userId: string; companyId: string | null; id: string }>({
     queryKey: ["/api/auth/user"],
   });
+
+  // Fetch user's assigned locations
+  const { data: userLocations = [] } = useQuery<Location[]>({
+    queryKey: ["/api/user-locations", currentUser?.id, selectedCompany],
+    queryFn: async () => {
+      if (!currentUser?.id) return [];
+      const queryParams = new URLSearchParams();
+      if (selectedCompany) queryParams.set("companyId", selectedCompany);
+      const response = await fetch(`/api/user-locations/${currentUser.id}?${queryParams.toString()}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!currentUser?.id && !!selectedCompany,
+  });
+
+  // Fetch all locations for superusers
+  const { data: allLocations = [] } = useQuery<Location[]>({
+    queryKey: ["/api/locations", selectedCompany],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams();
+      if (selectedCompany) queryParams.set("companyId", selectedCompany);
+      const response = await fetch(`/api/locations?${queryParams.toString()}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedCompany && !currentUser?.companyId,
+  });
+
+  // Determine which locations to show in the filter
+  // Superusers (no companyId) see all locations, regular users see their assigned locations
+  const availableLocations = currentUser?.companyId ? userLocations : allLocations;
 
   // Create asset mutation
   const createMutation = useMutation({
