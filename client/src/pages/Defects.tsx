@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { InspectionModal } from "@/components/InspectionModal";
 import { RepairDialog } from "@/components/RepairDialog";
 
-type SortField = "datetime" | "assetId" | "driverName" | "zoneName" | "componentName" | "defect" | "severity" | "status";
+type SortField = "datetime" | "assetId" | "driverName" | "zoneName" | "componentName" | "defect" | "severity" | "status" | "mechanicName" | "repairDate";
 type SortDirection = "asc" | "desc";
 
 interface PaginatedResponse {
@@ -249,21 +249,22 @@ export default function Defects() {
         </div>
 
         {/* Action Bar - Mark as Repaired */}
-        {selectedDefectIds.size > 0 && (
-          <div className="flex items-center gap-3 p-4 bg-accent/10 border border-accent rounded-lg">
-            <span className="text-sm font-medium">
-              {selectedDefectIds.size} defect{selectedDefectIds.size > 1 ? 's' : ''} selected
-            </span>
-            <Button
-              onClick={() => setIsRepairDialogOpen(true)}
-              className="ml-auto"
-              data-testid="button-mark-repaired"
-            >
-              <Wrench className="h-4 w-4 mr-2" />
-              Mark as Repaired
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-3 p-4 bg-accent/10 border border-accent rounded-lg">
+          <span className="text-sm font-medium">
+            {selectedDefectIds.size > 0 
+              ? `${selectedDefectIds.size} defect${selectedDefectIds.size > 1 ? 's' : ''} selected`
+              : 'Select defects to mark as repaired'}
+          </span>
+          <Button
+            onClick={() => setIsRepairDialogOpen(true)}
+            className="ml-auto"
+            disabled={selectedDefectIds.size === 0}
+            data-testid="button-mark-repaired"
+          >
+            <Wrench className="h-4 w-4 mr-2" />
+            Mark as Repaired
+          </Button>
+        </div>
 
         {/* Filter Bar */}
         <div className="flex flex-wrap items-center gap-3 p-4 bg-card border rounded-lg">
@@ -441,11 +442,16 @@ export default function Defects() {
                   <thead className="bg-muted sticky top-0">
                     <tr>
                       <th className="px-4 py-3 text-left">
-                        <Checkbox
-                          checked={selectedDefectIds.size === defects.length && defects.length > 0}
-                          onCheckedChange={toggleAll}
-                          data-testid="checkbox-select-all"
-                        />
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedDefectIds.size === defects.length && defects.length > 0}
+                            onCheckedChange={toggleAll}
+                            data-testid="checkbox-select-all"
+                          />
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Repair
+                          </span>
+                        </div>
                       </th>
                       <SortableHeader field="datetime">Date & Time</SortableHeader>
                       <SortableHeader field="assetId">Asset ID</SortableHeader>
