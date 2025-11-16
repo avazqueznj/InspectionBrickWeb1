@@ -529,6 +529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all users (protected)
   app.get("/api/users", requireAuth, async (req: AuthRequest, res) => {
     console.log(`👥 [Routes] GET /api/users - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    console.log(`🔍 [Routes] Query params received:`, req.query);
     
     try {
       const params = userQueryParamsSchema.parse(req.query);
@@ -545,6 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log(`❌ [Routes] Validation failed for /api/users:`, JSON.stringify(error.errors));
         return res.status(400).json({ error: "Invalid query parameters", details: error.errors });
       }
       console.error("❌ [Routes] Error fetching users:", error);

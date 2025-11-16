@@ -1,7 +1,7 @@
 // Referenced from blueprint:javascript_database
 import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, ilike, or, sql, and } from "drizzle-orm";
+import { eq, desc, asc, ilike, or, sql, and, inArray } from "drizzle-orm";
 
 export interface QueryParams {
   companyId?: string;
@@ -1003,32 +1003,15 @@ export class DatabaseStorage implements IStorage {
   async batchUpdateDefects(ids: string[], updateData: Partial<InsertDefect>, companyId?: string): Promise<Defect[]> {
     console.log(`🔄 [Storage] Batch updating ${ids.length} defects${companyId ? ` for company ${companyId}` : ''}`);
     
-    // If companyId is provided, validate that all defects belong to that company
-    if (companyId) {
-      // Join with inspections to verify company ownership
-      const result = await db
-        .update(defects)
-        .set(updateData)
-        .from(inspections)
-        .where(
-          and(
-            sql`${defects.id} = ANY(${ids})`,
-            eq(defects.inspectionId, inspections.id),
-            eq(inspections.companyId, companyId)
-          )!
-        )
-        .returning();
-      console.log(`✅ [Storage] Updated ${result.length} of ${ids.length} defects (company scoped)`);
-      return result;
-    }
-    
-    // Superuser mode - no company filtering
+    // Note: Company scoping validation is done at the route handler level
+    // We trust that the route has already verified access to all defects
     const result = await db
       .update(defects)
       .set(updateData)
-      .where(sql`${defects.id} = ANY(${ids})`)
+      .where(inArray(defects.id, ids))
       .returning();
-    console.log(`✅ [Storage] Updated ${result.length} defects (superuser mode)`);
+    
+    console.log(`✅ [Storage] Updated ${result.length} of ${ids.length} defects`);
     return result;
   }
 
