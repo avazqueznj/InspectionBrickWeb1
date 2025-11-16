@@ -999,6 +999,17 @@ export class DatabaseStorage implements IStorage {
     return defect;
   }
 
+  async batchUpdateDefects(ids: string[], updateData: Partial<InsertDefect>): Promise<Defect[]> {
+    console.log(`🔄 [Storage] Batch updating ${ids.length} defects`);
+    const result = await db
+      .update(defects)
+      .set(updateData)
+      .where(sql`${defects.id} = ANY(${ids})`)
+      .returning();
+    console.log(`✅ [Storage] Updated ${result.length} defects`);
+    return result;
+  }
+
   async deleteDefect(id: string): Promise<boolean> {
     const result = await db
       .delete(defects)
@@ -1151,6 +1162,8 @@ export class DatabaseStorage implements IStorage {
         driverNotes: defects.driverNotes,
         status: defects.status,
         repairNotes: defects.repairNotes,
+        mechanicName: defects.mechanicName,
+        repairDate: defects.repairDate,
         // Inspection details
         driverName: inspections.driverName,
         datetime: inspections.datetime,
@@ -1178,6 +1191,8 @@ export class DatabaseStorage implements IStorage {
       driverNotes: row.driverNotes,
       status: row.status,
       repairNotes: row.repairNotes,
+      mechanicName: row.mechanicName,
+      repairDate: row.repairDate,
       inspection: {
         driverName: row.driverName,
         datetime: row.datetime,

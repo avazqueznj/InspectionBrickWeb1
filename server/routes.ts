@@ -100,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     zoneName: z.string().optional(),
     componentName: z.string().optional(),
     severityLevel: z.enum(["critical", "high", "medium", "low"]).optional(),
-    status: z.enum(["open", "pending", "repaired"]).optional(),
+    status: z.enum(["open", "pending", "repaired", "not-needed"]).optional(),
   });
 
   // Login schema
@@ -2153,6 +2153,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error updating defect:", error);
       res.status(500).json({ error: "Failed to update defect" });
+    }
+  });
+
+  // Batch update defects for repair (protected)
+  app.patch("/api/defects/batch/repair", requireAuth, async (req: AuthRequest, res) => {
+    console.log(`🔧 [Routes] PATCH /api/defects/batch/repair - User: ${req.auth?.userId}`);
+    
+    try {
+      const repairSchema = z.object({
+        defectIds: z.array(z.string()).min(1, "At least one defect ID is required"),
+        mechanicName: z.string().min(1, "Mechanic name is required"),
+        repairDate: z.string().datetime(),
+        status: z.enum(["repaired", "not-needed"]),
+        repairNotes: z.string().optional(),
+      });
+      
+      const { defectIds, mechanicName, repairDate, status, repairNotes } = repairSchema.parse(req.body);
+      
+      console.log(`🔍 [Routes] Validating access to ${defectIds.length} defects`);
+      
+      // Verify user has access to all defects
+      for (const defectId of defectIds) {
+        const existingDefect = await storage.getDefectById(defectId);
+        if (!existingDefect) {
+          return res.status(404).json({ error: `Defect ${defectId} not found` });
+        }
+        
+        const inspection = await storage.getInspection(existingDefect.inspectionId);
+        if (!inspection) {
+          return res.status(404).json({ error: `Inspection for defect ${defectId} not found` });
+        }
+        
+        if (req.auth?.companyId && inspection.companyId !== req.auth?.companyId) {
+          return res.status(403).json({ error: "Access denied: cannot update defects from other companies" });
+        }
+      }
+      
+      // Update all defects with repair information
+      const updatedDefects = await storage.batchUpdateDefects(defectIds, {
+        mechanicName,
+        repairDate: new Date(repairDate),
+        status,
+        repairNotes: repairNotes || null,
+      });
+      
+      console.log(`✅ [Routes] Successfully updated ${updatedDefects.length} defects`);
+      res.json({ success: true, updated: updatedDefects.length, defects: updatedDefects });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error batch updating defects:", error);
+      res.status(500).json({ error: "Failed to update defects" });
     }
   });
 
