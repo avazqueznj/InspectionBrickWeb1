@@ -103,11 +103,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     status: z.enum(["open", "pending", "repaired", "not-needed"]).optional(),
   });
 
-  // Login schema
+  // Login schema - companyId can be empty string for superuser login
   const loginSchema = z.object({
     userId: z.string().min(1),
     password: z.string().min(1),
-    companyId: z.string().min(1),
+    companyId: z.string(), // Allow empty string for superuser
   });
 
   // Auth: Login (with rate limiting)

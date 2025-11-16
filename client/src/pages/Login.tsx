@@ -18,10 +18,10 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!userId || !companyId || !password) {
+    if (!userId || !password) {
       toast({
         title: "Error",
-        description: "Please enter company code, user ID, and password",
+        description: "Please enter user ID and password",
         variant: "destructive",
       });
       return;
@@ -63,7 +63,7 @@ export default function Login() {
               <Input
                 id="companyId"
                 type="text"
-                placeholder="Enter your company code"
+                placeholder="Enter company code (leave empty for admin)"
                 value={companyId}
                 onChange={(e) => setCompanyId(e.target.value)}
                 disabled={isLoading}

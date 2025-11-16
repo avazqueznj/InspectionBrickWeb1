@@ -362,18 +362,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async authenticateUser(userId: string, companyId: string, password: string): Promise<User | null> {
-    console.log(`🔐 [Storage] Authenticating user: ${userId} for company: ${companyId}`);
+    console.log(`🔐 [Storage] Authenticating user: ${userId} for company: ${companyId || 'SUPERUSER'}`);
     
-    // Look up user by both userId AND companyId
+    // Look up user by userId and companyId
+    // Handle empty string as null for superuser login
+    const targetCompanyId = companyId === '' ? null : companyId;
+    
     const [user] = await db.select().from(users).where(
       and(
         eq(users.userId, userId),
-        eq(users.companyId, companyId)
+        targetCompanyId === null ? sql`${users.companyId} IS NULL` : eq(users.companyId, targetCompanyId)
       )
     );
     
     if (!user) {
-      console.log(`❌ [Storage] Authentication failed - user not found: ${userId} in company: ${companyId}`);
+      console.log(`❌ [Storage] Authentication failed - user not found: ${userId} in company: ${targetCompanyId || 'null (superuser)'}`);
       return null;
     }
     
@@ -385,7 +388,7 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
     
-    console.log(`✅ [Storage] Authentication successful for user: ${userId} in company: ${companyId}`);
+    console.log(`✅ [Storage] Authentication successful for user: ${userId} in company: ${targetCompanyId || 'null (superuser)'}`);
     return user;
   }
 
