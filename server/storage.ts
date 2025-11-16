@@ -121,7 +121,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(userId: string, user: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(userId: string): Promise<boolean>;
-  authenticateUser(userId: string, password: string): Promise<User | null>;
+  authenticateUser(userId: string, companyId: string, password: string): Promise<User | null>;
   getUsers(params?: UserQueryParams): Promise<PaginatedResult<UserWithoutPassword>>;
   getUserFilterValues(companyId?: string): Promise<UserFilterValues>;
   
@@ -361,12 +361,19 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async authenticateUser(userId: string, password: string): Promise<User | null> {
-    console.log(`🔐 [Storage] Authenticating user: ${userId}`);
+  async authenticateUser(userId: string, companyId: string, password: string): Promise<User | null> {
+    console.log(`🔐 [Storage] Authenticating user: ${userId} for company: ${companyId}`);
     
-    const user = await this.getUserById(userId);
+    // Look up user by both userId AND companyId
+    const [user] = await db.select().from(users).where(
+      and(
+        eq(users.userId, userId),
+        eq(users.companyId, companyId)
+      )
+    );
+    
     if (!user) {
-      console.log(`❌ [Storage] Authentication failed - user not found: ${userId}`);
+      console.log(`❌ [Storage] Authentication failed - user not found: ${userId} in company: ${companyId}`);
       return null;
     }
     
@@ -378,7 +385,7 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
     
-    console.log(`✅ [Storage] Authentication successful for user: ${userId}`);
+    console.log(`✅ [Storage] Authentication successful for user: ${userId} in company: ${companyId}`);
     return user;
   }
 
