@@ -107,6 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const loginSchema = z.object({
     userId: z.string().min(1),
     password: z.string().min(1),
+    companyId: z.string().min(1),
   });
 
   // Auth: Login (with rate limiting)
@@ -114,10 +115,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🔐 [Routes] POST /api/auth/login - Attempting login for user: ${req.body?.userId || 'UNKNOWN'}`);
     
     try {
-      const { userId, password } = loginSchema.parse(req.body);
-      console.log(`✅ [Routes] Login request validated - userId: ${userId}`);
+      const { userId, password, companyId } = loginSchema.parse(req.body);
+      console.log(`✅ [Routes] Login request validated - userId: ${userId}, companyId: ${companyId}`);
       
-      const user = await storage.authenticateUser(userId, password);
+      const user = await storage.authenticateUser(userId, companyId, password);
       
       if (!user) {
         console.log(`❌ [Routes] Login failed - Invalid credentials for user: ${userId}`);
