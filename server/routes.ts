@@ -2217,22 +2217,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // All defects validated - now update them with company scoping enforced at storage layer
-      // When reverting to "open", clear mechanic and repair data
-      const updateData = status === "open" ? {
-        status,
-        mechanicName: null,
-        repairDate: null,
-        repairNotes: null,
-      } : {
-        mechanicName,
-        repairDate: parsedRepairDate,
-        status,
-        repairNotes: repairNotes || null,
-      };
-      
       const updatedDefects = await storage.batchUpdateDefects(
         defectIds,
-        updateData,
+        {
+          mechanicName,
+          repairDate: parsedRepairDate,
+          status,
+          repairNotes: repairNotes || null,
+        },
         req.auth?.companyId // Pass companyId for double-checking at storage layer
       );
       
