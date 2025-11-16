@@ -30,7 +30,7 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="modal-inspection-details">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto" data-testid="modal-inspection-details">
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div>
