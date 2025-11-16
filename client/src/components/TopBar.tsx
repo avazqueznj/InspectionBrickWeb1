@@ -2,13 +2,7 @@ import { Link, useLocation } from "wouter";
 import { CompanySelector } from "./CompanySelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { LogOut, User, ChevronDown } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import logoUrl from "@assets/FBricklogo_1761093196077.png";
 
 const menuItems = [
@@ -16,14 +10,11 @@ const menuItems = [
   { path: "/defects", label: "Defects/Repairs" },
   { path: "/assets", label: "Assets" },
   { path: "/users", label: "Users" },
+  { path: "/locations", label: "Locations" },
   { path: "/inspection-types", label: "Inspection Types" },
   { path: "/layouts", label: "Layouts" },
-];
-
-const adminMenuItems = [
-  { path: "/locations", label: "Locations" },
-  { path: "/device-tokens", label: "Device Tokens" },
-  { path: "/admin/settings", label: "Settings" },
+  { path: "/device-tokens", label: "Device Tokens", adminOnly: true },
+  { path: "/admin/settings", label: "Admin", adminOnly: true },
 ];
 
 export function TopBar() {
@@ -44,6 +35,9 @@ export function TopBar() {
           
           <nav className="hidden md:flex items-center gap-1">
             {menuItems.map((item) => {
+              if (item.adminOnly && !user?.isSuperuser) {
+                return null;
+              }
               const isActive = location === item.path;
               return (
                 <Link
@@ -63,40 +57,6 @@ export function TopBar() {
                 </Link>
               );
             })}
-            
-            {user?.isSuperuser && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className={`
-                      px-4 py-2 text-sm font-medium
-                      ${adminMenuItems.some(item => location === item.path)
-                        ? 'bg-accent text-accent-foreground' 
-                        : 'text-muted-foreground'
-                      }
-                    `}
-                    data-testid="nav-admin"
-                  >
-                    Admin
-                    <ChevronDown className="ml-1 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {adminMenuItems.map((item) => (
-                    <DropdownMenuItem key={item.path} asChild>
-                      <Link
-                        href={item.path}
-                        className="w-full cursor-pointer"
-                        data-testid={`nav-admin-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                      >
-                        {item.label}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           </nav>
         </div>
 
