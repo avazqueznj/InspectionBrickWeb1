@@ -115,8 +115,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🔐 [Routes] POST /api/auth/login - Attempting login for user: ${req.body?.userId || 'UNKNOWN'}`);
     
     try {
-      const { userId, password, companyId } = loginSchema.parse(req.body);
-      console.log(`✅ [Routes] Login request validated - userId: ${userId}, companyId: ${companyId}`);
+      const { userId, password, companyId: rawCompanyId } = loginSchema.parse(req.body);
+      // Normalize companyId: treat undefined, null, empty string, or whitespace-only as empty string
+      const companyId = (rawCompanyId || '').trim();
+      console.log(`✅ [Routes] Login request validated - userId: ${userId}, companyId: ${companyId || 'SUPERUSER'}`);
       
       const user = await storage.authenticateUser(userId, companyId, password);
       
