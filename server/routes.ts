@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema, insertLocationSchema, insertUserLocationSchema } from "@shared/schema";
+import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema, insertLocationSchema, insertUserLocationSchema, type Defect, type InspectionWithDefects } from "@shared/schema";
 import { z } from "zod";
 import { parseBrickInspection } from "./brickParser";
 import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
@@ -1785,7 +1785,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`👑 [Routes] Superuser access - getting filter values for company: ${companyId || 'ALL'}`);
       }
       
-      const filterValues = await storage.getFilterValues(companyId);
+      // Get user UUID for location filtering
+      const user = req.session.userId ? await storage.getUserById(req.session.userId) : undefined;
+      const filterValues = await storage.getFilterValues(companyId, user?.id);
       res.json(filterValues);
     } catch (error) {
       console.error("❌ [Routes] Error fetching filter values:", error);
@@ -2257,7 +2259,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`👑 [Routes] Superuser access - getting filter values for company: ${companyId || 'ALL'}`);
       }
       
-      const filterValues = await storage.getDefectFilterValues(companyId);
+      // Get user UUID for location filtering
+      const user = req.session.userId ? await storage.getUserById(req.session.userId) : undefined;
+      const filterValues = await storage.getDefectFilterValues(companyId, user?.id);
       res.json(filterValues);
     } catch (error) {
       console.error("❌ [Routes] Error fetching defect filter values:", error);
@@ -2411,7 +2415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status,
           repairNotes: repairNotes || null,
         },
-        req.auth?.companyId // Pass companyId for double-checking at storage layer
+        req.auth?.companyId || undefined // Pass companyId for double-checking at storage layer
       );
       
       // Verify all requested defects were updated

@@ -41,6 +41,7 @@ interface FilterValues {
   componentNames: string[];
   severityLevels: ("critical" | "high" | "medium" | "low")[];
   statuses: ("open" | "pending" | "repaired" | "not-needed")[];
+  locations: string[];
 }
 
 export default function Defects() {
@@ -412,6 +413,26 @@ export default function Defects() {
             </Select>
           </div>
 
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Location:</label>
+            <Select
+              value={filters.location || "all"}
+              onValueChange={(value) => handleFilterChange("location", value === "all" ? undefined : value)}
+            >
+              <SelectTrigger className="w-40" data-testid="filter-location">
+                <SelectValue placeholder="All locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All locations</SelectItem>
+                {filterValues?.locations?.map((location) => (
+                  <SelectItem key={location} value={location}>
+                    {location}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {hasActiveFilters && (
             <Button
               variant="ghost"
@@ -462,8 +483,12 @@ export default function Defects() {
                         Driver Notes
                       </th>
                       <SortableHeader field="status">Status</SortableHeader>
-                      <SortableHeader field="mechanicName">Mechanic</SortableHeader>
-                      <SortableHeader field="repairDate">Repair Date</SortableHeader>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Mechanic
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Repair Date
+                      </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Repair Notes
                       </th>

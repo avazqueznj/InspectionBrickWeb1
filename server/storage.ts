@@ -59,6 +59,7 @@ export interface FilterValues {
   assetIds: string[];
   driverNames: string[];
   driverIds: string[];
+  locations: string[];
 }
 
 export interface UserFilterValues {
@@ -99,6 +100,7 @@ export interface DefectFilterValues {
   componentNames: string[];
   severityLevels: ("critical" | "high" | "medium" | "low")[];
   statuses: ("open" | "pending" | "repaired" | "not-needed")[];
+  locations: string[];
 }
 
 export interface DefectWithInspection extends Defect {
@@ -161,7 +163,7 @@ export interface IStorage {
   // Inspections
   getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>>;
   getInspection(id: string): Promise<InspectionWithDefects | undefined>;
-  getFilterValues(companyId?: string): Promise<FilterValues>;
+  getFilterValues(companyId?: string, userId?: string): Promise<FilterValues>;
   createInspection(inspection: InsertInspection): Promise<Inspection>;
   updateInspection(id: string, inspection: Partial<InsertInspection>): Promise<Inspection | undefined>;
   deleteInspection(id: string): Promise<boolean>;
@@ -174,7 +176,7 @@ export interface IStorage {
   getDefectById(id: string): Promise<Defect | undefined>;
   getDefectsByInspectionId(inspectionId: string): Promise<Defect[]>;
   getDefects(params?: DefectQueryParams): Promise<PaginatedResult<DefectWithInspection>>;
-  getDefectFilterValues(companyId?: string): Promise<DefectFilterValues>;
+  getDefectFilterValues(companyId?: string, userId?: string): Promise<DefectFilterValues>;
   createDefect(defect: InsertDefect): Promise<Defect>;
   updateDefect(id: string, defect: Partial<InsertDefect>): Promise<Defect | undefined>;
   batchUpdateDefects(ids: string[], updateData: Partial<InsertDefect>, companyId?: string): Promise<Defect[]>;
@@ -268,7 +270,7 @@ export class DatabaseStorage implements IStorage {
         eq(locations.locationName, locationName),
         eq(locations.companyId, companyId)
       ));
-    const deleted = result.rowCount > 0;
+    const deleted = (result.rowCount ?? 0) > 0;
     if (deleted) {
       console.log(`✅ [Storage] Location deleted successfully`);
     } else {
@@ -932,7 +934,7 @@ export class DatabaseStorage implements IStorage {
           SELECT 1 FROM ${inspectionAssets}
           JOIN ${assets} ON ${assets.assetId} = ${inspectionAssets.assetId}
           WHERE ${inspectionAssets.inspectionId} = ${inspections.id}
-          AND ${assets.location} = ${location}
+          AND ${assets.locationName} = ${location}
         )`
       );
     }
@@ -1015,14 +1017,14 @@ export class DatabaseStorage implements IStorage {
     } as InspectionWithDefects;
   }
 
-  async getFilterValues(companyId?: string): Promise<FilterValues> {
-    console.log(`🔍 [Storage] getFilterValues - companyId: ${companyId || 'ALL'}`);
+  async getFilterValues(companyId?: string, userId?: string): Promise<FilterValues> {
+    console.log(`🔍 [Storage] getFilterValues - companyId: ${companyId || 'ALL'}, userId: ${userId || 'NONE'}`);
     
     const whereCondition = companyId ? eq(inspections.companyId, companyId) : undefined;
     
     // Get distinct values for each filterable column
     // For assetIds, query from inspection_assets junction table to include all assets in multi-asset inspections
-    const [inspectionTypesResult, assetIdsResult, driverNamesResult, driverIdsResult] = await Promise.all([
+    const [inspectionTypesResult, assetIdsResult, driverNamesResult, driverIdsResult, userLocationsData] = await Promise.all([
       db.selectDistinct({ value: inspections.inspectionType })
         .from(inspections)
         .where(whereCondition)
@@ -1040,6 +1042,8 @@ export class DatabaseStorage implements IStorage {
         .from(inspections)
         .where(whereCondition)
         .orderBy(asc(inspections.driverId)),
+      // Get user's assigned locations (or all locations if no userId provided or no assignments)
+      userId && companyId ? this.getUserLocations(userId) : companyId ? this.getLocations(companyId) : Promise.resolve([])
     ]);
     
     const result = {
@@ -1047,9 +1051,10 @@ export class DatabaseStorage implements IStorage {
       assetIds: assetIdsResult.map(r => r.value),
       driverNames: driverNamesResult.map(r => r.value),
       driverIds: driverIdsResult.map(r => r.value),
+      locations: userLocationsData.map(loc => loc.locationName),
     };
     
-    console.log(`✅ [Storage] getFilterValues - Found ${result.inspectionTypes.length} types, ${result.assetIds.length} assets, ${result.driverNames.length} drivers`);
+    console.log(`✅ [Storage] getFilterValues - Found ${result.inspectionTypes.length} types, ${result.assetIds.length} assets, ${result.driverNames.length} drivers, ${result.locations.length} locations`);
     return result;
   }
 
@@ -1232,7 +1237,7 @@ export class DatabaseStorage implements IStorage {
         sql`EXISTS (
           SELECT 1 FROM ${assets}
           WHERE ${assets.assetId} = ${defects.assetId}
-          AND ${assets.location} = ${location}
+          AND ${assets.locationName} = ${location}
         )`
       );
     }
@@ -1345,8 +1350,8 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getDefectFilterValues(companyId?: string): Promise<DefectFilterValues> {
-    console.log(`🔍 [Storage] getDefectFilterValues - companyId: ${companyId || 'ALL'}`);
+  async getDefectFilterValues(companyId?: string, userId?: string): Promise<DefectFilterValues> {
+    console.log(`🔍 [Storage] getDefectFilterValues - companyId: ${companyId || 'ALL'}, userId: ${userId || 'NONE'}`);
     
     // Build where conditions: company filter + exclude severity 0
     const conditions = [];
@@ -1357,7 +1362,7 @@ export class DatabaseStorage implements IStorage {
     const whereCondition = and(...conditions);
     
     // Get distinct values for each filterable column (join with inspections for company scoping)
-    const [assetIdsResult, driverNamesResult, zoneNamesResult, componentNamesResult, statusesResult] = await Promise.all([
+    const [assetIdsResult, driverNamesResult, zoneNamesResult, componentNamesResult, statusesResult, userLocationsData] = await Promise.all([
       db.selectDistinct({ value: defects.assetId })
         .from(defects)
         .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
@@ -1383,6 +1388,8 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
         .where(whereCondition)
         .orderBy(asc(defects.status)),
+      // Get user's assigned locations (or all locations if no userId provided or no assignments)
+      userId && companyId ? this.getUserLocations(userId) : companyId ? this.getLocations(companyId) : Promise.resolve([])
     ]);
     
     const result = {
@@ -1391,10 +1398,11 @@ export class DatabaseStorage implements IStorage {
       zoneNames: zoneNamesResult.map(r => r.value),
       componentNames: componentNamesResult.map(r => r.value),
       severityLevels: ["critical", "high", "medium", "low"] as ("critical" | "high" | "medium" | "low")[],
-      statuses: statusesResult.map(r => r.value) as ("open" | "pending" | "repaired")[],
+      statuses: statusesResult.map(r => r.value) as ("open" | "pending" | "repaired" | "not-needed")[],
+      locations: userLocationsData.map(loc => loc.locationName),
     };
     
-    console.log(`✅ [Storage] getDefectFilterValues - Found ${result.assetIds.length} assets, ${result.zoneNames.length} zones, ${result.componentNames.length} components`);
+    console.log(`✅ [Storage] getDefectFilterValues - Found ${result.assetIds.length} assets, ${result.zoneNames.length} zones, ${result.componentNames.length} components, ${result.locations.length} locations`);
     return result;
   }
 
