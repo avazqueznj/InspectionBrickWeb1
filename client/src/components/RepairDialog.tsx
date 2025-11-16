@@ -77,7 +77,10 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate ALL queries that might show this defect data
       queryClient.invalidateQueries({ queryKey: ["/api/defects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inspections"] });
+      
       const statusText = status === "repaired" ? "repaired" : status === "not-needed" ? "not needed" : "open (reverted)";
       toast({
         title: "Success",
