@@ -13,7 +13,6 @@ interface FilterValues {
   assetIds: string[];
   driverNames: string[];
   driverIds: string[];
-  locations: string[];
 }
 
 interface FilterBarProps {
@@ -25,7 +24,6 @@ interface FilterBarProps {
     assetId?: string;
     driverName?: string;
     driverId?: string;
-    location?: string;
   }) => void;
 }
 
@@ -38,13 +36,12 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
   const [assetId, setAssetId] = useState<string>("");
   const [driverName, setDriverName] = useState<string>("");
   const [driverId, setDriverId] = useState<string>("");
-  const [location, setLocation] = useState<string>("");
 
   // Fetch available filter values
   const { data: filterValues } = useQuery<FilterValues>({
     queryKey: ["/api/inspections/filter-values", companyId],
     queryFn: async () => {
-      if (!companyId) return { inspectionTypes: [], assetIds: [], driverNames: [], driverIds: [], locations: [] };
+      if (!companyId) return { inspectionTypes: [], assetIds: [], driverNames: [], driverIds: [] };
       const response = await fetch(`/api/inspections/filter-values?companyId=${companyId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch filter values");
@@ -62,8 +59,7 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
     assetId: assetId || undefined,
     driverName: driverName || undefined,
     driverId: driverId || undefined,
-    location: location || undefined,
-  }), [dateFrom, dateTo, inspectionType, assetId, driverName, driverId, location]);
+  }), [dateFrom, dateTo, inspectionType, assetId, driverName, driverId]);
 
   // Update parent component when filters change
   useEffect(() => {
@@ -71,7 +67,7 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
   }, [filters, onFilterChange]);
 
   // Check if any filters are active
-  const hasActiveFilters = dateFrom || dateTo || inspectionType || assetId || driverName || driverId || location;
+  const hasActiveFilters = dateFrom || dateTo || inspectionType || assetId || driverName || driverId;
 
   // Reset all filters
   const handleReset = () => {
@@ -81,7 +77,6 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
     setAssetId("");
     setDriverName("");
     setDriverId("");
-    setLocation("");
   };
 
   return (
@@ -242,31 +237,6 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
             {filterValues?.driverIds.map((id) => (
               <SelectItem key={id} value={id} data-testid={`filter-driver-id-${id}`}>
                 {id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Location */}
-      <div className="flex flex-col gap-1.5 min-w-[160px]">
-        <Label htmlFor="location" className="text-xs font-medium">
-          Location
-        </Label>
-        <Select 
-          value={location || "__clear__"} 
-          onValueChange={(val) => setLocation(val === "__clear__" ? "" : val)}
-        >
-          <SelectTrigger id="location" data-testid="filter-location">
-            <SelectValue placeholder="All locations" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__clear__" data-testid="filter-location-clear">
-              All locations
-            </SelectItem>
-            {filterValues?.locations?.map((loc) => (
-              <SelectItem key={loc} value={loc} data-testid={`filter-location-${loc}`}>
-                {loc}
               </SelectItem>
             ))}
           </SelectContent>

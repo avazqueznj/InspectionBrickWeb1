@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, locations, userLocations, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset, type Location, type InsertLocation, type UserLocation, type InsertUserLocation } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and, inArray } from "drizzle-orm";
 
@@ -17,7 +17,6 @@ export interface QueryParams {
   assetId?: string;
   driverName?: string;
   driverId?: string;
-  location?: string;
 }
 
 export interface UserQueryParams {
@@ -40,7 +39,6 @@ export interface AssetQueryParams {
   limit?: number;
   // Filter parameters
   status?: "ACTIVE" | "INACTIVE";
-  location?: string;
 }
 
 export interface InspectionTypeQueryParams {
@@ -59,7 +57,6 @@ export interface FilterValues {
   assetIds: string[];
   driverNames: string[];
   driverIds: string[];
-  locations: string[];
 }
 
 export interface UserFilterValues {
@@ -90,7 +87,6 @@ export interface DefectQueryParams {
   componentName?: string;
   severityLevel?: "critical" | "high" | "medium" | "low";
   status?: "open" | "pending" | "repaired" | "not-needed";
-  location?: string;
 }
 
 export interface DefectFilterValues {
@@ -100,7 +96,6 @@ export interface DefectFilterValues {
   componentNames: string[];
   severityLevels: ("critical" | "high" | "medium" | "low")[];
   statuses: ("open" | "pending" | "repaired" | "not-needed")[];
-  locations: string[];
 }
 
 export interface DefectWithInspection extends Defect {
@@ -120,16 +115,6 @@ export interface PaginatedResult<T> {
 export interface IStorage {
   // Companies
   getCompanies(): Promise<Company[]>;
-  
-  // Locations
-  getLocations(companyId: string): Promise<Location[]>;
-  createLocation(location: InsertLocation): Promise<Location>;
-  updateLocation(locationName: string, companyId: string, location: Partial<InsertLocation>): Promise<Location | undefined>;
-  deleteLocation(locationName: string, companyId: string): Promise<boolean>;
-  
-  // User Locations
-  getUserLocations(userId: string): Promise<Location[]>;
-  setUserLocations(userId: string, companyId: string, locationNames: string[]): Promise<void>;
   
   // Users & Auth
   getUserById(userId: string): Promise<User | undefined>;
@@ -163,7 +148,7 @@ export interface IStorage {
   // Inspections
   getInspections(params?: QueryParams): Promise<PaginatedResult<InspectionWithDefects>>;
   getInspection(id: string): Promise<InspectionWithDefects | undefined>;
-  getFilterValues(companyId?: string, userId?: string): Promise<FilterValues>;
+  getFilterValues(companyId?: string): Promise<FilterValues>;
   createInspection(inspection: InsertInspection): Promise<Inspection>;
   updateInspection(id: string, inspection: Partial<InsertInspection>): Promise<Inspection | undefined>;
   deleteInspection(id: string): Promise<boolean>;
@@ -176,7 +161,7 @@ export interface IStorage {
   getDefectById(id: string): Promise<Defect | undefined>;
   getDefectsByInspectionId(inspectionId: string): Promise<Defect[]>;
   getDefects(params?: DefectQueryParams): Promise<PaginatedResult<DefectWithInspection>>;
-  getDefectFilterValues(companyId?: string, userId?: string): Promise<DefectFilterValues>;
+  getDefectFilterValues(companyId?: string): Promise<DefectFilterValues>;
   createDefect(defect: InsertDefect): Promise<Defect>;
   updateDefect(id: string, defect: Partial<InsertDefect>): Promise<Defect | undefined>;
   batchUpdateDefects(ids: string[], updateData: Partial<InsertDefect>, companyId?: string): Promise<Defect[]>;
@@ -228,97 +213,6 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select().from(companies).orderBy(asc(companies.name));
     console.log(`✅ [Storage] Retrieved ${result.length} companies`);
     return result;
-  }
-
-  async getLocations(companyId: string): Promise<Location[]> {
-    console.log(`📍 [Storage] Fetching locations for company: ${companyId}`);
-    const result = await db.select().from(locations)
-      .where(eq(locations.companyId, companyId))
-      .orderBy(asc(locations.locationName));
-    console.log(`✅ [Storage] Retrieved ${result.length} locations`);
-    return result;
-  }
-
-  async createLocation(location: InsertLocation): Promise<Location> {
-    console.log(`➕ [Storage] Creating location: ${location.locationName} for company: ${location.companyId}`);
-    const [newLocation] = await db.insert(locations).values(location).returning();
-    console.log(`✅ [Storage] Location created successfully`);
-    return newLocation;
-  }
-
-  async updateLocation(locationName: string, companyId: string, location: Partial<InsertLocation>): Promise<Location | undefined> {
-    console.log(`🔄 [Storage] Updating location: ${locationName} for company: ${companyId}`);
-    const [updated] = await db.update(locations)
-      .set(location)
-      .where(and(
-        eq(locations.locationName, locationName),
-        eq(locations.companyId, companyId)
-      ))
-      .returning();
-    if (updated) {
-      console.log(`✅ [Storage] Location updated successfully`);
-    } else {
-      console.log(`❌ [Storage] Location not found`);
-    }
-    return updated;
-  }
-
-  async deleteLocation(locationName: string, companyId: string): Promise<boolean> {
-    console.log(`🗑️ [Storage] Deleting location: ${locationName} for company: ${companyId}`);
-    const result = await db.delete(locations)
-      .where(and(
-        eq(locations.locationName, locationName),
-        eq(locations.companyId, companyId)
-      ));
-    const deleted = (result.rowCount ?? 0) > 0;
-    if (deleted) {
-      console.log(`✅ [Storage] Location deleted successfully`);
-    } else {
-      console.log(`❌ [Storage] Location not found`);
-    }
-    return deleted;
-  }
-
-  async getUserLocations(userId: string): Promise<Location[]> {
-    console.log(`📍 [Storage] Fetching locations for user: ${userId}`);
-    const result = await db
-      .select({
-        locationName: locations.locationName,
-        companyId: locations.companyId,
-        address: locations.address,
-        locationDotNumber: locations.locationDotNumber,
-      })
-      .from(userLocations)
-      .innerJoin(
-        locations,
-        and(
-          eq(userLocations.locationName, locations.locationName),
-          eq(userLocations.companyId, locations.companyId)
-        )
-      )
-      .where(eq(userLocations.userId, userId))
-      .orderBy(asc(locations.locationName));
-    console.log(`✅ [Storage] Retrieved ${result.length} locations for user`);
-    return result;
-  }
-
-  async setUserLocations(userId: string, companyId: string, locationNames: string[]): Promise<void> {
-    console.log(`🔄 [Storage] Setting locations for user: ${userId}, locations: ${locationNames.join(', ')}`);
-    
-    // First, delete all existing user locations
-    await db.delete(userLocations).where(eq(userLocations.userId, userId));
-    
-    // Then, insert new ones if any
-    if (locationNames.length > 0) {
-      const values = locationNames.map(locationName => ({
-        userId,
-        locationName,
-        companyId,
-      }));
-      await db.insert(userLocations).values(values);
-    }
-    
-    console.log(`✅ [Storage] User locations set successfully`);
   }
 
   async getUserById(userId: string): Promise<User | undefined> {
@@ -496,11 +390,10 @@ export class DatabaseStorage implements IStorage {
       sortDirection = "asc", 
       page = 1, 
       limit = 10,
-      status,
-      location
+      status
     } = params || {};
     
-    console.log(`📊 [Storage] getAssets - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}, location: ${location || 'ALL'}`);
+    console.log(`📊 [Storage] getAssets - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}`);
     
     // Build where conditions array
     const conditions = [];
@@ -524,11 +417,6 @@ export class DatabaseStorage implements IStorage {
     // Add status filter
     if (status) {
       conditions.push(eq(assets.status, status));
-    }
-    
-    // Add location filter
-    if (location) {
-      conditions.push(eq(assets.locationName, location));
     }
     
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
@@ -873,13 +761,12 @@ export class DatabaseStorage implements IStorage {
       inspectionType,
       assetId,
       driverName,
-      driverId,
-      location
+      driverId
     } = params || {};
     
     console.log(`📊 [Storage] getInspections - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}`);
-    if (dateFrom || dateTo || inspectionType || assetId || driverName || driverId || location) {
-      console.log(`🔍 [Storage] Filters - dateFrom: ${dateFrom || 'none'}, dateTo: ${dateTo || 'none'}, type: ${inspectionType || 'none'}, asset: ${assetId || 'none'}, driver: ${driverName || 'none'}, driverId: ${driverId || 'none'}, location: ${location || 'none'}`);
+    if (dateFrom || dateTo || inspectionType || assetId || driverName || driverId) {
+      console.log(`🔍 [Storage] Filters - dateFrom: ${dateFrom || 'none'}, dateTo: ${dateTo || 'none'}, type: ${inspectionType || 'none'}, asset: ${assetId || 'none'}, driver: ${driverName || 'none'}, driverId: ${driverId || 'none'}`);
     }
     
     // Build where conditions array
@@ -926,10 +813,6 @@ export class DatabaseStorage implements IStorage {
     }
     if (driverId) {
       conditions.push(eq(inspections.driverId, driverId));
-    }
-    if (location) {
-      // Filter by inspection location (inspections have their own location from device)
-      conditions.push(eq(inspections.locationName, location));
     }
     
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
@@ -1010,14 +893,14 @@ export class DatabaseStorage implements IStorage {
     } as InspectionWithDefects;
   }
 
-  async getFilterValues(companyId?: string, userId?: string): Promise<FilterValues> {
-    console.log(`🔍 [Storage] getFilterValues - companyId: ${companyId || 'ALL'}, userId: ${userId || 'NONE'}`);
+  async getFilterValues(companyId?: string): Promise<FilterValues> {
+    console.log(`🔍 [Storage] getFilterValues - companyId: ${companyId || 'ALL'}`);
     
     const whereCondition = companyId ? eq(inspections.companyId, companyId) : undefined;
     
     // Get distinct values for each filterable column
     // For assetIds, query from inspection_assets junction table to include all assets in multi-asset inspections
-    const [inspectionTypesResult, assetIdsResult, driverNamesResult, driverIdsResult, userLocationsData] = await Promise.all([
+    const [inspectionTypesResult, assetIdsResult, driverNamesResult, driverIdsResult] = await Promise.all([
       db.selectDistinct({ value: inspections.inspectionType })
         .from(inspections)
         .where(whereCondition)
@@ -1035,8 +918,6 @@ export class DatabaseStorage implements IStorage {
         .from(inspections)
         .where(whereCondition)
         .orderBy(asc(inspections.driverId)),
-      // Get user's assigned locations (or all locations if no userId provided or no assignments)
-      userId && companyId ? this.getUserLocations(userId) : companyId ? this.getLocations(companyId) : Promise.resolve([])
     ]);
     
     const result = {
@@ -1044,10 +925,9 @@ export class DatabaseStorage implements IStorage {
       assetIds: assetIdsResult.map(r => r.value),
       driverNames: driverNamesResult.map(r => r.value),
       driverIds: driverIdsResult.map(r => r.value),
-      locations: userLocationsData.map(loc => loc.locationName),
     };
     
-    console.log(`✅ [Storage] getFilterValues - Found ${result.inspectionTypes.length} types, ${result.assetIds.length} assets, ${result.driverNames.length} drivers, ${result.locations.length} locations`);
+    console.log(`✅ [Storage] getFilterValues - Found ${result.inspectionTypes.length} types, ${result.assetIds.length} assets, ${result.driverNames.length} drivers`);
     return result;
   }
 
@@ -1158,11 +1038,10 @@ export class DatabaseStorage implements IStorage {
       zoneName,
       componentName,
       severityLevel,
-      status,
-      location
+      status
     } = params || {};
     
-    console.log(`📊 [Storage] getDefects - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, location: ${location || 'none'}`);
+    console.log(`📊 [Storage] getDefects - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}`);
     
     // Build where conditions array
     const conditions = [];
@@ -1223,10 +1102,6 @@ export class DatabaseStorage implements IStorage {
     }
     if (status) {
       conditions.push(eq(defects.status, status));
-    }
-    if (location) {
-      // Filter by defect location (defects have their own location from device)
-      conditions.push(eq(defects.locationName, location));
     }
     
     // Always filter out severity = 0 defects (no-issue entries)
@@ -1337,8 +1212,8 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getDefectFilterValues(companyId?: string, userId?: string): Promise<DefectFilterValues> {
-    console.log(`🔍 [Storage] getDefectFilterValues - companyId: ${companyId || 'ALL'}, userId: ${userId || 'NONE'}`);
+  async getDefectFilterValues(companyId?: string): Promise<DefectFilterValues> {
+    console.log(`🔍 [Storage] getDefectFilterValues - companyId: ${companyId || 'ALL'}`);
     
     // Build where conditions: company filter + exclude severity 0
     const conditions = [];
@@ -1349,7 +1224,7 @@ export class DatabaseStorage implements IStorage {
     const whereCondition = and(...conditions);
     
     // Get distinct values for each filterable column (join with inspections for company scoping)
-    const [assetIdsResult, driverNamesResult, zoneNamesResult, componentNamesResult, statusesResult, userLocationsData] = await Promise.all([
+    const [assetIdsResult, driverNamesResult, zoneNamesResult, componentNamesResult, statusesResult] = await Promise.all([
       db.selectDistinct({ value: defects.assetId })
         .from(defects)
         .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
@@ -1375,8 +1250,6 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
         .where(whereCondition)
         .orderBy(asc(defects.status)),
-      // Get user's assigned locations (or all locations if no userId provided or no assignments)
-      userId && companyId ? this.getUserLocations(userId) : companyId ? this.getLocations(companyId) : Promise.resolve([])
     ]);
     
     const result = {
@@ -1385,11 +1258,10 @@ export class DatabaseStorage implements IStorage {
       zoneNames: zoneNamesResult.map(r => r.value),
       componentNames: componentNamesResult.map(r => r.value),
       severityLevels: ["critical", "high", "medium", "low"] as ("critical" | "high" | "medium" | "low")[],
-      statuses: statusesResult.map(r => r.value) as ("open" | "pending" | "repaired" | "not-needed")[],
-      locations: userLocationsData.map(loc => loc.locationName),
+      statuses: statusesResult.map(r => r.value) as ("open" | "pending" | "repaired")[],
     };
     
-    console.log(`✅ [Storage] getDefectFilterValues - Found ${result.assetIds.length} assets, ${result.zoneNames.length} zones, ${result.componentNames.length} components, ${result.locations.length} locations`);
+    console.log(`✅ [Storage] getDefectFilterValues - Found ${result.assetIds.length} assets, ${result.zoneNames.length} zones, ${result.componentNames.length} components`);
     return result;
   }
 

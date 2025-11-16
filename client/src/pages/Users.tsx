@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { type UserWithoutPassword, type InsertUser, type Company, type Location } from "@shared/schema";
+import { type UserWithoutPassword, type InsertUser, type Company } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,15 +40,14 @@ export default function Users() {
   const [sortField, setSortField] = useState<SortField>("userId");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE" | "ALL">("ACTIVE");
-  const [locationFilter, setLocationFilter] = useState<string>("ALL");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithoutPassword | null>(null);
   const itemsPerPage = 10;
 
-  // Reset to page 1 when search query, status filter, location filter, or company changes
+  // Reset to page 1 when search query, status filter, or company changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCompany, statusFilter, locationFilter]);
+  }, [searchQuery, selectedCompany, statusFilter]);
 
   // Fetch filter values
   const { data: filterValues } = useQuery<UserFilterValues>({
@@ -69,22 +68,6 @@ export default function Users() {
   // Fetch companies for the modal
   const { data: companies = [] } = useQuery<Company[]>({
     queryKey: ["/api/companies"],
-  });
-
-  // Fetch locations for the current company
-  const { data: locations = [] } = useQuery<Location[]>({
-    queryKey: ["/api/locations", selectedCompany],
-    queryFn: async () => {
-      const queryParams = new URLSearchParams();
-      if (selectedCompany) queryParams.set("companyId", selectedCompany);
-      
-      const response = await fetch(`/api/locations?${queryParams.toString()}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch locations");
-      }
-      return response.json();
-    },
-    enabled: !!selectedCompany,
   });
 
   // Create user mutation
@@ -151,7 +134,6 @@ export default function Users() {
       currentPage,
       itemsPerPage,
       statusFilter,
-      locationFilter,
     ],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
@@ -166,11 +148,6 @@ export default function Users() {
       // Add status filter (skip if "ALL")
       if (statusFilter && statusFilter !== "ALL") {
         queryParams.set("status", statusFilter);
-      }
-      
-      // Add location filter (skip if "ALL")
-      if (locationFilter && locationFilter !== "ALL") {
-        queryParams.set("location", locationFilter);
       }
       
       const response = await fetch(`/api/users?${queryParams.toString()}`);
@@ -249,23 +226,6 @@ export default function Users() {
             />
           </div>
           
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Location:</span>
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger className="w-[180px]" data-testid="select-location-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Locations</SelectItem>
-                {locations.map((location) => (
-                  <SelectItem key={location.locationName} value={location.locationName}>
-                    {location.locationName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Status:</span>
             <Select value={statusFilter} onValueChange={(value: "ACTIVE" | "INACTIVE" | "ALL") => setStatusFilter(value)}>

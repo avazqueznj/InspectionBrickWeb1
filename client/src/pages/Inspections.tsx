@@ -26,7 +26,6 @@ interface Filters {
   assetId?: string;
   driverName?: string;
   driverId?: string;
-  location?: string;
 }
 
 export default function Inspections() {
@@ -51,8 +50,7 @@ export default function Inspections() {
     filters.inspectionType, 
     filters.assetId, 
     filters.driverName, 
-    filters.driverId,
-    filters.location
+    filters.driverId
   ]);
 
   const { data, isLoading } = useQuery<PaginatedResponse>({
@@ -69,8 +67,7 @@ export default function Inspections() {
       filters.inspectionType,
       filters.assetId,
       filters.driverName,
-      filters.driverId,
-      filters.location
+      filters.driverId
     ],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
@@ -89,7 +86,6 @@ export default function Inspections() {
       if (filters.assetId) queryParams.set("assetId", filters.assetId);
       if (filters.driverName) queryParams.set("driverName", filters.driverName);
       if (filters.driverId) queryParams.set("driverId", filters.driverId);
-      if (filters.location) queryParams.set("location", filters.location);
       
       const response = await fetch(`/api/inspections?${queryParams.toString()}`);
       if (!response.ok) {
@@ -132,7 +128,6 @@ export default function Inspections() {
     if (filters.assetId) queryParams.set("assetId", filters.assetId);
     if (filters.driverName) queryParams.set("driverName", filters.driverName);
     if (filters.driverId) queryParams.set("driverId", filters.driverId);
-    if (filters.location) queryParams.set("location", filters.location);
     
     // Open in new browser tab
     window.open(`/api/inspections/print-list?${queryParams.toString()}`, '_blank');

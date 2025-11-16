@@ -31,7 +31,6 @@ interface Filters {
   componentName?: string;
   severityLevel?: "critical" | "high" | "medium" | "low";
   status?: "open" | "pending" | "repaired" | "not-needed";
-  location?: string;
 }
 
 interface FilterValues {
@@ -41,7 +40,6 @@ interface FilterValues {
   componentNames: string[];
   severityLevels: ("critical" | "high" | "medium" | "low")[];
   statuses: ("open" | "pending" | "repaired" | "not-needed")[];
-  locations: string[];
 }
 
 export default function Defects() {
@@ -70,8 +68,7 @@ export default function Defects() {
     filters.zoneName,
     filters.componentName,
     filters.severityLevel,
-    filters.status,
-    filters.location
+    filters.status
   ]);
 
   // Fetch filter values
@@ -120,8 +117,7 @@ export default function Defects() {
       filters.zoneName,
       filters.componentName,
       filters.severityLevel,
-      filters.status,
-      filters.location
+      filters.status
     ],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
@@ -142,7 +138,6 @@ export default function Defects() {
       if (filters.componentName) queryParams.set("componentName", filters.componentName);
       if (filters.severityLevel) queryParams.set("severityLevel", filters.severityLevel);
       if (filters.status) queryParams.set("status", filters.status);
-      if (filters.location) queryParams.set("location", filters.location);
 
       const response = await fetch(`/api/defects?${queryParams.toString()}`);
       if (!response.ok) {
@@ -413,26 +408,6 @@ export default function Defects() {
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Location:</label>
-            <Select
-              value={filters.location || "all"}
-              onValueChange={(value) => handleFilterChange("location", value === "all" ? undefined : value)}
-            >
-              <SelectTrigger className="w-40" data-testid="filter-location">
-                <SelectValue placeholder="All locations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All locations</SelectItem>
-                {filterValues?.locations?.map((location) => (
-                  <SelectItem key={location} value={location}>
-                    {location}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {hasActiveFilters && (
             <Button
               variant="ghost"
@@ -483,12 +458,8 @@ export default function Defects() {
                         Driver Notes
                       </th>
                       <SortableHeader field="status">Status</SortableHeader>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Mechanic
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Repair Date
-                      </th>
+                      <SortableHeader field="mechanicName">Mechanic</SortableHeader>
+                      <SortableHeader field="repairDate">Repair Date</SortableHeader>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Repair Notes
                       </th>
