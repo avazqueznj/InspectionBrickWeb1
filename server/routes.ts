@@ -71,6 +71,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(1000).optional(),
     status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+    location: z.string().optional(),
   });
 
   // Inspection Type query params validation schema
@@ -687,14 +688,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Company ID is required" });
       }
       
-      if (req.auth?.companyId) {
-        console.log(`🔒 [Routes] Enforcing company scoping - Company: ${req.auth?.companyId}`);
-      } else {
-        console.log(`👑 [Routes] Superuser access - getting locations for company: ${companyId}`);
+      // Superusers get all locations for the specified company
+      if (!req.auth?.companyId) {
+        console.log(`👑 [Routes] Superuser access - getting all locations for company: ${companyId}`);
+        const locations = await storage.getLocations(companyId);
+        return res.json(locations);
       }
       
-      const locations = await storage.getLocations(companyId);
-      res.json(locations);
+      // Regular users: check their assigned locations
+      console.log(`🔒 [Routes] Filtering locations by user assignments - User: ${req.session.userId}, Company: ${req.auth?.companyId}`);
+      
+      // First, get the user's UUID (user_locations table uses UUID, not string userId)
+      const user = await storage.getUserById(req.session.userId!);
+      if (!user) {
+        console.log(`❌ [Routes] User not found: ${req.session.userId}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Get user's assigned locations using their UUID
+      const userLocations = await storage.getUserLocations(user.id);
+      
+      // If user has no location assignments, return all company locations (admin behavior)
+      if (userLocations.length === 0) {
+        console.log(`📍 [Routes] User has no location assignments - returning all locations for company: ${companyId}`);
+        const locations = await storage.getLocations(companyId);
+        return res.json(locations);
+      }
+      
+      // User has specific location assignments - return only those
+      console.log(`📍 [Routes] User has ${userLocations.length} assigned location(s) - returning filtered list`);
+      res.json(userLocations);
     } catch (error) {
       console.error("❌ [Routes] Error fetching locations:", error);
       res.status(500).json({ error: "Failed to fetch locations" });

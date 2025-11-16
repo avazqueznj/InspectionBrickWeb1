@@ -39,6 +39,7 @@ export interface AssetQueryParams {
   limit?: number;
   // Filter parameters
   status?: "ACTIVE" | "INACTIVE";
+  location?: string;
 }
 
 export interface InspectionTypeQueryParams {
@@ -491,10 +492,11 @@ export class DatabaseStorage implements IStorage {
       sortDirection = "asc", 
       page = 1, 
       limit = 10,
-      status
+      status,
+      location
     } = params || {};
     
-    console.log(`📊 [Storage] getAssets - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}`);
+    console.log(`📊 [Storage] getAssets - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}, location: ${location || 'ALL'}`);
     
     // Build where conditions array
     const conditions = [];
@@ -518,6 +520,11 @@ export class DatabaseStorage implements IStorage {
     // Add status filter
     if (status) {
       conditions.push(eq(assets.status, status));
+    }
+    
+    // Add location filter
+    if (location) {
+      conditions.push(eq(assets.locationName, location));
     }
     
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
