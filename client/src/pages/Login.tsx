@@ -11,16 +11,17 @@ export default function Login() {
   const { login } = useAuth();
   const { toast } = useToast();
   const [userId, setUserId] = useState("");
+  const [companyId, setCompanyId] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!userId || !password) {
+    if (!userId || !companyId || !password) {
       toast({
         title: "Error",
-        description: "Please enter both user ID and password",
+        description: "Please enter company code, user ID, and password",
         variant: "destructive",
       });
       return;
@@ -28,7 +29,7 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      await login(userId, password);
+      await login(userId, companyId, password);
       // Don't manually redirect - let App.tsx handle it after state updates
     } catch (error: any) {
       toast({
@@ -58,6 +59,19 @@ export default function Login() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="companyId">Company Code</Label>
+              <Input
+                id="companyId"
+                type="text"
+                placeholder="Enter your company code"
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                disabled={isLoading}
+                autoFocus
+                data-testid="input-companyId"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="userId">User ID</Label>
               <Input
                 id="userId"
@@ -66,7 +80,6 @@ export default function Login() {
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 disabled={isLoading}
-                autoFocus
                 data-testid="input-userId"
               />
             </div>
