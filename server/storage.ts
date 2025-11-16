@@ -86,7 +86,7 @@ export interface DefectQueryParams {
   zoneName?: string;
   componentName?: string;
   severityLevel?: "critical" | "high" | "medium" | "low";
-  status?: "open" | "pending" | "repaired";
+  status?: "open" | "pending" | "repaired" | "not-needed";
 }
 
 export interface DefectFilterValues {
@@ -95,7 +95,7 @@ export interface DefectFilterValues {
   zoneNames: string[];
   componentNames: string[];
   severityLevels: ("critical" | "high" | "medium" | "low")[];
-  statuses: ("open" | "pending" | "repaired")[];
+  statuses: ("open" | "pending" | "repaired" | "not-needed")[];
 }
 
 export interface DefectWithInspection extends Defect {

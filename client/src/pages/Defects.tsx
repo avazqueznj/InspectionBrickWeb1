@@ -4,11 +4,13 @@ import { type DefectWithInspection, type InspectionWithDefects } from "@shared/s
 import { useCompany } from "@/contexts/CompanyContext";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Eye } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Eye, Wrench } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { InspectionModal } from "@/components/InspectionModal";
+import { RepairDialog } from "@/components/RepairDialog";
 
 type SortField = "datetime" | "assetId" | "driverName" | "zoneName" | "componentName" | "defect" | "severity" | "status";
 type SortDirection = "asc" | "desc";
@@ -28,7 +30,7 @@ interface Filters {
   zoneName?: string;
   componentName?: string;
   severityLevel?: "critical" | "high" | "medium" | "low";
-  status?: "open" | "pending" | "repaired";
+  status?: "open" | "pending" | "repaired" | "not-needed";
 }
 
 interface FilterValues {
@@ -37,7 +39,7 @@ interface FilterValues {
   zoneNames: string[];
   componentNames: string[];
   severityLevels: ("critical" | "high" | "medium" | "low")[];
-  statuses: ("open" | "pending" | "repaired")[];
+  statuses: ("open" | "pending" | "repaired" | "not-needed")[];
 }
 
 export default function Defects() {
@@ -49,6 +51,8 @@ export default function Defects() {
   const [filters, setFilters] = useState<Filters>({ status: "open" });
   const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDefectIds, setSelectedDefectIds] = useState<Set<string>>(new Set());
+  const [isRepairDialogOpen, setIsRepairDialogOpen] = useState(false);
   const itemsPerPage = 10;
 
   // Reset to page 1 when search query, filters, or company changes
@@ -188,13 +192,32 @@ export default function Defects() {
     }
   };
 
-  const getStatusBadge = (status: "open" | "pending" | "repaired") => {
+  const getStatusBadge = (status: "open" | "pending" | "repaired" | "not-needed") => {
     const variants = {
       open: <Badge variant="destructive" data-testid={`badge-status-${status}`}>Open</Badge>,
       pending: <Badge className="bg-orange-600 hover:bg-orange-700" data-testid={`badge-status-${status}`}>Pending</Badge>,
       repaired: <Badge className="bg-green-600 hover:bg-green-700" data-testid={`badge-status-${status}`}>Repaired</Badge>,
+      "not-needed": <Badge variant="secondary" data-testid={`badge-status-${status}`}>Not Needed</Badge>,
     };
     return variants[status];
+  };
+
+  const toggleDefectSelection = (defectId: string) => {
+    const newSelection = new Set(selectedDefectIds);
+    if (newSelection.has(defectId)) {
+      newSelection.delete(defectId);
+    } else {
+      newSelection.add(defectId);
+    }
+    setSelectedDefectIds(newSelection);
+  };
+
+  const toggleAll = () => {
+    if (selectedDefectIds.size === defects.length && defects.length > 0) {
+      setSelectedDefectIds(new Set());
+    } else {
+      setSelectedDefectIds(new Set(defects.map(d => d.id)));
+    }
   };
 
   const defects = data?.data || [];
@@ -224,6 +247,23 @@ export default function Defects() {
             />
           </div>
         </div>
+
+        {/* Action Bar - Mark as Repaired */}
+        {selectedDefectIds.size > 0 && (
+          <div className="flex items-center gap-3 p-4 bg-accent/10 border border-accent rounded-lg">
+            <span className="text-sm font-medium">
+              {selectedDefectIds.size} defect{selectedDefectIds.size > 1 ? 's' : ''} selected
+            </span>
+            <Button
+              onClick={() => setIsRepairDialogOpen(true)}
+              className="ml-auto"
+              data-testid="button-mark-repaired"
+            >
+              <Wrench className="h-4 w-4 mr-2" />
+              Mark as Repaired
+            </Button>
+          </div>
+        )}
 
         {/* Filter Bar */}
         <div className="flex flex-wrap items-center gap-3 p-4 bg-card border rounded-lg">
@@ -352,7 +392,7 @@ export default function Defects() {
             <label className="text-sm font-medium">Status:</label>
             <Select
               value={filters.status || "all"}
-              onValueChange={(value) => handleFilterChange("status", value === "all" ? undefined : value as "open" | "pending" | "repaired")}
+              onValueChange={(value) => handleFilterChange("status", value === "all" ? undefined : value as "open" | "pending" | "repaired" | "not-needed")}
             >
               <SelectTrigger className="w-32" data-testid="filter-status">
                 <SelectValue placeholder="All" />
@@ -361,7 +401,7 @@ export default function Defects() {
                 <SelectItem value="all">All</SelectItem>
                 {filterValues?.statuses.map((status) => (
                   <SelectItem key={status} value={status}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                    {status === "not-needed" ? "Not Needed" : status.charAt(0).toUpperCase() + status.slice(1)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -400,6 +440,13 @@ export default function Defects() {
                 <table className="w-full">
                   <thead className="bg-muted sticky top-0">
                     <tr>
+                      <th className="px-4 py-3 text-left">
+                        <Checkbox
+                          checked={selectedDefectIds.size === defects.length && defects.length > 0}
+                          onCheckedChange={toggleAll}
+                          data-testid="checkbox-select-all"
+                        />
+                      </th>
                       <SortableHeader field="datetime">Date & Time</SortableHeader>
                       <SortableHeader field="assetId">Asset ID</SortableHeader>
                       <SortableHeader field="driverName">Driver Name</SortableHeader>
@@ -431,6 +478,13 @@ export default function Defects() {
                           className="hover-elevate"
                           data-testid={`row-defect-${defect.id}`}
                         >
+                          <td className="px-4 py-3">
+                            <Checkbox
+                              checked={selectedDefectIds.has(defect.id)}
+                              onCheckedChange={() => toggleDefectSelection(defect.id)}
+                              data-testid={`checkbox-defect-${defect.id}`}
+                            />
+                          </td>
                           <td className="px-4 py-3 text-sm" data-testid={`text-datetime-${defect.id}`}>
                             <div>{formattedDate}</div>
                             <div className="text-xs text-muted-foreground">{formattedTime}</div>
@@ -523,6 +577,19 @@ export default function Defects() {
         inspection={selectedInspection || null}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
+      />
+
+      {/* Repair Dialog */}
+      <RepairDialog
+        open={isRepairDialogOpen}
+        onOpenChange={(open) => {
+          setIsRepairDialogOpen(open);
+          if (!open) {
+            setSelectedDefectIds(new Set());
+          }
+        }}
+        defectIds={Array.from(selectedDefectIds)}
+        companyId={selectedCompany || ""}
       />
     </div>
   );
