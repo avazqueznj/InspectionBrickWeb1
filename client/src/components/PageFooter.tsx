@@ -8,6 +8,17 @@ export function PageFooter() {
             <p>Equipment and Vehicle Inspections</p>
           </div>
           <div className="text-right">
+            <p className="mb-1">
+              <a 
+                href="https://www.linkedin.com/in/alejandrovazquez/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors underline"
+                data-testid="link-bug-reports"
+              >
+                Report Bugs
+              </a>
+            </p>
             <p>&copy; {new Date().getFullYear()} All rights reserved.</p>
           </div>
         </div>
