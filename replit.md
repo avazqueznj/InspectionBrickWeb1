@@ -53,7 +53,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 
 **Authentication & Authorization:**
 - **JWT-based authentication** with RS256 signing using RSA key pair stored in Replit Secrets
-- **Access tokens**: 8-hour expiration, no refresh tokens (users re-login when expired)
+- **Access tokens**: 24-hour expiration, no refresh tokens (users re-login when expired)
 - **Device tokens**: 10-year expiration for mobile inspection devices (perpetual, company-scoped)
 - **Company Code Login**: Users provide (userId, companyId, password) to authenticate, allowing same userId across different companies
   - **Superuser login**: Leave company code empty/whitespace for users with `companyId = null` (e.g., "avazquez")
