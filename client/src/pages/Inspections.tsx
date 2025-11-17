@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
 import { FilterBar } from "@/components/FilterBar";
+import { PageFooter } from "@/components/PageFooter";
 import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText, Printer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -329,6 +330,8 @@ export default function Inspections() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
       />
+      
+      <PageFooter />
     </div>
   );
 }
