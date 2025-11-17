@@ -5,7 +5,7 @@ export function PageFooter() {
         <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
           <div>
             <p className="font-medium">Inspection Brick</p>
-            <p>DOT Compliance & Equipment Inspection Management</p>
+            <p>Equipment and Vehicle Inspections</p>
           </div>
           <div className="text-right">
             <p>&copy; {new Date().getFullYear()} All rights reserved.</p>
