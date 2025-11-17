@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { PageFooter } from "@/components/PageFooter";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Key, ShieldAlert } from "lucide-react";
 import type { Company } from "@shared/schema";
@@ -207,6 +208,8 @@ export default function DeviceTokens() {
           </div>
         </CardContent>
       </Card>
+      
+      <PageFooter />
     </div>
   );
 }

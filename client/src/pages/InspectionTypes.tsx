@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { InspectionTypeModal } from "@/components/InspectionTypeModal";
+import { PageFooter } from "@/components/PageFooter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -372,6 +373,8 @@ export default function InspectionTypes() {
         companies={companies}
         currentCompanyId={selectedCompany}
       />
+      
+      <PageFooter />
     </div>
   );
 }

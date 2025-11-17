@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageFooter } from "@/components/PageFooter";
 import { AlertTriangle, DatabaseBackup, FileText } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -368,6 +369,8 @@ export default function AdminSettings() {
           </p>
         </CardContent>
       </Card>
+      
+      <PageFooter />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { InspectionModal } from "@/components/InspectionModal";
 import { RepairDialog } from "@/components/RepairDialog";
+import { PageFooter } from "@/components/PageFooter";
 
 type SortField = "datetime" | "assetId" | "driverName" | "zoneName" | "componentName" | "defect" | "severity" | "status" | "mechanicName" | "repairDate";
 type SortDirection = "asc" | "desc";
@@ -605,6 +606,8 @@ export default function Defects() {
         defectIds={Array.from(selectedDefectIds)}
         companyId={selectedCompany || ""}
       />
+      
+      <PageFooter />
     </div>
   );
 }

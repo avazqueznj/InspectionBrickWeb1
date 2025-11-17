@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AssetModal } from "@/components/AssetModal";
+import { PageFooter } from "@/components/PageFooter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -378,6 +379,8 @@ export default function Assets() {
         companies={companies}
         currentCompanyId={currentUser?.companyId || null}
       />
+      
+      <PageFooter />
     </div>
   );
 }

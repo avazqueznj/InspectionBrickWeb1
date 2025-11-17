@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserModal } from "@/components/UserModal";
+import { PageFooter } from "@/components/PageFooter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -391,6 +392,8 @@ export default function Users() {
         companies={companies}
         currentCompanyId={selectedCompany}
       />
+      
+      <PageFooter />
     </div>
   );
 }
