@@ -1181,7 +1181,7 @@ function DefectItem({ defect, componentId }: { defect: ComponentDefect; componen
   // Delete defect mutation
   const deleteDefectMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/defects/${id}`);
+      return apiRequest("DELETE", `/api/component-defects/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/components", componentId, "defects"] });
