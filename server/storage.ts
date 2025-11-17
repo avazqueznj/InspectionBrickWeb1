@@ -787,13 +787,18 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(inspections.companyId, companyId));
     }
     
-    // Add search conditions
+    // Add search conditions (including asset IDs from inspection_assets table)
     if (search) {
       conditions.push(
         or(
           ilike(inspections.inspectionType, `%${search}%`),
           ilike(inspections.driverName, `%${search}%`),
-          ilike(inspections.driverId, `%${search}%`)
+          ilike(inspections.driverId, `%${search}%`),
+          sql`EXISTS (
+            SELECT 1 FROM ${inspectionAssets}
+            WHERE ${inspectionAssets.inspectionId} = ${inspections.id}
+            AND ${inspectionAssets.assetId} ILIKE ${'%' + search + '%'}
+          )`
         )!
       );
     }
