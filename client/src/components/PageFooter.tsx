@@ -10,7 +10,7 @@ export function PageFooter() {
           <div className="text-right">
             <p className="mb-1">
               <a 
-                href="https://www.linkedin.com/in/alejandrovazquez/" 
+                href="https://github.com/avazqueznj/TheBrickIssues/issues" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="hover:text-foreground transition-colors underline"
