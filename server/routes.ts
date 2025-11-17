@@ -1748,6 +1748,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <th>Severity</th>
           <th>Driver Notes</th>
           <th>Inspection Time</th>
+          <th>Status</th>
+          <th>Mechanic</th>
+          <th>Repair Date</th>
+          <th>Repair Notes</th>
         </tr>
       </thead>
       <tbody>
@@ -1766,6 +1770,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const inspTime = d.inspectedAtUtc 
             ? new Date(d.inspectedAtUtc).toLocaleString() 
             : new Date(inspection.datetime).toLocaleString();
+          const repairDate = d.repairDate 
+            ? new Date(d.repairDate).toLocaleDateString()
+            : '—';
           return `
         <tr>
           <td>${d.assetId}</td>
@@ -1775,6 +1782,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <td>${d.severity}</td>
           <td>${d.driverNotes || '—'}</td>
           <td>${inspTime}</td>
+          <td>${d.status || 'open'}</td>
+          <td>${d.mechanicName || '—'}</td>
+          <td>${repairDate}</td>
+          <td>${d.repairNotes || '—'}</td>
         </tr>
         `;
         }).join('')}
