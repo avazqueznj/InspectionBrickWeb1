@@ -38,11 +38,11 @@ app.use(session({
     secure: isProduction, // Require HTTPS in production
     httpOnly: true, // Prevent client-side JS access
     sameSite: isProduction ? 'none' : 'lax', // Required for cross-site cookies in production
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    maxAge: 12 * 60 * 60 * 1000, // 12 hours
   },
 }));
 
-console.log(`🍪 Session configured - secure: ${isProduction}, sameSite: ${isProduction ? 'none' : 'lax'}, maxAge: 24h`);
+console.log(`🍪 Session configured - secure: ${isProduction}, sameSite: ${isProduction ? 'none' : 'lax'}, maxAge: 12h`);
 
 app.use(express.text({ type: 'text/plain', limit: '10mb' }));
 app.use(express.json({
