@@ -77,6 +77,20 @@ function AppContent() {
         <main className="flex-1 overflow-auto">
           <ProtectedRouter />
         </main>
+        <footer className="border-t bg-card border-border py-3 px-6">
+          <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
+            <span>© 2025 The Inspection Brick</span>
+            <a 
+              href="https://github.com/avazqueznj/TheBrickIssues/issues" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover-elevate px-2 py-1 rounded-md transition-colors"
+              data-testid="link-report-bug"
+            >
+              Report a Bug
+            </a>
+          </div>
+        </footer>
       </div>
     </CompanyProvider>
   );
