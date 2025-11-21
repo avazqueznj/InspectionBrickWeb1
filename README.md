@@ -2,7 +2,7 @@
 
 > Secure, scalable web backend for the Brick inspection ecosystem  
 > **Author:** Alejandro Vazquez  
-> **First commit:** [your first commit date] (see Git log for full provenance)
+> **First commit:** [Commit ef146a89 (open)by n141az, 10/21/2025 05:09 PM] (see Git log for full provenance)
 
 ---
 
@@ -40,10 +40,10 @@ The Brick Web App provides a cloud-connected backend and admin portal for Brick 
 
 ## Provenance & License
 
-- All code in this repo was written **from scratch** by Alejandro Vazquez after [your last Zonar date].
+- All code in this repo was written **from scratch** by Alejandro Vazquez.
 - Commit history provides clear proof of authorship and timeline.
 - No prior employer IP or proprietary code is present.
-- License: [MIT/Apache2/Proprietary]
+- License: [Proprietary]
 
 ---
 
@@ -56,4 +56,4 @@ The Brick Web App provides a cloud-connected backend and admin portal for Brick 
 
 ## Contact
 
-Alejandro Vazquez — [your email]  
+Alejandro Vazquez — [alejandrovazquez@yahoo.com]  
