@@ -32,7 +32,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { PageFooter } from "@/components/PageFooter";
 import { Plus, Trash2, Edit2, FolderTree, Pencil } from "lucide-react";
 
 interface Layout {
@@ -309,8 +308,6 @@ export default function Layouts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
-      <PageFooter />
     </div>
   );
 }
