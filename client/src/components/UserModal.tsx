@@ -31,8 +31,8 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
   // Create dynamic schema based on mode
   const userFormSchema = insertUserSchema.extend({
     password: isEdit 
-      ? z.string().optional() // Optional for edit
-      : z.string().min(6, "Password must be at least 6 characters"), // Required for create
+      ? z.string().max(12, "Password must be 12 characters or less").optional() // Optional for edit
+      : z.string().min(6, "Password must be at least 6 characters").max(12, "Password must be 12 characters or less"), // Required for create
   });
   
   const form = useForm<UserFormData>({
@@ -179,6 +179,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                     <Input
                       {...field}
                       type="password"
+                      maxLength={12}
                       placeholder={isEdit ? "Enter new password" : "Enter password"}
                       data-testid="input-password"
                     />
