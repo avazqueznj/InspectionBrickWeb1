@@ -2,18 +2,30 @@ import { Link, useLocation } from "wouter";
 import { CompanySelector } from "./CompanySelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, ChevronDown, Settings, Smartphone, FileText, Layers } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import logoUrl from "@assets/FBricklogo_1761093196077.png";
 
-const menuItems = [
+const mainMenuItems = [
   { path: "/", label: "Inspections" },
   { path: "/defects", label: "Defects/Repairs" },
   { path: "/assets", label: "Assets" },
   { path: "/users", label: "Users" },
-  { path: "/inspection-types", label: "Inspection Types" },
-  { path: "/layouts", label: "Layouts" },
-  { path: "/device-tokens", label: "Device Tokens", adminOnly: true },
-  { path: "/admin/settings", label: "Admin", adminOnly: true },
+];
+
+const customerAdminItems = [
+  { path: "/inspection-types", label: "Inspection Types", icon: FileText },
+  { path: "/layouts", label: "Layouts", icon: Layers },
+];
+
+const adminItems = [
+  { path: "/device-tokens", label: "Device Tokens", icon: Smartphone },
+  { path: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export function TopBar() {
@@ -24,6 +36,12 @@ export function TopBar() {
     await logout();
   };
 
+  const canAccessCustomerAdmin = user?.isSuperuser || user?.customerAdminAccess;
+  const canAccessAdmin = user?.isSuperuser;
+  
+  const isCustomerAdminActive = customerAdminItems.some(item => location === item.path);
+  const isAdminActive = adminItems.some(item => location === item.path);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card border-border">
       <div className="flex h-16 items-center justify-between px-6">
@@ -33,10 +51,7 @@ export function TopBar() {
           </div>
           
           <nav className="hidden md:flex items-center gap-1">
-            {menuItems.map((item) => {
-              if (item.adminOnly && !user?.isSuperuser) {
-                return null;
-              }
+            {mainMenuItems.map((item) => {
               const isActive = location === item.path;
               return (
                 <Link
@@ -50,12 +65,82 @@ export function TopBar() {
                       : 'text-muted-foreground'
                     }
                   `}
-                  data-testid={`nav-${item.label.toLowerCase().replace(/\//g, '-')}`}
+                  data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   {item.label}
                 </Link>
               );
             })}
+            
+            {canAccessCustomerAdmin && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`
+                      px-4 py-2 text-sm font-medium rounded-md transition-colors
+                      hover-elevate active-elevate-2 flex items-center gap-1
+                      ${isCustomerAdminActive 
+                        ? 'bg-accent text-accent-foreground' 
+                        : 'text-muted-foreground'
+                      }
+                    `}
+                    data-testid="nav-customer-admin"
+                  >
+                    Customer Admin
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {customerAdminItems.map((item) => (
+                    <DropdownMenuItem key={item.path} asChild>
+                      <Link
+                        href={item.path}
+                        className="flex items-center gap-2 cursor-pointer"
+                        data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            
+            {canAccessAdmin && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`
+                      px-4 py-2 text-sm font-medium rounded-md transition-colors
+                      hover-elevate active-elevate-2 flex items-center gap-1
+                      ${isAdminActive 
+                        ? 'bg-accent text-accent-foreground' 
+                        : 'text-muted-foreground'
+                      }
+                    `}
+                    data-testid="nav-admin"
+                  >
+                    Admin
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {adminItems.map((item) => (
+                    <DropdownMenuItem key={item.path} asChild>
+                      <Link
+                        href={item.path}
+                        className="flex items-center gap-2 cursor-pointer"
+                        data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </nav>
         </div>
 
