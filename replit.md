@@ -122,6 +122,14 @@ The UI features a dark industrial theme with orange (#FF5722) accents, emphasizi
 - **Severity Configuration:** Defects have configurable max severity (1-10) with color-coded display (red/orange/yellow/blue)
 - **Company Scoping:** Regular users limited to their company; superusers specify companyId in request body/query params
 - **Database Tables:** layout_zones, layout_zone_components, component_defects with proper FK constraints and cascade delete
+- **Zone Images:** Optional JPEG reference images per zone to help drivers identify inspection areas
+  - **Dimensions:** Max 800x400 pixels for TJpg_Decoder library compatibility on embedded devices
+  - **Server Validation:** Uses sharp library to authoritatively validate JPEG format and dimensions
+  - **API Endpoints:** POST/DELETE/GET /api/zones/:id/image (protected, web app only)
+  - **Device Endpoint:** GET /api/device/images/:uuid (Bearer token auth, returns raw JPEG binary)
+  - **Storage:** UUID-based zone_images table with BYTEA column for image data
+  - **FK Relationship:** layout_zones.imageId optional FK to zone_images.id
+  - **UI:** 96x64px thumbnails in layout builder with upload/replace/delete buttons
 - **Seed Data:** Template-driven approach creates realistic layouts for SCHOOL-BUS, TRUCK, and TRAILER vehicles based on NJ DOT inspection form requirements, with zones (Before Operating, During Warm-Up, Exterior Walkaround, Coupling, Brake System), components (tires, brakes, lights, emergency equipment), and defects with appropriate severity levels (1-10 scale) and repair instructions
 
 **Admin Tools:**
