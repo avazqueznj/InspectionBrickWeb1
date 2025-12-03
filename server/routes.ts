@@ -419,30 +419,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Device: Download zone image (requires device token)
-  // Supports both Authorization header and ?token= query param for browser testing
-  app.get("/api/device/images/:uuid", async (req: AuthRequest, res) => {
+  app.get("/api/device/images/:uuid", requireAuth, async (req: AuthRequest, res) => {
     const { uuid } = req.params;
-    const queryToken = req.query.token as string | undefined;
     console.log(`📱 [Routes] GET /api/device/images/${uuid} - Downloading zone image`);
-    
-    // If token in query param, add it to Authorization header for middleware
-    if (queryToken && !req.headers.authorization) {
-      req.headers.authorization = `Bearer ${queryToken}`;
-    }
-    
-    // Run auth middleware manually
-    await new Promise<void>((resolve, reject) => {
-      requireJWTAuth(req, res, (err?: any) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    }).catch(() => {
-      // Auth failed, response already sent by middleware
-      return;
-    });
-    
-    // Check if response already sent by auth middleware
-    if (res.headersSent) return;
     
     // Verify this is a device token
     if (!req.auth || !req.auth.isDeviceToken) {
