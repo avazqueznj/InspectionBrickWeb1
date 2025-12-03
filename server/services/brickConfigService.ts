@@ -78,7 +78,9 @@ export async function generateBrickConfig(
     for (const zone of zones) {
       const zoneTag = sanitize(zone.zoneTag || '', 'zoneTag');
       const zoneName = sanitize(zone.zoneName, 'zoneName');
-      lines.push(`LAYZONE*${zoneTag}*${zoneName}`);
+      // Include image UUID at end (always include trailing * even if no image)
+      const imageId = zone.imageId || '';
+      lines.push(`LAYZONE*${zoneTag}*${zoneName}*${imageId}`);
       
       // Get components for this zone
       const components = await storage.getZoneComponents(zone.id);
