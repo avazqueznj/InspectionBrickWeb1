@@ -33,7 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageFooter } from "@/components/PageFooter";
-import { AlertTriangle, DatabaseBackup, FileText, Image } from "lucide-react";
+import { AlertTriangle, DatabaseBackup, FileText, Image, Upload, Copy, Check } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +55,9 @@ export default function AdminSettings() {
   const [deviceToken, setDeviceToken] = useState<string>("");
   const [imageUuid, setImageUuid] = useState<string>("11111111-1111-1111-1111-111111111111");
   const [imageDeviceToken, setImageDeviceToken] = useState<string>("");
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [uploadedUuid, setUploadedUuid] = useState<string | null>(null);
+  const [copiedUuid, setCopiedUuid] = useState(false);
 
   // Redirect non-superusers via useEffect (not during render)
   useEffect(() => {
@@ -102,6 +105,65 @@ export default function AdminSettings() {
       });
     },
   });
+
+  const uploadImageMutation = useMutation({
+    mutationFn: async (imageData: string) => {
+      const res = await apiRequest("POST", "/api/admin/zone-images", { imageData });
+      return await res.json();
+    },
+    onSuccess: (data: { uuid: string; size: number }) => {
+      setUploadedUuid(data.uuid);
+      toast({
+        title: "Image Uploaded",
+        description: `Zone image created with UUID: ${data.uuid.substring(0, 8)}...`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: error.message || "Failed to upload image",
+      });
+    },
+  });
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
+      toast({
+        variant: "destructive",
+        title: "Invalid File Type",
+        description: "Please select a JPEG image file",
+      });
+      return;
+    }
+
+    // Read file as base64
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      uploadImageMutation.mutate(base64);
+    };
+    reader.onerror = () => {
+      toast({
+        variant: "destructive",
+        title: "Read Error",
+        description: "Failed to read the image file",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCopyUuid = () => {
+    if (uploadedUuid) {
+      navigator.clipboard.writeText(uploadedUuid);
+      setCopiedUuid(true);
+      setTimeout(() => setCopiedUuid(false), 2000);
+    }
+  };
 
   const handlePreviewConfig = async () => {
     if (!selectedCompany || !deviceToken.trim()) {
@@ -442,6 +504,149 @@ export default function AdminSettings() {
                     >
                       Preview in New Tab
                     </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Zone Image Upload */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Upload className="h-6 w-6 text-primary" />
+            <div>
+              <CardTitle>Zone Image Upload</CardTitle>
+              <CardDescription>
+                Upload JPEG images for zone documentation
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border bg-muted/5 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2 flex-1">
+                <h3 className="font-semibold">Upload New Zone Image</h3>
+                <p className="text-sm text-muted-foreground">
+                  Select a JPEG image file to upload. A random UUID will be generated
+                  automatically. You can then use this UUID in layouts.
+                </p>
+              </div>
+              <Dialog open={isUploadDialogOpen} onOpenChange={(open) => {
+                setIsUploadDialogOpen(open);
+                if (!open) {
+                  setUploadedUuid(null);
+                  setCopiedUuid(false);
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="lg"
+                    data-testid="button-upload-image"
+                  >
+                    Upload Image
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Upload Zone Image</DialogTitle>
+                    <DialogDescription>
+                      Select a JPEG image to upload. A UUID will be generated automatically.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    {!uploadedUuid ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-center w-full">
+                          <label
+                            htmlFor="image-upload"
+                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/10 hover:bg-muted/20 border-muted-foreground/25"
+                          >
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
+                              <p className="mb-1 text-sm text-muted-foreground">
+                                <span className="font-semibold">Click to upload</span>
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                JPEG images only
+                              </p>
+                            </div>
+                            <input
+                              id="image-upload"
+                              type="file"
+                              className="hidden"
+                              accept="image/jpeg,image/jpg"
+                              onChange={handleFileSelect}
+                              disabled={uploadImageMutation.isPending}
+                              data-testid="input-image-file"
+                            />
+                          </label>
+                        </div>
+                        {uploadImageMutation.isPending && (
+                          <p className="text-center text-sm text-muted-foreground">
+                            Uploading...
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-md">
+                          <Check className="w-5 h-5 text-green-500" />
+                          <span className="text-sm text-green-500 font-medium">
+                            Image uploaded successfully!
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Generated UUID</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={uploadedUuid}
+                              readOnly
+                              className="font-mono text-sm"
+                              data-testid="text-uploaded-uuid"
+                            />
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              onClick={handleCopyUuid}
+                              data-testid="button-copy-uuid"
+                            >
+                              {copiedUuid ? (
+                                <Check className="h-4 w-4" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Use this UUID in your layout configuration
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsUploadDialogOpen(false)}
+                      data-testid="button-close-upload"
+                    >
+                      {uploadedUuid ? "Close" : "Cancel"}
+                    </Button>
+                    {uploadedUuid && (
+                      <Button
+                        onClick={() => {
+                          setUploadedUuid(null);
+                        }}
+                        data-testid="button-upload-another"
+                      >
+                        Upload Another
+                      </Button>
+                    )}
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

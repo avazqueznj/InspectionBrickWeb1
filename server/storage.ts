@@ -208,6 +208,7 @@ export interface IStorage {
   
   // Zone Images
   getZoneImage(id: string): Promise<ZoneImage | undefined>;
+  createZoneImage(imageData: Buffer): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1747,6 +1748,19 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`✅ [Storage] Zone image found: ${id} (${results[0].imageData.length} bytes)`);
     return results[0];
+  }
+
+  async createZoneImage(imageData: Buffer): Promise<string> {
+    const id = crypto.randomUUID();
+    console.log(`🖼️ [Storage] Creating zone image with UUID: ${id} (${imageData.length} bytes)`);
+    
+    await db.insert(zoneImages).values({
+      id,
+      imageData,
+    });
+    
+    console.log(`✅ [Storage] Zone image created: ${id}`);
+    return id;
   }
 }
 

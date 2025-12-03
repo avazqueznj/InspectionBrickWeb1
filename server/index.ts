@@ -46,6 +46,7 @@ console.log(`🍪 Session configured - secure: ${isProduction}, sameSite: ${isPr
 
 app.use(express.text({ type: 'text/plain', limit: '10mb' }));
 app.use(express.json({
+  limit: '10mb', // Allow larger payloads for image uploads
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }

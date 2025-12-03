@@ -497,6 +497,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Upload zone image (superuser only)
+  app.post("/api/admin/zone-images", requireSuperuser, async (req: AuthRequest, res) => {
+    console.log(`🖼️ [Routes] POST /api/admin/zone-images - Superuser: ${req.auth?.userId}`);
+    
+    try {
+      const { imageData } = req.body;
+      
+      if (!imageData || typeof imageData !== 'string') {
+        return res.status(400).json({ error: "Missing imageData (base64 encoded JPEG)" });
+      }
+      
+      // Validate base64 and decode
+      const base64Pattern = /^data:image\/jpeg;base64,(.+)$/;
+      const match = imageData.match(base64Pattern);
+      
+      let base64Data: string;
+      if (match) {
+        // Has data URL prefix
+        base64Data = match[1];
+      } else {
+        // Assume raw base64
+        base64Data = imageData;
+      }
+      
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // Basic JPEG validation (check magic bytes)
+      if (buffer.length < 2 || buffer[0] !== 0xFF || buffer[1] !== 0xD8) {
+        return res.status(400).json({ error: "Invalid JPEG image data" });
+      }
+      
+      console.log(`📦 [Routes] Decoded image: ${buffer.length} bytes`);
+      
+      const uuid = await storage.createZoneImage(buffer);
+      
+      console.log(`✅ [Routes] Zone image uploaded: ${uuid}`);
+      res.status(201).json({ 
+        success: true,
+        uuid,
+        size: buffer.length
+      });
+    } catch (error) {
+      console.error("❌ [Routes] Error uploading zone image:", error);
+      res.status(500).json({ 
+        error: "Failed to upload image",
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Auth: Get current user
   app.get("/api/auth/me", async (req, res) => {
     console.log(`👤 [Routes] GET /api/auth/me - Session userId: ${req.session.userId || 'NONE'}`);
