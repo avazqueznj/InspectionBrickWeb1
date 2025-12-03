@@ -7,6 +7,7 @@ interface AuthUser {
   userId: string;
   companyId: string | null;
   isSuperuser: boolean;
+  customerAdminAccess: boolean;
 }
 
 interface AuthContextType {
@@ -20,6 +21,7 @@ interface JWTPayload {
   userId: string;
   companyId: string | null;
   isSuperuser: boolean;
+  customerAdminAccess: boolean;
   exp: number;
 }
 
@@ -42,6 +44,7 @@ function getUserFromToken(): AuthUser | null {
       userId: decoded.userId,
       companyId: decoded.companyId,
       isSuperuser: decoded.isSuperuser,
+      customerAdminAccess: decoded.customerAdminAccess || false,
     };
   } catch (error) {
     console.error("Failed to decode token:", error);

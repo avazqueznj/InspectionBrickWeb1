@@ -9,6 +9,7 @@ interface TokenPayload {
   userId: string;
   companyId: string | null;
   isSuperuser: boolean;
+  customerAdminAccess?: boolean;
   isDeviceToken?: boolean;
 }
 
@@ -16,6 +17,7 @@ interface VerifiedToken {
   userId: string;
   companyId: string | null; // null for superusers
   isSuperuser: boolean;
+  customerAdminAccess: boolean;
   isDeviceToken: boolean;
 }
 
@@ -68,6 +70,7 @@ export async function generateAccessToken(payload: TokenPayload): Promise<string
     userId: payload.userId,
     companyId: payload.companyId,
     isSuperuser: payload.isSuperuser,
+    customerAdminAccess: payload.customerAdminAccess || false,
     isDeviceToken: false,
   })
     .setProtectedHeader({ alg: JWT_ALGORITHM })
@@ -127,6 +130,7 @@ export async function verifyToken(token: string): Promise<VerifiedToken> {
     const userId = payload.userId as string;
     const companyId = payload.companyId as string | null;
     const isSuperuser = payload.isSuperuser as boolean;
+    const customerAdminAccess = payload.customerAdminAccess as boolean || false;
     const isDeviceToken = payload.isDeviceToken as boolean || false;
     
     if (!userId) {
@@ -139,6 +143,7 @@ export async function verifyToken(token: string): Promise<VerifiedToken> {
       userId,
       companyId: isSuperuser ? null : companyId,
       isSuperuser,
+      customerAdminAccess,
       isDeviceToken,
     };
   } catch (error) {

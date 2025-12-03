@@ -141,6 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: user.userId,
         companyId: user.companyId,
         isSuperuser: user.companyId === null,
+        customerAdminAccess: user.customerAdminAccess || false,
       });
       
       // Also set session for dual-mode compatibility (legacy clients)
@@ -149,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Reset rate limit on successful login
       resetLoginRateLimit(req);
-      console.log(`✅ [Routes] JWT token generated - userId: ${user.userId}, companyId: ${user.companyId || 'null (superuser)'}`);
+      console.log(`✅ [Routes] JWT token generated - userId: ${user.userId}, companyId: ${user.companyId || 'null (superuser)'}, customerAdmin: ${user.customerAdminAccess}`);
       console.log(`🔄 [Routes] Session also populated for legacy client compatibility`);
       
       // Return token and user info
@@ -159,6 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId: user.userId,
           companyId: user.companyId,
           isSuperuser: user.companyId === null,
+          customerAdminAccess: user.customerAdminAccess || false,
         },
       });
       console.log(`✅ [Routes] Login successful for user: ${userId}`);

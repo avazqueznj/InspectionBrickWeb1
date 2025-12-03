@@ -44,6 +44,7 @@ export const users = pgTable("users", {
   userTag: text("user_tag"),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   webAccess: boolean("web_access").notNull().default(false),
+  customerAdminAccess: boolean("customer_admin_access").notNull().default(false),
   companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }),
 }, (table) => ({
   // Unique constraint: same userId can exist across companies, but not within same company
