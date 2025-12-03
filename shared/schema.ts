@@ -136,12 +136,19 @@ export const layouts = pgTable("layouts", {
   layoutNameNotEmpty: check("layout_name_not_empty", sql`LENGTH(TRIM(${table.layoutName})) > 0`),
 }));
 
+// Zone Images table - stores JPEG images for zone documentation (must be defined before layoutZones for FK)
+export const zoneImages = pgTable("zone_images", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  imageData: bytea("image_data").notNull(),
+});
+
 // Layout Zones table
 export const layoutZones = pgTable("layout_zones", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   zoneName: text("zone_name").notNull(),
   zoneTag: text("zone_tag"),
   layoutId: varchar("layout_id").notNull().references(() => layouts.id, { onDelete: "cascade" }),
+  imageId: varchar("image_id").references(() => zoneImages.id, { onDelete: "set null" }),
 });
 
 // Layout Zone Components table
@@ -194,12 +201,6 @@ export const uploadErrors = pgTable("upload_errors", {
   assetId: text("asset_id"),
   rawData: text("raw_data").notNull(),
   errorTrace: text("error_trace").notNull(),
-});
-
-// Zone Images table - stores JPEG images for zone documentation
-export const zoneImages = pgTable("zone_images", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  imageData: bytea("image_data").notNull(),
 });
 
 // Define relations
@@ -282,6 +283,10 @@ export const layoutZonesRelations = relations(layoutZones, ({ one, many }) => ({
   layout: one(layouts, {
     fields: [layoutZones.layoutId],
     references: [layouts.id],
+  }),
+  image: one(zoneImages, {
+    fields: [layoutZones.imageId],
+    references: [zoneImages.id],
   }),
   components: many(layoutZoneComponents),
 }));

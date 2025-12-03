@@ -32,7 +32,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Trash2, Edit2, FolderTree, Pencil } from "lucide-react";
+import { Plus, Trash2, Edit2, FolderTree, Pencil, ImageIcon, Upload, X } from "lucide-react";
 
 interface Layout {
   id: string;
@@ -45,6 +45,7 @@ interface LayoutZone {
   zoneName: string;
   zoneTag: string | null;
   layoutId: string;
+  imageId: string | null;
 }
 
 interface LayoutZoneComponent {
@@ -470,6 +471,7 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editZoneName, setEditZoneName] = useState(zone.zoneName);
   const [editZoneTag, setEditZoneTag] = useState(zone.zoneTag || "");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Sync edit state when dialog opens or zone props change
   useEffect(() => {
@@ -529,6 +531,113 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
     },
   });
 
+  // Upload zone image mutation
+  const uploadImageMutation = useMutation({
+    mutationFn: async (data: { imageData: string }) => {
+      return apiRequest("POST", `/api/zones/${zone.id}/image`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/layouts", layoutId, "zones"] });
+      toast({
+        title: "Success",
+        description: "Zone image uploaded successfully",
+      });
+      setIsUploadingImage(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload image",
+        variant: "destructive",
+      });
+      setIsUploadingImage(false);
+    },
+  });
+
+  // Delete zone image mutation
+  const deleteImageMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", `/api/zones/${zone.id}/image`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/layouts", layoutId, "zones"] });
+      toast({
+        title: "Success",
+        description: "Zone image deleted",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete image",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select a JPEG image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    // Load image to get dimensions
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      img.src = e.target?.result as string;
+    };
+
+    img.onload = () => {
+      // Client-side pre-validation for UX (server validates authoritatively)
+      if (img.width > 800 || img.height > 400) {
+        toast({
+          title: "Image Too Large",
+          description: `Maximum dimensions are 800x400 pixels. Your image is ${img.width}x${img.height}.`,
+          variant: "destructive",
+        });
+        setIsUploadingImage(false);
+        return;
+      }
+
+      // Convert to base64 and upload
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0);
+      const base64 = canvas.toDataURL('image/jpeg', 0.9);
+
+      uploadImageMutation.mutate({
+        imageData: base64,
+      });
+    };
+
+    img.onerror = () => {
+      toast({
+        title: "Error",
+        description: "Failed to load image",
+        variant: "destructive",
+      });
+      setIsUploadingImage(false);
+    };
+
+    reader.readAsDataURL(file);
+    // Reset input so same file can be selected again
+    event.target.value = '';
+  };
+
   const handleUpdateZone = () => {
     if (!editZoneName.trim()) {
       toast({
@@ -583,7 +692,73 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
           </div>
         </AccordionTrigger>
         <AccordionContent>
-          <div className="pt-4">
+          <div className="pt-4 space-y-4">
+            {/* Zone Image Section */}
+            <div className="flex items-start gap-4 p-3 bg-muted/30 rounded-lg">
+              <div className="flex-shrink-0">
+                {zone.imageId ? (
+                  <div className="relative group">
+                    <img
+                      src={`/api/zones/${zone.id}/image`}
+                      alt={`${zone.zoneName} reference`}
+                      className="w-24 h-16 object-cover rounded border border-border"
+                      data-testid={`img-zone-${zone.id}`}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-24 h-16 bg-muted/50 rounded border border-dashed border-muted-foreground/30 flex items-center justify-center">
+                    <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium mb-1">Zone Reference Image</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {zone.imageId 
+                    ? "Image helps drivers identify this inspection zone"
+                    : "Add an image to help drivers identify this zone (max 800x400 JPEG)"
+                  }
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    id={`zone-image-${zone.id}`}
+                    accept="image/jpeg,image/jpg"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                    disabled={isUploadingImage || uploadImageMutation.isPending}
+                    data-testid={`input-zone-image-${zone.id}`}
+                  />
+                  <Button
+                    size="sm"
+                    variant={zone.imageId ? "outline" : "default"}
+                    onClick={() => document.getElementById(`zone-image-${zone.id}`)?.click()}
+                    disabled={isUploadingImage || uploadImageMutation.isPending}
+                    data-testid={`button-upload-zone-image-${zone.id}`}
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    {isUploadingImage || uploadImageMutation.isPending 
+                      ? "Uploading..." 
+                      : zone.imageId ? "Replace" : "Upload"
+                    }
+                  </Button>
+                  {zone.imageId && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => deleteImageMutation.mutate()}
+                      disabled={deleteImageMutation.isPending}
+                      data-testid={`button-delete-zone-image-${zone.id}`}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1.5" />
+                      {deleteImageMutation.isPending ? "Deleting..." : "Remove"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Components Section */}
             <ComponentManager zoneId={zone.id} components={components} />
           </div>
         </AccordionContent>

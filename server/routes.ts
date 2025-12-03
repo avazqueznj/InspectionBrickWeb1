@@ -8,6 +8,7 @@ import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
 import { requireAuth as requireJWTAuth, requireSuperuser, rateLimitLogin, resetLoginRateLimit, logLoginFailure, type AuthRequest } from "./auth/middleware";
 import { runSeed } from "./services/seedService";
 import { generateBrickConfig } from "./services/brickConfigService";
+import sharp from "sharp";
 
 // Dual-mode authentication middleware (supports both session and JWT during migration)
 function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
@@ -1173,6 +1174,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Routes] Error deleting zone:", error);
       res.status(500).json({ error: "Failed to delete zone" });
+    }
+  });
+
+  // Upload zone image (protected) - max 800x400 pixels for TJpg_Decoder compatibility
+  app.post("/api/zones/:id/image", requireAuth, async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    console.log(`🖼️ [Routes] POST /api/zones/${id}/image - Uploading zone image`);
+    
+    try {
+      const { imageData } = req.body;
+      
+      if (!imageData || typeof imageData !== 'string') {
+        return res.status(400).json({ error: "Missing imageData (base64 encoded JPEG)" });
+      }
+      
+      // Validate base64 and decode
+      const base64Pattern = /^data:image\/jpeg;base64,(.+)$/;
+      const match = imageData.match(base64Pattern);
+      
+      let base64Data: string;
+      if (match) {
+        base64Data = match[1];
+      } else {
+        base64Data = imageData;
+      }
+      
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // Basic JPEG validation (check magic bytes SOI marker)
+      if (buffer.length < 2 || buffer[0] !== 0xFF || buffer[1] !== 0xD8) {
+        return res.status(400).json({ error: "Invalid JPEG image data" });
+      }
+      
+      // Use sharp to decode and validate actual image dimensions
+      let metadata;
+      try {
+        metadata = await sharp(buffer).metadata();
+      } catch (sharpError) {
+        console.log(`❌ [Routes] Failed to decode image: ${sharpError}`);
+        return res.status(400).json({ error: "Failed to decode JPEG image" });
+      }
+      
+      const actualWidth = metadata.width || 0;
+      const actualHeight = metadata.height || 0;
+      
+      // Validate dimensions server-side (max 800x400 for TJpg_Decoder on embedded devices)
+      if (actualWidth > 800 || actualHeight > 400) {
+        console.log(`❌ [Routes] Image too large: ${actualWidth}x${actualHeight}`);
+        return res.status(400).json({ 
+          error: "Image too large", 
+          message: `Maximum dimensions are 800x400 pixels. Your image is ${actualWidth}x${actualHeight}.` 
+        });
+      }
+      
+      if (metadata.format !== 'jpeg') {
+        return res.status(400).json({ error: "Image must be JPEG format" });
+      }
+      
+      console.log(`📦 [Routes] Decoded image: ${buffer.length} bytes, ${actualWidth}x${actualHeight}`);
+      
+      // Get the current zone to check for existing image
+      const currentZone = await storage.getLayoutZoneById(id, req.auth?.companyId || undefined);
+      if (!currentZone) {
+        console.log(`❌ [Routes] Zone not found or unauthorized`);
+        return res.status(404).json({ error: "Zone not found" });
+      }
+      
+      const oldImageId = currentZone.imageId;
+      
+      // Create new image
+      const imageId = await storage.createZoneImage(buffer);
+      
+      // Update zone with new image reference
+      const updatedZone = await storage.updateLayoutZone(id, { imageId }, req.auth?.companyId || undefined);
+      
+      if (!updatedZone) {
+        return res.status(500).json({ error: "Failed to update zone with image" });
+      }
+      
+      // Delete old image if exists (cleanup)
+      if (oldImageId) {
+        await storage.deleteZoneImage(oldImageId);
+        console.log(`🗑️ [Routes] Deleted old zone image: ${oldImageId}`);
+      }
+      
+      console.log(`✅ [Routes] Zone image uploaded: ${imageId}`);
+      res.status(201).json({ 
+        success: true,
+        imageId,
+        width: actualWidth,
+        height: actualHeight,
+        size: buffer.length
+      });
+    } catch (error) {
+      console.error("❌ [Routes] Error uploading zone image:", error);
+      res.status(500).json({ 
+        error: "Failed to upload image",
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Delete zone image (protected)
+  app.delete("/api/zones/:id/image", requireAuth, async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    console.log(`🗑️ [Routes] DELETE /api/zones/${id}/image - Deleting zone image`);
+    
+    try {
+      // Get the current zone
+      const zone = await storage.getLayoutZoneById(id, req.auth?.companyId || undefined);
+      if (!zone) {
+        console.log(`❌ [Routes] Zone not found or unauthorized`);
+        return res.status(404).json({ error: "Zone not found" });
+      }
+      
+      if (!zone.imageId) {
+        return res.status(404).json({ error: "Zone has no image" });
+      }
+      
+      const imageId = zone.imageId;
+      
+      // Clear the image reference from zone
+      await storage.updateLayoutZone(id, { imageId: null }, req.auth?.companyId || undefined);
+      
+      // Delete the image from zone_images
+      await storage.deleteZoneImage(imageId);
+      
+      console.log(`✅ [Routes] Zone image deleted: ${imageId}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Routes] Error deleting zone image:", error);
+      res.status(500).json({ error: "Failed to delete zone image" });
+    }
+  });
+
+  // Get zone image as JPEG (protected)
+  app.get("/api/zones/:id/image", requireAuth, async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    console.log(`🖼️ [Routes] GET /api/zones/${id}/image - Fetching zone image`);
+    
+    try {
+      // Get the zone
+      const zone = await storage.getLayoutZoneById(id, req.auth?.companyId || undefined);
+      if (!zone) {
+        console.log(`❌ [Routes] Zone not found or unauthorized`);
+        return res.status(404).json({ error: "Zone not found" });
+      }
+      
+      if (!zone.imageId) {
+        return res.status(404).json({ error: "Zone has no image" });
+      }
+      
+      // Get the image
+      const image = await storage.getZoneImage(zone.imageId);
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+      
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Content-Length', image.imageData.length.toString());
+      res.send(image.imageData);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching zone image:", error);
+      res.status(500).json({ error: "Failed to fetch zone image" });
     }
   });
 

@@ -209,6 +209,7 @@ export interface IStorage {
   // Zone Images
   getZoneImage(id: string): Promise<ZoneImage | undefined>;
   createZoneImage(imageData: Buffer): Promise<string>;
+  deleteZoneImage(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1761,6 +1762,23 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`✅ [Storage] Zone image created: ${id}`);
     return id;
+  }
+
+  async deleteZoneImage(id: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting zone image: ${id}`);
+    
+    const result = await db
+      .delete(zoneImages)
+      .where(eq(zoneImages.id, id))
+      .returning({ id: zoneImages.id });
+    
+    if (result.length === 0) {
+      console.log(`❌ [Storage] Zone image not found for deletion: ${id}`);
+      return false;
+    }
+    
+    console.log(`✅ [Storage] Zone image deleted: ${id}`);
+    return true;
   }
 }
 
