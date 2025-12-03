@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, zoneImages, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset, type ZoneImage } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and, inArray } from "drizzle-orm";
 
@@ -205,6 +205,9 @@ export interface IStorage {
   // Inspection Type Layouts (existing methods)
   getInspectionTypeLayouts(inspectionTypeId: string): Promise<string[]>;
   setInspectionTypeLayouts(inspectionTypeId: string, layoutIds: string[]): Promise<void>;
+  
+  // Zone Images
+  getZoneImage(id: string): Promise<ZoneImage | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1726,6 +1729,24 @@ export class DatabaseStorage implements IStorage {
     });
     
     console.log(`✅ [Storage] Upload error logged to database`);
+  }
+
+  async getZoneImage(id: string): Promise<ZoneImage | undefined> {
+    console.log(`🖼️ [Storage] Fetching zone image: ${id}`);
+    
+    const results = await db
+      .select()
+      .from(zoneImages)
+      .where(eq(zoneImages.id, id))
+      .limit(1);
+    
+    if (results.length === 0) {
+      console.log(`❌ [Storage] Zone image not found: ${id}`);
+      return undefined;
+    }
+    
+    console.log(`✅ [Storage] Zone image found: ${id} (${results[0].imageData.length} bytes)`);
+    return results[0];
   }
 }
 

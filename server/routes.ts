@@ -497,6 +497,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: View zone image (superuser only - for testing)
+  app.get("/api/admin/images/:uuid", requireSuperuser, async (req: AuthRequest, res) => {
+    const { uuid } = req.params;
+    console.log(`🖼️ [Routes] GET /api/admin/images/${uuid} - Admin viewing zone image`);
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(uuid)) {
+      console.log(`❌ [Routes] Invalid UUID format: ${uuid}`);
+      return res.status(400).json({ error: "Invalid UUID format" });
+    }
+    
+    try {
+      const image = await storage.getZoneImage(uuid);
+      
+      if (!image) {
+        console.log(`❌ [Routes] Image not found: ${uuid}`);
+        return res.status(404).json({ error: "Image not found" });
+      }
+      
+      console.log(`✅ [Routes] Image found - ${image.imageData.length} bytes`);
+      
+      // Return raw JPEG binary
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Content-Length', image.imageData.length.toString());
+      res.send(image.imageData);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching zone image:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      return res.status(500).json({ 
+        error: "Failed to fetch image",
+        message: errorMessage
+      });
+    }
+  });
+
   // Auth: Get current user
   app.get("/api/auth/me", async (req, res) => {
     console.log(`👤 [Routes] GET /api/auth/me - Session userId: ${req.session.userId || 'NONE'}`);
