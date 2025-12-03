@@ -166,7 +166,7 @@ export default function AdminSettings() {
     }
   };
 
-  const handlePreviewImage = async () => {
+  const handlePreviewImage = () => {
     if (!imageUuid.trim() || !imageDeviceToken.trim()) {
       toast({
         variant: "destructive",
@@ -187,73 +187,9 @@ export default function AdminSettings() {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/device/images/${imageUuid.trim()}`, {
-        headers: {
-          'Authorization': `Bearer ${imageDeviceToken.trim()}`
-        }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `HTTP ${response.status}`);
-      }
-
-      // Get the blob and create an object URL
-      const blob = await response.blob();
-      const imageUrl = URL.createObjectURL(blob);
-      
-      // Open in new tab
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(`
-          <html>
-            <head>
-              <title>Zone Image - ${imageUuid}</title>
-              <style>
-                body {
-                  margin: 0;
-                  padding: 20px;
-                  background: #1e1e1e;
-                  display: flex;
-                  flex-direction: column;
-                  align-items: center;
-                }
-                img {
-                  max-width: 100%;
-                  height: auto;
-                  border: 1px solid #333;
-                }
-                .info {
-                  color: #d4d4d4;
-                  font-family: 'Courier New', monospace;
-                  margin-bottom: 10px;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="info">UUID: ${imageUuid}</div>
-              <img src="${imageUrl}" alt="Zone Image" />
-            </body>
-          </html>
-        `);
-        newWindow.document.close();
-      }
-
-      setIsImageDialogOpen(false);
-      setImageDeviceToken("");
-      
-      toast({
-        title: "Image Retrieved",
-        description: "Zone image opened in new tab",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Preview Failed",
-        description: error instanceof Error ? error.message : "Failed to fetch zone image",
-      });
-    }
+    // Navigate directly to the endpoint URL with token as query param
+    const url = `/api/device/images/${imageUuid.trim()}?token=${encodeURIComponent(imageDeviceToken.trim())}`;
+    window.location.href = url;
   };
 
   return (
