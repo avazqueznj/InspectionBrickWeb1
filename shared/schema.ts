@@ -1,7 +1,30 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, boolean, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean, unique, check, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Custom bytea type for binary data (JPEG images)
+const bytea = customType<{ data: Buffer; notNull: false; default: false }>({
+  dataType() {
+    return "bytea";
+  },
+  toDriver(value: Buffer): Buffer {
+    return value;
+  },
+  fromDriver(value: unknown): Buffer {
+    if (Buffer.isBuffer(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      // Handle hex-encoded bytea (e.g., \x89504e47...)
+      if (value.startsWith('\\x')) {
+        return Buffer.from(value.slice(2), 'hex');
+      }
+      return Buffer.from(value, 'binary');
+    }
+    throw new Error('Unexpected bytea value type');
+  },
+});
 
 // Companies table
 export const companies = pgTable("companies", {
@@ -171,6 +194,12 @@ export const uploadErrors = pgTable("upload_errors", {
   assetId: text("asset_id"),
   rawData: text("raw_data").notNull(),
   errorTrace: text("error_trace").notNull(),
+});
+
+// Zone Images table - stores JPEG images for zone documentation
+export const zoneImages = pgTable("zone_images", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  imageData: bytea("image_data").notNull(),
 });
 
 // Define relations
@@ -350,6 +379,10 @@ export const insertComponentDefectSchema = createInsertSchema(componentDefects).
   defectMaxSeverity: z.number().int().min(1).max(10),
 });
 
+export const insertZoneImageSchema = createInsertSchema(zoneImages).omit({
+  id: true,
+});
+
 // Types
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
@@ -380,6 +413,8 @@ export type LayoutZoneComponent = typeof layoutZoneComponents.$inferSelect;
 export type InsertLayoutZoneComponent = z.infer<typeof insertLayoutZoneComponentSchema>;
 export type ComponentDefect = typeof componentDefects.$inferSelect;
 export type InsertComponentDefect = z.infer<typeof insertComponentDefectSchema>;
+export type ZoneImage = typeof zoneImages.$inferSelect;
+export type InsertZoneImage = z.infer<typeof insertZoneImageSchema>;
 
 // Extended type for inspection with defects and assets
 export type InspectionWithDefects = Inspection & {
