@@ -1449,10 +1449,19 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
     
+    // Store imageId before deletion for cleanup
+    const imageIdToDelete = zone.imageId;
+    
     const result = await db
       .delete(layoutZones)
       .where(eq(layoutZones.id, id))
       .returning();
+    
+    // Cascade delete the associated image if it exists
+    if (result.length > 0 && imageIdToDelete) {
+      console.log(`🗑️ [Storage] Cascade deleting zone image: ${imageIdToDelete}`);
+      await this.deleteZoneImage(imageIdToDelete);
+    }
     
     console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Zone ${result.length > 0 ? 'deleted' : 'not found'}`);
     return result.length > 0;
