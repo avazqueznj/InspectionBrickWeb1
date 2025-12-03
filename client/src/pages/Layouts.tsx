@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useCompany } from "@/contexts/CompanyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { Redirect } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,11 +67,17 @@ interface ComponentDefect {
 
 export default function Layouts() {
   const { selectedCompany } = useCompany();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedLayout, setSelectedLayout] = useState<Layout | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newLayoutName, setNewLayoutName] = useState("");
   const [deleteLayoutId, setDeleteLayoutId] = useState<string | null>(null);
+  
+  // Authorization check: only superusers or users with customerAdminAccess can access this page
+  if (user && !user.isSuperuser && !user.customerAdminAccess) {
+    return <Redirect to="/" />;
+  }
 
   // Fetch layouts
   const { data: layouts = [], isLoading } = useQuery<Layout[]>({

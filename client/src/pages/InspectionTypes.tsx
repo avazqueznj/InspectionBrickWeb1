@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { type InspectionType, type InspectionTypeWithFormFields, type InsertInspectionType, type Company } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { Redirect } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Plus, Pencil } from "lucide-react";
@@ -35,6 +37,7 @@ interface InspectionTypeFilterValues {
 
 export default function InspectionTypes() {
   const { selectedCompany } = useCompany();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -44,6 +47,11 @@ export default function InspectionTypes() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedInspectionType, setSelectedInspectionType] = useState<InspectionTypeWithFormFields | null>(null);
   const itemsPerPage = 10;
+  
+  // Authorization check: only superusers or users with customerAdminAccess can access this page
+  if (user && !user.isSuperuser && !user.customerAdminAccess) {
+    return <Redirect to="/" />;
+  }
 
   // Reset to page 1 when search query, status filter, or company changes
   useEffect(() => {

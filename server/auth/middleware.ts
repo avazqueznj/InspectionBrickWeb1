@@ -7,6 +7,7 @@ export interface AuthRequest extends Request {
     userId: string;
     companyId: string | null; // null for superusers
     isSuperuser: boolean;
+    customerAdminAccess: boolean;
     isDeviceToken: boolean;
   };
 }
@@ -192,6 +193,59 @@ export async function requireSuperuser(req: AuthRequest, res: Response, next: Ne
       userId: req.session.userId,
       companyId: null,
       isSuperuser: true,
+      customerAdminAccess: true,
+      isDeviceToken: false,
+    };
+    return next();
+  }
+  
+  console.log(`❌ [Auth] No authentication provided`);
+  return res.status(401).json({ error: "Authentication required" });
+}
+
+/**
+ * Middleware to require customer admin access (superuser OR customerAdminAccess)
+ * Used for layouts and inspection-types management
+ */
+export async function requireCustomerAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  // Try JWT first
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.substring(7);
+      const verified = await verifyToken(token);
+      req.auth = verified;
+      
+      // Check if user is superuser or has customerAdminAccess
+      if (!verified.isSuperuser && !verified.customerAdminAccess) {
+        console.log(`❌ [Auth] Customer admin access denied for JWT user: ${verified.userId}`);
+        return res.status(403).json({ error: "Customer admin access required" });
+      }
+      
+      return next();
+    } catch (error) {
+      console.error('❌ [Auth] JWT authentication failed:', error);
+      logAuthFailure(req, error instanceof Error ? error.message : 'Unknown error');
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+  }
+  
+  // Fall back to session (legacy) - superusers always have customer admin access
+  if (req.session.userId) {
+    console.log(`⚠️  [Auth] Using legacy session auth for user: ${req.session.userId}`);
+    
+    // For legacy sessions, only superusers (companyId === null) have customer admin access
+    if (req.session.companyId !== null) {
+      console.log(`❌ [Auth] Customer admin access denied for session user: ${req.session.userId}`);
+      return res.status(403).json({ error: "Customer admin access required" });
+    }
+    
+    // Populate req.auth from session for compatibility
+    req.auth = {
+      userId: req.session.userId,
+      companyId: null,
+      isSuperuser: true,
+      customerAdminAccess: true,
       isDeviceToken: false,
     };
     return next();

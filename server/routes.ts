@@ -5,7 +5,7 @@ import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAss
 import { z } from "zod";
 import { parseBrickInspection } from "./brickParser";
 import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
-import { requireAuth as requireJWTAuth, requireSuperuser, rateLimitLogin, resetLoginRateLimit, logLoginFailure, type AuthRequest } from "./auth/middleware";
+import { requireAuth as requireJWTAuth, requireSuperuser, requireCustomerAdmin, rateLimitLogin, resetLoginRateLimit, logLoginFailure, type AuthRequest } from "./auth/middleware";
 import { runSeed } from "./services/seedService";
 import { generateBrickConfig } from "./services/brickConfigService";
 import sharp from "sharp";
@@ -22,10 +22,13 @@ function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   if (req.session.userId) {
     console.log(`⚠️  [Auth] Using legacy session auth for user: ${req.session.userId}`);
     // Populate req.auth from session for compatibility
+    // For legacy sessions, superusers (companyId === null) implicitly have customerAdminAccess
+    const isSuperuser = req.session.companyId === null;
     req.auth = {
       userId: req.session.userId,
       companyId: req.session.companyId || null,
-      isSuperuser: req.session.companyId === null,
+      isSuperuser,
+      customerAdminAccess: isSuperuser, // Superusers implicitly have customer admin access
       isDeviceToken: false,
     };
     return next();
@@ -898,9 +901,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // === LAYOUT ROUTES ===
+  // Layout routes require customer admin access (superuser OR customerAdminAccess)
 
-  // Get all layouts for a company (protected)
-  app.get("/api/layouts", requireAuth, async (req: AuthRequest, res) => {
+  // Get all layouts for a company (customer admin protected)
+  app.get("/api/layouts", requireCustomerAdmin, async (req: AuthRequest, res) => {
     console.log(`📋 [Routes] GET /api/layouts - User: ${req.auth?.userId}, isSuperuser: ${req.auth?.isSuperuser || false}`);
     
     try {
@@ -930,8 +934,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get layout by layoutName (protected)
-  app.get("/api/layouts/:layoutName", requireAuth, async (req: AuthRequest, res) => {
+  // Get layout by layoutName (customer admin protected)
+  app.get("/api/layouts/:layoutName", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { layoutName } = req.params;
     console.log(`🔍 [Routes] GET /api/layouts/${layoutName} - User: ${req.session.userId}`);
     
@@ -951,8 +955,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create layout (protected)
-  app.post("/api/layouts", requireAuth, async (req: AuthRequest, res) => {
+  // Create layout (customer admin protected)
+  app.post("/api/layouts", requireCustomerAdmin, async (req: AuthRequest, res) => {
     console.log(`➕ [Routes] POST /api/layouts - Creating layout: ${req.body?.layoutName || 'UNKNOWN'}, User: ${req.auth?.userId}, isSuperuser: ${req.auth?.isSuperuser || false}`);
     
     try {
@@ -1002,7 +1006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update layout (protected)
-  app.patch("/api/layouts/:layoutName", requireAuth, async (req: AuthRequest, res) => {
+  app.patch("/api/layouts/:layoutName", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { layoutName } = req.params;
     console.log(`🔄 [Routes] PATCH /api/layouts/${layoutName} - Updating layout`);
     
@@ -1030,7 +1034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete layout (protected)
-  app.delete("/api/layouts/:id", requireAuth, async (req: AuthRequest, res) => {
+  app.delete("/api/layouts/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/layouts/${id} - Deleting layout`);
     
@@ -1067,7 +1071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get zones for a layout (protected)
-  app.get("/api/layouts/:layoutId/zones", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/layouts/:layoutId/zones", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { layoutId } = req.params; // This is the layout UUID
     console.log(`📋 [Routes] GET /api/layouts/${layoutId}/zones - Fetching zones`);
     
@@ -1096,7 +1100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create zone (protected)
-  app.post("/api/layouts/:layoutId/zones", requireAuth, async (req: AuthRequest, res) => {
+  app.post("/api/layouts/:layoutId/zones", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { layoutId } = req.params; // This is the layout UUID
     console.log(`➕ [Routes] POST /api/layouts/${layoutId}/zones - Creating zone, User: ${req.auth?.userId}`);
     
@@ -1133,7 +1137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update zone (protected)
-  app.patch("/api/zones/:id", requireAuth, async (req: AuthRequest, res) => {
+  app.patch("/api/zones/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🔄 [Routes] PATCH /api/zones/${id} - Updating zone`);
     
@@ -1159,7 +1163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete zone (protected)
-  app.delete("/api/zones/:id", requireAuth, async (req: AuthRequest, res) => {
+  app.delete("/api/zones/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/zones/${id} - Deleting zone`);
     
@@ -1180,7 +1184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload zone image (protected) - max 800x400 pixels for TJpg_Decoder compatibility
-  app.post("/api/zones/:id/image", requireAuth, async (req: AuthRequest, res) => {
+  app.post("/api/zones/:id/image", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🖼️ [Routes] POST /api/zones/${id}/image - Uploading zone image`);
     
@@ -1279,7 +1283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete zone image (protected)
-  app.delete("/api/zones/:id/image", requireAuth, async (req: AuthRequest, res) => {
+  app.delete("/api/zones/:id/image", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/zones/${id}/image - Deleting zone image`);
     
@@ -1312,7 +1316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get zone image as JPEG (protected)
-  app.get("/api/zones/:id/image", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/zones/:id/image", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🖼️ [Routes] GET /api/zones/${id}/image - Fetching zone image`);
     
@@ -1344,7 +1348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get components for a zone (protected)
-  app.get("/api/zones/:zoneId/components", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/zones/:zoneId/components", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { zoneId } = req.params;
     console.log(`📋 [Routes] GET /api/zones/${zoneId}/components - Fetching components`);
     
@@ -1363,7 +1367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create component (protected)
-  app.post("/api/zones/:zoneId/components", requireAuth, async (req: AuthRequest, res) => {
+  app.post("/api/zones/:zoneId/components", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { zoneId } = req.params;
     console.log(`➕ [Routes] POST /api/zones/${zoneId}/components - Creating component`);
     
@@ -1390,7 +1394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update component (protected)
-  app.patch("/api/components/:id", requireAuth, async (req: AuthRequest, res) => {
+  app.patch("/api/components/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🔄 [Routes] PATCH /api/components/${id} - Updating component`);
     
@@ -1415,7 +1419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete component (protected)
-  app.delete("/api/components/:id", requireAuth, async (req: AuthRequest, res) => {
+  app.delete("/api/components/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/components/${id} - Deleting component`);
     
@@ -1436,7 +1440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get defects for a component (protected)
-  app.get("/api/components/:componentId/defects", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/components/:componentId/defects", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { componentId } = req.params;
     console.log(`📋 [Routes] GET /api/components/${componentId}/defects - Fetching defects`);
     
@@ -1455,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create component defect (protected)
-  app.post("/api/components/:componentId/defects", requireAuth, async (req: AuthRequest, res) => {
+  app.post("/api/components/:componentId/defects", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { componentId } = req.params;
     console.log(`➕ [Routes] POST /api/components/${componentId}/defects - Creating defect`);
     
@@ -1482,7 +1486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update component defect (protected)
-  app.patch("/api/component-defects/:id", requireAuth, async (req: AuthRequest, res) => {
+  app.patch("/api/component-defects/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🔄 [Routes] PATCH /api/component-defects/${id} - Updating defect`);
     
@@ -1507,7 +1511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete component defect (protected)
-  app.delete("/api/component-defects/:id", requireAuth, async (req: AuthRequest, res) => {
+  app.delete("/api/component-defects/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🗑️ [Routes] DELETE /api/component-defects/${id} - Deleting defect`);
     
@@ -1530,7 +1534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // === INSPECTION TYPE ROUTES ===
 
   // Get available filter values for inspection types (protected)
-  app.get("/api/inspection-types/filter-values", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/inspection-types/filter-values", requireCustomerAdmin, async (req: AuthRequest, res) => {
     console.log(`🔍 [Routes] GET /api/inspection-types/filter-values - User: ${req.session.userId}`);
     
     try {
@@ -1551,7 +1555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all inspection types (protected)
-  app.get("/api/inspection-types", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/inspection-types", requireCustomerAdmin, async (req: AuthRequest, res) => {
     console.log(`📋 [Routes] GET /api/inspection-types - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
@@ -1577,7 +1581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get a single inspection type with form fields (protected)
-  app.get("/api/inspection-types/:inspectionTypeName", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/inspection-types/:inspectionTypeName", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { inspectionTypeName } = req.params;
     console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName} - User: ${req.session.userId}`);
     
@@ -1606,7 +1610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new inspection type (protected)
-  app.post("/api/inspection-types", requireAuth, async (req: AuthRequest, res) => {
+  app.post("/api/inspection-types", requireCustomerAdmin, async (req: AuthRequest, res) => {
     console.log(`➕ [Routes] POST /api/inspection-types - Creating inspection type: ${req.body?.inspectionTypeName || 'UNKNOWN'}`);
     
     try {
@@ -1646,7 +1650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update an inspection type (protected)
-  app.patch("/api/inspection-types/:inspectionTypeName", requireAuth, async (req: AuthRequest, res) => {
+  app.patch("/api/inspection-types/:inspectionTypeName", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { inspectionTypeName } = req.params;
     console.log(`🔄 [Routes] PATCH /api/inspection-types/${inspectionTypeName} - Updating inspection type`);
     
@@ -1693,7 +1697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get form fields for an inspection type (protected)
-  app.get("/api/inspection-types/:inspectionTypeName/form-fields", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/inspection-types/:inspectionTypeName/form-fields", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { inspectionTypeName } = req.params;
     console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName}/form-fields - Fetching form fields`);
     
@@ -1722,7 +1726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new form field for an inspection type (protected)
-  app.post("/api/inspection-types/:inspectionTypeName/form-fields", requireAuth, async (req: AuthRequest, res) => {
+  app.post("/api/inspection-types/:inspectionTypeName/form-fields", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { inspectionTypeName } = req.params;
     console.log(`➕ [Routes] POST /api/inspection-types/${inspectionTypeName}/form-fields - Creating form field`);
     
