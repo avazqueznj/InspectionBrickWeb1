@@ -418,6 +418,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Device: Download zone image (requires device token)
+  app.get("/api/device/images/:uuid", requireAuth, async (req: AuthRequest, res) => {
+    const { uuid } = req.params;
+    console.log(`📱 [Routes] GET /api/device/images/${uuid} - Downloading zone image`);
+    
+    // Verify this is a device token
+    if (!req.auth || !req.auth.isDeviceToken) {
+      console.log(`❌ [Routes] Image download rejected - not a device token`);
+      return res.status(403).json({ error: "Device token required for this endpoint" });
+    }
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(uuid)) {
+      console.log(`❌ [Routes] Invalid UUID format: ${uuid}`);
+      return res.status(400).json({ error: "Invalid UUID format" });
+    }
+    
+    try {
+      const image = await storage.getZoneImage(uuid);
+      
+      if (!image) {
+        console.log(`❌ [Routes] Image not found: ${uuid}`);
+        return res.status(404).json({ error: "Image not found" });
+      }
+      
+      console.log(`✅ [Routes] Image found - ${image.imageData.length} bytes`);
+      
+      // Return raw JPEG binary
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Content-Length', image.imageData.length.toString());
+      res.send(image.imageData);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching zone image:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      return res.status(500).json({ 
+        error: "Failed to fetch image",
+        message: errorMessage
+      });
+    }
+  });
+
   // Auth: Logout
   app.post("/api/auth/logout", (req, res) => {
     const userId = req.session.userId;
