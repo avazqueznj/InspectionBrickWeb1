@@ -707,7 +707,7 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
                 {zone.imageId ? (
                   <div className="relative group">
                     <img
-                      src={`/api/zones/${zone.id}/image`}
+                      src={`/api/zones/${zone.id}/image?v=${zone.imageId}`}
                       alt={`${zone.zoneName} reference`}
                       className="w-24 h-16 object-cover rounded border border-border"
                       data-testid={`img-zone-${zone.id}`}
