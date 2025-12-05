@@ -105,6 +105,26 @@ export interface DefectWithInspection extends Defect {
   };
 }
 
+// Analytics interfaces
+export interface InspectionAnalytics {
+  assetsMostDefects: { assetId: string; defectCount: number }[];
+  usersByInspectionCount: { userId: string; inspectionCount: number }[];
+  componentsMostDefects: { componentName: string; defectCount: number }[];
+  defectsBySeverity: { severity: string; count: number }[];
+  totalInspections: number;
+  totalDefects: number;
+}
+
+export interface DefectAnalytics {
+  assetsMostDefects: { assetId: string; defectCount: number }[];
+  componentsMostDefects: { componentName: string; defectCount: number }[];
+  defectsByStatus: { status: string; count: number }[];
+  defectsBySeverity: { severity: string; count: number }[];
+  zonesMostDefects: { zoneName: string; defectCount: number }[];
+  totalOpen: number;
+  totalRepaired: number;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -210,6 +230,10 @@ export interface IStorage {
   getZoneImage(id: string): Promise<ZoneImage | undefined>;
   createZoneImage(imageData: Buffer): Promise<string>;
   deleteZoneImage(id: string): Promise<boolean>;
+  
+  // Analytics
+  getInspectionAnalytics(companyId: string): Promise<InspectionAnalytics>;
+  getDefectAnalytics(companyId: string): Promise<DefectAnalytics>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1789,6 +1813,229 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`✅ [Storage] Zone image deleted: ${id}`);
     return true;
+  }
+
+  async getInspectionAnalytics(companyId: string): Promise<InspectionAnalytics> {
+    console.log(`📊 [Storage] Fetching inspection analytics for company: ${companyId}`);
+    
+    // Assets with most defects (top 10)
+    const assetsMostDefects = await db
+      .select({
+        assetId: defects.assetId,
+        defectCount: sql<number>`count(*)::int`,
+      })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`
+      ))
+      .groupBy(defects.assetId)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10);
+    
+    // Users by inspection count (top 10)
+    const usersByInspectionCount = await db
+      .select({
+        userId: inspections.driverId,
+        inspectionCount: sql<number>`count(*)::int`,
+      })
+      .from(inspections)
+      .where(eq(inspections.companyId, companyId))
+      .groupBy(inspections.driverId)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10);
+    
+    // Components with most defects (top 10)
+    const componentsMostDefects = await db
+      .select({
+        componentName: defects.componentName,
+        defectCount: sql<number>`count(*)::int`,
+      })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`
+      ))
+      .groupBy(defects.componentName)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10);
+    
+    // Defects by severity
+    const defectsBySeverity = await db
+      .select({
+        severity: sql<string>`CASE 
+          WHEN ${defects.severity} >= 8 THEN 'critical'
+          WHEN ${defects.severity} >= 5 THEN 'high'
+          WHEN ${defects.severity} >= 2 THEN 'medium'
+          ELSE 'low'
+        END`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`
+      ))
+      .groupBy(sql`CASE 
+        WHEN ${defects.severity} >= 8 THEN 'critical'
+        WHEN ${defects.severity} >= 5 THEN 'high'
+        WHEN ${defects.severity} >= 2 THEN 'medium'
+        ELSE 'low'
+      END`);
+    
+    // Total inspections
+    const totalInspectionsResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(inspections)
+      .where(eq(inspections.companyId, companyId));
+    
+    // Total defects (severity > 0)
+    const totalDefectsResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`
+      ));
+    
+    console.log(`✅ [Storage] Inspection analytics retrieved`);
+    
+    return {
+      assetsMostDefects,
+      usersByInspectionCount,
+      componentsMostDefects,
+      defectsBySeverity,
+      totalInspections: totalInspectionsResult[0]?.count || 0,
+      totalDefects: totalDefectsResult[0]?.count || 0,
+    };
+  }
+
+  async getDefectAnalytics(companyId: string): Promise<DefectAnalytics> {
+    console.log(`📊 [Storage] Fetching defect analytics for company: ${companyId}`);
+    
+    // Assets with most defects (top 10)
+    const assetsMostDefects = await db
+      .select({
+        assetId: defects.assetId,
+        defectCount: sql<number>`count(*)::int`,
+      })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`
+      ))
+      .groupBy(defects.assetId)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10);
+    
+    // Components with most defects (top 10)
+    const componentsMostDefects = await db
+      .select({
+        componentName: defects.componentName,
+        defectCount: sql<number>`count(*)::int`,
+      })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`
+      ))
+      .groupBy(defects.componentName)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10);
+    
+    // Zones with most defects (top 10)
+    const zonesMostDefects = await db
+      .select({
+        zoneName: defects.zoneName,
+        defectCount: sql<number>`count(*)::int`,
+      })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`
+      ))
+      .groupBy(defects.zoneName)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10);
+    
+    // Defects by status
+    const defectsByStatus = await db
+      .select({
+        status: defects.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`
+      ))
+      .groupBy(defects.status);
+    
+    // Defects by severity
+    const defectsBySeverity = await db
+      .select({
+        severity: sql<string>`CASE 
+          WHEN ${defects.severity} >= 8 THEN 'critical'
+          WHEN ${defects.severity} >= 5 THEN 'high'
+          WHEN ${defects.severity} >= 2 THEN 'medium'
+          ELSE 'low'
+        END`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`
+      ))
+      .groupBy(sql`CASE 
+        WHEN ${defects.severity} >= 8 THEN 'critical'
+        WHEN ${defects.severity} >= 5 THEN 'high'
+        WHEN ${defects.severity} >= 2 THEN 'medium'
+        ELSE 'low'
+      END`);
+    
+    // Total open defects
+    const totalOpenResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`,
+        eq(defects.status, 'open')
+      ));
+    
+    // Total repaired defects
+    const totalRepairedResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(defects)
+      .innerJoin(inspections, eq(defects.inspectionId, inspections.id))
+      .where(and(
+        eq(inspections.companyId, companyId),
+        sql`${defects.severity} > 0`,
+        eq(defects.status, 'repaired')
+      ));
+    
+    console.log(`✅ [Storage] Defect analytics retrieved`);
+    
+    return {
+      assetsMostDefects,
+      componentsMostDefects,
+      defectsByStatus,
+      defectsBySeverity,
+      zonesMostDefects,
+      totalOpen: totalOpenResult[0]?.count || 0,
+      totalRepaired: totalRepairedResult[0]?.count || 0,
+    };
   }
 }
 
