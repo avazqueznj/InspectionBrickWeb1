@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { InspectionModal } from "@/components/InspectionModal";
 import { RepairDialog } from "@/components/RepairDialog";
 import { PageFooter } from "@/components/PageFooter";
+import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 
 type SortField = "datetime" | "assetId" | "driverName" | "zoneName" | "componentName" | "defect" | "severity" | "status" | "mechanicName" | "repairDate";
 type SortDirection = "asc" | "desc";
@@ -421,6 +422,9 @@ export default function Defects() {
             </Button>
           )}
         </div>
+
+        {/* Analytics Dashboard */}
+        <AnalyticsDashboard companyId={selectedCompany} type="defects" />
 
         {/* Table */}
         <div className="border rounded-lg overflow-hidden bg-card">
