@@ -52,6 +52,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 - Supports Company Code Login, allowing users to authenticate with `(userId, companyId, password)`. Superusers have `companyId = null`.
 - Web access control via a `webAccess` boolean flag on user accounts.
 - Three-tier permission system: Superusers, Customer Admins, and Regular Users, enforced both server-side and client-side.
+- Customer Admin toggle: Superusers can grant/revoke customerAdminAccess via a switch in the Users table.
 - Rate limiting and audit logging for failed login attempts.
 - All data access is company-scoped, verified via JWT payload.
 
