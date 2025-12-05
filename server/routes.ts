@@ -1879,6 +1879,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get inspection analytics for dashboard (protected)
+  app.get("/api/inspections/analytics", requireAuth, async (req: AuthRequest, res) => {
+    console.log(`📊 [Routes] GET /api/inspections/analytics - User: ${req.session.userId}`);
+    
+    try {
+      // Enforce company scoping
+      const companyId = req.auth?.companyId || (req.query.companyId as string | undefined);
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "Company ID is required" });
+      }
+      
+      const analytics = await storage.getInspectionAnalytics(companyId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching inspection analytics:", error);
+      res.status(500).json({ error: "Failed to fetch inspection analytics" });
+    }
+  });
+
   // Get all inspections with their defects (with query params for search, sort, pagination) (protected)
   app.get("/api/inspections", requireAuth, async (req: AuthRequest, res) => {
     console.log(`📋 [Routes] GET /api/inspections - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
@@ -2359,6 +2379,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Routes] Error fetching defect filter values:", error);
       res.status(500).json({ error: "Failed to fetch filter values" });
+    }
+  });
+
+  // Get defect analytics for dashboard (protected)
+  app.get("/api/defects/analytics", requireAuth, async (req: AuthRequest, res) => {
+    console.log(`📊 [Routes] GET /api/defects/analytics - User: ${req.session.userId}`);
+    
+    try {
+      // Enforce company scoping
+      const companyId = req.auth?.companyId || (req.query.companyId as string | undefined);
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "Company ID is required" });
+      }
+      
+      const analytics = await storage.getDefectAnalytics(companyId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching defect analytics:", error);
+      res.status(500).json({ error: "Failed to fetch defect analytics" });
     }
   });
 
