@@ -679,6 +679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userTag: user.userTag,
         status: user.status,
         webAccess: user.webAccess,
+        customerAdminAccess: user.customerAdminAccess,
         companyId: user.companyId,
       });
     } catch (error) {
@@ -699,6 +700,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updateData = insertUserSchema.partial().parse(req.body);
       
+      // Security: Only superusers can modify customerAdminAccess
+      if ('customerAdminAccess' in updateData && !req.auth?.isSuperuser) {
+        console.log(`❌ [Routes] Authorization failed - Only superusers can modify customerAdminAccess`);
+        return res.status(403).json({ error: "Only superusers can modify customer admin access" });
+      }
+      
       // Get the existing user to check authorization
       const existingUser = await storage.getUserById(userId);
       if (!existingUser) {
@@ -706,7 +713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
       
-      // Enforce company scoping
+      // Enforce company scoping (skip for superusers)
       if (req.auth?.companyId && existingUser.companyId !== req.auth?.companyId) {
         console.log(`❌ [Routes] Authorization failed - Cannot update user from another company`);
         return res.status(403).json({ error: "Cannot update users from other companies" });
@@ -726,6 +733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userTag: updatedUser.userTag,
         status: updatedUser.status,
         webAccess: updatedUser.webAccess,
+        customerAdminAccess: updatedUser.customerAdminAccess,
         companyId: updatedUser.companyId,
       });
     } catch (error) {
