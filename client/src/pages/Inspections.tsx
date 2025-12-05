@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
 import { FilterBar } from "@/components/FilterBar";
 import { PageFooter } from "@/components/PageFooter";
+import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText, Printer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -185,6 +186,9 @@ export default function Inspections() {
 
         {/* Filter Bar */}
         <FilterBar companyId={selectedCompany || undefined} onFilterChange={setFilters} />
+
+        {/* Analytics Dashboard */}
+        <AnalyticsDashboard companyId={selectedCompany} type="inspections" />
 
         {/* Table */}
         <div className="border rounded-lg overflow-hidden bg-card">
