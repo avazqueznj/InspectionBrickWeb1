@@ -25,6 +25,7 @@ Inspection Brick is a professional web application designed for managing equipme
 - **NO complex test scripts** - Keep testing simple and manual
 - **Simple solutions preferred** - Avoid over-engineering with unnecessary libraries
 - **NO caching** - All data fetched fresh from database (React Query: staleTime: 0, gcTime: 0)
+- **Analytics dashboards exception** - Analytics queries use 5-minute staleTime for performance
 - **Print reports:** Server-rendered HTML in new browser tabs for optimal print formatting
 
 ## System Architecture
@@ -74,6 +75,14 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 - Uses UUID-based inspection IDs and UTC timestamps.
 - Raw BRICKINSPECTION EDI data is stored for debugging.
 - Comprehensive error logging and duplicate detection for inspection uploads.
+
+**Analytics Dashboards:**
+- Collapsible statistics panels on Inspections and Defects pages showing key metrics
+- Inspections page: Top assets with defects, users by inspection count, components with most defects, defects by severity
+- Defects page: Assets with most defects, components with most defects, defects by status, zones with most defects
+- Uses Recharts for bar chart visualizations
+- Data cached for 5 minutes with manual refresh option (only exception to no-caching rule)
+- Collapsed state persisted in localStorage per page
 
 **Core Concepts:**
 - **Defects Table:** Records represent inspection checks. Severity 0 means no defect (audit trail), 1-10 are actual defects (needs repair). Defects are sorted by severity (DESC) then time (DESC) for real-time monitoring.
