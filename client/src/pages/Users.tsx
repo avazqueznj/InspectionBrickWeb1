@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { type UserWithoutPassword, type InsertUser, type Company } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Plus, Pencil } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +37,9 @@ interface UserFilterValues {
 
 export default function Users() {
   const { selectedCompany } = useCompany();
+  const { user: authUser } = useAuth();
   const { toast } = useToast();
+  const isSuperuser = authUser?.isSuperuser ?? false;
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>("userId");
@@ -120,6 +124,30 @@ export default function Users() {
       toast({
         title: "Error",
         description: error.message || "Failed to update user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Toggle customer admin access mutation (superuser only)
+  const toggleCustomerAdminMutation = useMutation({
+    mutationFn: async ({ userId, customerAdminAccess }: { userId: string; customerAdminAccess: boolean }) => {
+      return await apiRequest("PATCH", `/api/users/${userId}`, { customerAdminAccess });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ 
+        queryKey: ["/api/users"],
+        exact: false 
+      });
+      toast({
+        title: "Success",
+        description: "Customer admin access updated",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update customer admin access",
         variant: "destructive",
       });
     },
@@ -270,6 +298,11 @@ export default function Users() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Web Access
                   </th>
+                  {isSuperuser && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Customer Admin
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Actions
                   </th>
@@ -279,14 +312,14 @@ export default function Users() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      <td className="px-4 py-4" colSpan={6}>
+                      <td className="px-4 py-4" colSpan={isSuperuser ? 7 : 6}>
                         <Skeleton className="h-8 w-full" />
                       </td>
                     </tr>
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center">
+                    <td colSpan={isSuperuser ? 7 : 6} className="px-4 py-12 text-center">
                       <div className="text-muted-foreground">
                         <p className="text-sm">No users found</p>
                         <p className="text-xs mt-1">Try adjusting your search or filters</p>
@@ -331,6 +364,21 @@ export default function Users() {
                           {user.webAccess ? "Enabled" : "Disabled"}
                         </Badge>
                       </td>
+                      {isSuperuser && (
+                        <td className="px-4 py-4">
+                          <Switch
+                            checked={user.customerAdminAccess ?? false}
+                            onCheckedChange={(checked) => {
+                              toggleCustomerAdminMutation.mutate({
+                                userId: user.userId,
+                                customerAdminAccess: checked,
+                              });
+                            }}
+                            disabled={user.companyId === null || toggleCustomerAdminMutation.isPending}
+                            data-testid={`switch-customerAdmin-${user.userId}`}
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-4 text-right">
                         <Button
                           variant="ghost"
