@@ -87,6 +87,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 **Core Concepts:**
 - **Defects Table:** Records represent inspection checks. Severity 0 means no defect (audit trail), 1-10 are actual defects (needs repair). Defects are sorted by severity (DESC) then time (DESC) for real-time monitoring.
 - **Layout Builder:** A visual UI for configuring inspection layouts with a hierarchical structure (Layout → Zone → Component → Defect). Supports full CRUD operations, inline editing, and severity configuration. Includes optional zone images (JPEG, max 800x400px) and seed data for common vehicle types.
+- **Layout Activation:** Layouts have an `isActive` boolean field (default: false). Only active layouts are sent to devices via the config endpoint. Activation requires validation: layout must have at least one zone, each zone must have at least one component, and each component must have at least one defect. All names must be non-empty. Toggle UI shows green power icon for active layouts with validation feedback on errors.
 - **Admin Tools:** Superuser-only features including database reseed functionality and a device config preview tool.
 
 ### Database Schema

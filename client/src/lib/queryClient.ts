@@ -34,7 +34,26 @@ async function throwIfResNotOk(res: Response) {
     }
     
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    
+    // Try to parse as JSON to extract structured error data
+    let errorData: Record<string, unknown> = {};
+    try {
+      errorData = JSON.parse(text);
+    } catch {
+      // Not JSON, use raw text
+    }
+    
+    const error = new Error(errorData.error as string || `${res.status}: ${text}`) as Error & Record<string, unknown>;
+    
+    // Attach additional properties from error response
+    if (errorData.validationErrors) {
+      error.validationErrors = errorData.validationErrors;
+    }
+    if (errorData.details) {
+      error.details = errorData.details;
+    }
+    
+    throw error;
   }
 }
 
