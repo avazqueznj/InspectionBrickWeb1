@@ -1,23 +1,15 @@
 import { type IStorage } from "../storage";
 
 /**
- * Sanitizes a value for EDI format by only allowing safe characters.
- * Allowed: A-Z a-z 0-9 space . , : ; / - _ ' " ( ) #
- * All other characters (including * CR LF) are replaced with space.
- * Multiple consecutive spaces are collapsed to single space.
+ * Sanitizes a value by replacing '*' with '-' to prevent EDI delimiter conflicts
+ * Logs a warning when sanitization occurs
  */
 function sanitize(value: string | null | undefined, fieldName: string): string {
   if (!value) return '';
   
-  // Replace any character not in the allowed set with a space
-  // Allowed: A-Z a-z 0-9 space . , : ; / - _ ' " ( ) #
-  const sanitized = value
-    .replace(/[^A-Za-z0-9 .,;:\/\-_'"()#]/g, ' ')
-    .replace(/\s+/g, ' ')  // Collapse multiple spaces to single space
-    .trim();
-  
+  const sanitized = value.replace(/\*/g, '-');
   if (sanitized !== value) {
-    console.log(`⚠️  [BrickConfig] Sanitized ${fieldName}: "${value}" -> "${sanitized}"`);
+    console.log(`⚠️  [BrickConfig] Sanitized '*' in ${fieldName}: "${value}" -> "${sanitized}"`);
   }
   
   return sanitized;
