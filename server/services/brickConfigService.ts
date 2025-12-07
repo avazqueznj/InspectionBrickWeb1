@@ -59,12 +59,12 @@ export async function generateBrickConfig(
   
   lines.push('');
   
-  // === LAYOUTS SECTION ===
+  // === LAYOUTS SECTION (only active layouts) ===
   lines.push('LAYOUTS');
   lines.push('');
   
-  const layouts = await storage.getLayouts(companyId);
-  console.log(`📐 [BrickConfig] Found ${layouts.length} layouts`);
+  const layouts = await storage.getActiveLayouts(companyId);
+  console.log(`📐 [BrickConfig] Found ${layouts.length} active layouts`);
   
   for (const layout of layouts) {
     const layoutName = sanitize(layout.layoutName, 'layoutName');
