@@ -1078,6 +1078,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Validate layout completeness (customer admin protected)
+  app.get("/api/layouts/:id/validate", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    console.log(`🔍 [Routes] GET /api/layouts/${id}/validate - Validating layout`);
+    
+    try {
+      const layout = await storage.getLayoutByUUID(id);
+      
+      if (!layout) {
+        console.log(`❌ [Routes] Layout not found: ${id}`);
+        return res.status(404).json({ error: "Layout not found" });
+      }
+      
+      if (!req.auth?.isSuperuser && req.auth?.companyId !== layout.companyId) {
+        console.log(`❌ [Routes] Authorization failed - cannot validate layout from another company`);
+        return res.status(403).json({ error: "Cannot validate layouts from other companies" });
+      }
+      
+      const result = await storage.validateLayoutCompleteness(id);
+      console.log(`✅ [Routes] Layout validation complete: ${result.isValid ? 'valid' : 'invalid'}`);
+      res.json(result);
+    } catch (error) {
+      console.error("❌ [Routes] Error validating layout:", error);
+      res.status(500).json({ error: "Failed to validate layout" });
+    }
+  });
+
+  // Activate layout (with validation - customer admin protected)
+  app.post("/api/layouts/:id/activate", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    console.log(`🔄 [Routes] POST /api/layouts/${id}/activate - Activating layout`);
+    
+    try {
+      const layout = await storage.getLayoutByUUID(id);
+      
+      if (!layout) {
+        console.log(`❌ [Routes] Layout not found: ${id}`);
+        return res.status(404).json({ error: "Layout not found" });
+      }
+      
+      if (!req.auth?.isSuperuser && req.auth?.companyId !== layout.companyId) {
+        console.log(`❌ [Routes] Authorization failed - cannot activate layout from another company`);
+        return res.status(403).json({ error: "Cannot activate layouts from other companies" });
+      }
+      
+      // Validate layout completeness before activation
+      const validation = await storage.validateLayoutCompleteness(id);
+      if (!validation.isValid) {
+        console.log(`❌ [Routes] Layout validation failed: ${validation.errors.join(', ')}`);
+        return res.status(400).json({ 
+          error: "Layout is incomplete and cannot be activated",
+          validationErrors: validation.errors 
+        });
+      }
+      
+      const updated = await storage.setLayoutActivation(id, true, req.auth?.companyId || undefined);
+      console.log(`✅ [Routes] Layout activated successfully: ${id}`);
+      res.json(updated);
+    } catch (error) {
+      console.error("❌ [Routes] Error activating layout:", error);
+      res.status(500).json({ error: "Failed to activate layout" });
+    }
+  });
+
+  // Deactivate layout (customer admin protected)
+  app.post("/api/layouts/:id/deactivate", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    console.log(`🔄 [Routes] POST /api/layouts/${id}/deactivate - Deactivating layout`);
+    
+    try {
+      const layout = await storage.getLayoutByUUID(id);
+      
+      if (!layout) {
+        console.log(`❌ [Routes] Layout not found: ${id}`);
+        return res.status(404).json({ error: "Layout not found" });
+      }
+      
+      if (!req.auth?.isSuperuser && req.auth?.companyId !== layout.companyId) {
+        console.log(`❌ [Routes] Authorization failed - cannot deactivate layout from another company`);
+        return res.status(403).json({ error: "Cannot deactivate layouts from other companies" });
+      }
+      
+      const updated = await storage.setLayoutActivation(id, false, req.auth?.companyId || undefined);
+      console.log(`✅ [Routes] Layout deactivated successfully: ${id}`);
+      res.json(updated);
+    } catch (error) {
+      console.error("❌ [Routes] Error deactivating layout:", error);
+      res.status(500).json({ error: "Failed to deactivate layout" });
+    }
+  });
+
   // Get zones for a layout (protected)
   app.get("/api/layouts/:layoutId/zones", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { layoutId } = req.params; // This is the layout UUID
