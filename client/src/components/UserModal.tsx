@@ -122,6 +122,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                       {...field}
                       disabled={isEdit}
                       placeholder="Enter user ID"
+                      maxLength={64}
                       data-testid="input-userId"
                     />
                   </FormControl>
@@ -140,6 +141,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                     <Input
                       {...field}
                       placeholder="Enter full name"
+                      maxLength={64}
                       data-testid="input-userFullName"
                     />
                   </FormControl>
@@ -159,6 +161,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                       {...field}
                       value={field.value || ""}
                       placeholder="Enter user tag"
+                      maxLength={64}
                       data-testid="input-userTag"
                     />
                   </FormControl>
@@ -179,7 +182,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                     <Input
                       {...field}
                       type="password"
-                      maxLength={12}
+                      maxLength={32}
                       placeholder={isEdit ? "Enter new password" : "Enter password"}
                       data-testid="input-password"
                     />

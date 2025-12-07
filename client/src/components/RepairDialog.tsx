@@ -195,6 +195,7 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
               onChange={(e) => setRepairNotes(e.target.value)}
               placeholder="Add any additional notes about the repair..."
               rows={3}
+              maxLength={256}
               data-testid="textarea-repair-notes"
             />
           </div>

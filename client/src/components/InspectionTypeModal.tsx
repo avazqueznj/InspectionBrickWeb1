@@ -140,6 +140,7 @@ function FormFieldDialog({ open, onOpenChange, formField, inspectionTypeId, onSu
               onChange={(e) => setFormFieldName(e.target.value)}
               placeholder="Enter field name"
               required
+              maxLength={64}
               data-testid="input-formFieldName"
             />
           </div>
@@ -408,6 +409,7 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
                           {...field}
                           disabled={isEdit}
                           placeholder="Enter inspection type name"
+                          maxLength={64}
                           data-testid="input-inspectionTypeName"
                         />
                       </FormControl>

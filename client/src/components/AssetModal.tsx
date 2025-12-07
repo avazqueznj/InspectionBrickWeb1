@@ -156,6 +156,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
                       {...field}
                       disabled={isEdit}
                       placeholder="e.g., N1234"
+                      maxLength={64}
                       data-testid="input-assetId"
                     />
                   </FormControl>
@@ -203,6 +204,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
                     <Input
                       {...field}
                       placeholder="e.g., BUS 1"
+                      maxLength={64}
                       data-testid="input-assetName"
                     />
                   </FormControl>
@@ -222,6 +224,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
                       {...field}
                       value={field.value || ""}
                       placeholder="e.g., ABC-1234"
+                      maxLength={20}
                       data-testid="input-licensePlate"
                     />
                   </FormControl>

@@ -204,6 +204,7 @@ export default function Layouts() {
                       placeholder="e.g., TRAILER, TRUCK, PALLET-JACK"
                       value={newLayoutName}
                       onChange={(e) => setNewLayoutName(e.target.value)}
+                      maxLength={64}
                       data-testid="input-layout-name"
                     />
                   </div>
@@ -421,6 +422,7 @@ function ZoneManager({ layoutId, zones }: { layoutId: string; zones: LayoutZone[
                   placeholder="e.g., Front Section, Rear Brakes"
                   value={zoneName}
                   onChange={(e) => setZoneName(e.target.value)}
+                  maxLength={64}
                   data-testid="input-zone-name"
                 />
               </div>
@@ -431,6 +433,7 @@ function ZoneManager({ layoutId, zones }: { layoutId: string; zones: LayoutZone[
                   placeholder="e.g., FRONT, REAR"
                   value={zoneTag}
                   onChange={(e) => setZoneTag(e.target.value)}
+                  maxLength={64}
                   data-testid="input-zone-tag"
                 />
               </div>
@@ -788,6 +791,7 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
                 id="editZoneName"
                 value={editZoneName}
                 onChange={(e) => setEditZoneName(e.target.value)}
+                maxLength={64}
                 data-testid="input-edit-zone-name"
               />
             </div>
@@ -797,6 +801,7 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
                 id="editZoneTag"
                 value={editZoneTag}
                 onChange={(e) => setEditZoneTag(e.target.value)}
+                maxLength={64}
                 data-testid="input-edit-zone-tag"
               />
             </div>
@@ -917,6 +922,7 @@ function ComponentManager({ zoneId, components }: { zoneId: string; components: 
                   placeholder="e.g., Brake Lights, Tires, Windshield"
                   value={componentName}
                   onChange={(e) => setComponentName(e.target.value)}
+                  maxLength={64}
                   data-testid="input-component-name"
                 />
               </div>
@@ -927,6 +933,7 @@ function ComponentManager({ zoneId, components }: { zoneId: string; components: 
                   placeholder="e.g., Check for cracks or damage"
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
+                  maxLength={128}
                   data-testid="input-component-instructions"
                 />
               </div>
@@ -1117,6 +1124,7 @@ function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; 
                 id="editComponentName"
                 value={editComponentName}
                 onChange={(e) => setEditComponentName(e.target.value)}
+                maxLength={64}
                 data-testid="input-edit-component-name"
               />
             </div>
@@ -1126,6 +1134,7 @@ function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; 
                 id="editInstructions"
                 value={editInstructions}
                 onChange={(e) => setEditInstructions(e.target.value)}
+                maxLength={128}
                 data-testid="input-edit-component-instructions"
               />
             </div>
@@ -1258,6 +1267,7 @@ function DefectManager({ componentId, defects }: { componentId: string; defects:
                   placeholder="e.g., Cracked lens, Worn tread"
                   value={defectName}
                   onChange={(e) => setDefectName(e.target.value)}
+                  maxLength={64}
                   data-testid="input-defect-name"
                 />
               </div>
@@ -1284,6 +1294,7 @@ function DefectManager({ componentId, defects }: { componentId: string; defects:
                   placeholder="e.g., Measure tread depth"
                   value={defectInstructions}
                   onChange={(e) => setDefectInstructions(e.target.value)}
+                  maxLength={128}
                   data-testid="input-defect-instructions"
                 />
               </div>
@@ -1466,6 +1477,7 @@ function DefectItem({ defect, componentId }: { defect: ComponentDefect; componen
                 id="editDefectName"
                 value={editDefectName}
                 onChange={(e) => setEditDefectName(e.target.value)}
+                maxLength={64}
                 data-testid="input-edit-defect-name"
               />
             </div>
@@ -1490,6 +1502,7 @@ function DefectItem({ defect, componentId }: { defect: ComponentDefect; componen
                 id="editDefectInstructions"
                 value={editDefectInstructions}
                 onChange={(e) => setEditDefectInstructions(e.target.value)}
+                maxLength={128}
                 data-testid="input-edit-defect-instructions"
               />
             </div>

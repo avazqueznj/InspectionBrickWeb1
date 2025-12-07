@@ -68,6 +68,7 @@ export default function Login() {
                 onChange={(e) => setCompanyId(e.target.value)}
                 disabled={isLoading}
                 autoFocus
+                maxLength={64}
                 data-testid="input-companyId"
               />
             </div>
@@ -80,6 +81,7 @@ export default function Login() {
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 disabled={isLoading}
+                maxLength={64}
                 data-testid="input-userId"
               />
             </div>
@@ -92,6 +94,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
+                maxLength={32}
                 data-testid="input-password"
               />
             </div>
