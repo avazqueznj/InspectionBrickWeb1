@@ -105,6 +105,12 @@ export interface DefectWithInspection extends Defect {
   };
 }
 
+// Layout validation result
+export interface LayoutValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
 // Analytics interfaces
 export interface InspectionAnalytics {
   assetsMostDefects: { assetId: string; defectCount: number }[];
@@ -221,6 +227,11 @@ export interface IStorage {
   
   // Check if layout has dependent assets
   layoutHasAssets(layoutId: string): Promise<boolean>;
+  
+  // Layout activation/validation
+  validateLayoutCompleteness(layoutId: string): Promise<LayoutValidationResult>;
+  setLayoutActivation(layoutId: string, isActive: boolean, companyId?: string): Promise<Layout | undefined>;
+  getActiveLayouts(companyId: string): Promise<Layout[]>;
   
   // Inspection Type Layouts (existing methods)
   getInspectionTypeLayouts(inspectionTypeId: string): Promise<string[]>;
@@ -1375,6 +1386,107 @@ export class DatabaseStorage implements IStorage {
       .returning();
     console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Layout ${result.length > 0 ? 'deleted' : 'not found'}`);
     return result.length > 0;
+  }
+
+  async validateLayoutCompleteness(layoutId: string): Promise<LayoutValidationResult> {
+    console.log(`🔍 [Storage] Validating layout completeness: ${layoutId}`);
+    const errors: string[] = [];
+
+    // Get the layout
+    const layout = await this.getLayoutByUUID(layoutId);
+    if (!layout) {
+      return { isValid: false, errors: ["Layout not found"] };
+    }
+
+    // Check layout name
+    if (!layout.layoutName || layout.layoutName.trim().length === 0) {
+      errors.push("Layout name cannot be empty");
+    }
+
+    // Get all zones for this layout
+    const zones = await db.select().from(layoutZones).where(eq(layoutZones.layoutId, layoutId));
+    
+    if (zones.length === 0) {
+      errors.push("Layout must have at least one zone");
+      return { isValid: false, errors };
+    }
+
+    // Check each zone
+    for (const zone of zones) {
+      if (!zone.zoneName || zone.zoneName.trim().length === 0) {
+        errors.push(`Zone has empty name`);
+      }
+
+      // Get components for this zone
+      const components = await db.select().from(layoutZoneComponents).where(eq(layoutZoneComponents.zoneId, zone.id));
+      
+      if (components.length === 0) {
+        errors.push(`Zone "${zone.zoneName}" must have at least one component`);
+        continue;
+      }
+
+      // Check each component
+      for (const component of components) {
+        if (!component.componentName || component.componentName.trim().length === 0) {
+          errors.push(`Zone "${zone.zoneName}" has a component with empty name`);
+        }
+
+        // Get defects for this component
+        const defects = await db.select().from(componentDefects).where(eq(componentDefects.componentId, component.id));
+        
+        if (defects.length === 0) {
+          errors.push(`Component "${component.componentName}" in zone "${zone.zoneName}" must have at least one defect`);
+          continue;
+        }
+
+        // Check each defect
+        for (const defect of defects) {
+          if (!defect.defectName || defect.defectName.trim().length === 0) {
+            errors.push(`Component "${component.componentName}" in zone "${zone.zoneName}" has a defect with empty name`);
+          }
+        }
+      }
+    }
+
+    const isValid = errors.length === 0;
+    console.log(`${isValid ? '✅' : '❌'} [Storage] Layout validation: ${isValid ? 'passed' : 'failed'} - ${errors.length} errors`);
+    return { isValid, errors };
+  }
+
+  async setLayoutActivation(layoutId: string, isActive: boolean, companyId?: string): Promise<Layout | undefined> {
+    console.log(`🔄 [Storage] Setting layout activation: ${layoutId}, isActive: ${isActive}, companyId: ${companyId || 'ANY'}`);
+    
+    // Verify ownership if companyId provided
+    const layout = await this.getLayoutByUUID(layoutId);
+    if (!layout) {
+      console.log(`❌ [Storage] Layout not found`);
+      return undefined;
+    }
+    if (companyId && layout.companyId !== companyId) {
+      console.log(`❌ [Storage] Layout not owned by company`);
+      return undefined;
+    }
+
+    const [updated] = await db
+      .update(layouts)
+      .set({ isActive })
+      .where(eq(layouts.id, layoutId))
+      .returning();
+    
+    console.log(`${updated ? '✅' : '❌'} [Storage] Layout activation ${updated ? 'updated' : 'failed'}`);
+    return updated;
+  }
+
+  async getActiveLayouts(companyId: string): Promise<Layout[]> {
+    console.log(`📊 [Storage] getActiveLayouts - companyId: ${companyId}`);
+    
+    const result = await db.query.layouts.findMany({
+      where: and(eq(layouts.companyId, companyId), eq(layouts.isActive, true)),
+      orderBy: [asc(layouts.layoutName)],
+    });
+    
+    console.log(`✅ [Storage] Found ${result.length} active layouts`);
+    return result as Layout[];
   }
 
   // === LAYOUT ZONES ===
