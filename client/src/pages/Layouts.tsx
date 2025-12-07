@@ -34,12 +34,25 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Trash2, Edit2, FolderTree, Pencil, ImageIcon, Upload, X } from "lucide-react";
+import { Plus, Trash2, Edit2, FolderTree, Pencil, ImageIcon, Upload, X, Power, PowerOff, CheckCircle2, AlertCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Layout {
   id: string;
   layoutName: string;
   companyId: string;
+  isActive: boolean;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
 }
 
 interface LayoutZone {
@@ -149,6 +162,66 @@ export default function Layouts() {
     },
   });
 
+  // Activate layout mutation
+  const activateLayoutMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("POST", `/api/layouts/${id}/activate`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/layouts"] });
+      toast({
+        title: "Layout Activated",
+        description: "Layout is now active and will be sent to devices",
+      });
+    },
+    onError: (error: any) => {
+      const validationErrors = error.validationErrors as string[] | undefined;
+      if (validationErrors && validationErrors.length > 0) {
+        toast({
+          title: "Cannot Activate Layout",
+          description: validationErrors.join(". "),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to activate layout",
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
+  // Deactivate layout mutation
+  const deactivateLayoutMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("POST", `/api/layouts/${id}/deactivate`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/layouts"] });
+      toast({
+        title: "Layout Deactivated",
+        description: "Layout is now inactive and will not be sent to devices",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to deactivate layout",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleToggleActive = (layout: Layout, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (layout.isActive) {
+      deactivateLayoutMutation.mutate(layout.id);
+    } else {
+      activateLayoutMutation.mutate(layout.id);
+    }
+  };
+
   const handleCreateLayout = () => {
     if (!newLayoutName.trim()) {
       toast({
@@ -251,27 +324,55 @@ export default function Layouts() {
                   onClick={() => setSelectedLayout(layout)}
                   data-testid={`card-layout-${layout.layoutName}`}
                 >
-                  <CardHeader className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FolderTree className="h-4 w-4 text-muted-foreground" />
-                        <CardTitle className="text-sm font-medium">
+                  <CardHeader className="p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <FolderTree className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <CardTitle className="text-sm font-medium truncate">
                           {layout.layoutName}
                         </CardTitle>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteLayoutId(layout.id);
-                        }}
-                        data-testid={`button-delete-layout-${layout.layoutName}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className={`h-7 w-7 ${layout.isActive ? 'text-green-600' : 'text-muted-foreground'}`}
+                              onClick={(e) => handleToggleActive(layout, e)}
+                              disabled={activateLayoutMutation.isPending || deactivateLayoutMutation.isPending}
+                              data-testid={`button-toggle-active-${layout.layoutName}`}
+                            >
+                              {layout.isActive ? (
+                                <Power className="h-4 w-4" />
+                              ) : (
+                                <PowerOff className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {layout.isActive ? 'Active - Click to deactivate' : 'Inactive - Click to activate'}
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteLayoutId(layout.id);
+                          }}
+                          data-testid={`button-delete-layout-${layout.layoutName}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
+                    {layout.isActive && (
+                      <Badge variant="outline" className="mt-2 text-xs text-green-600 border-green-600 w-fit">
+                        Active
+                      </Badge>
+                    )}
                   </CardHeader>
                 </Card>
               ))}
