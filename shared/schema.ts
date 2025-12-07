@@ -130,6 +130,7 @@ export const layouts = pgTable("layouts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   layoutName: text("layout_name").notNull(),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  isActive: boolean("is_active").notNull().default(false),
 }, (table) => ({
   // Unique constraint: same layoutName can exist across companies, but not within same company
   uniqueLayoutPerCompany: unique().on(table.companyId, table.layoutName),
