@@ -119,9 +119,9 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" data-testid="modal-asset">
-        <DialogHeader>
-          <div className="flex items-start justify-between">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col" data-testid="modal-asset">
+        <DialogHeader className="flex-shrink-0">
+          <div className="flex items-start justify-between gap-2">
             <div>
               <DialogTitle className="text-xl font-semibold">
                 {isEdit ? "Edit Asset" : "Create Asset"}
@@ -144,147 +144,151 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
-            <FormField
-              control={form.control}
-              name="assetId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Asset ID</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      disabled={isEdit}
-                      placeholder="e.g., N1234"
-                      maxLength={64}
-                      data-testid="input-assetId"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="assetId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Asset ID</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          disabled={isEdit}
+                          placeholder="e.g., N1234"
+                          maxLength={64}
+                          data-testid="input-assetId"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="layout"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Layout</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={!selectedCompanyId}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-layout">
-                        <SelectValue placeholder={selectedCompanyId ? "Select layout" : "Select a company first"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {layouts.map((layout) => (
-                        <SelectItem key={layout.id} value={layout.id} data-testid={`select-option-layout-${layout.layoutName}`}>
-                          {layout.layoutName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="assetName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Asset Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="e.g., BUS 1"
+                          maxLength={64}
+                          data-testid="input-assetName"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="assetName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Asset Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="e.g., BUS 1"
-                      maxLength={64}
-                      data-testid="input-assetName"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="layout"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Layout</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={!selectedCompanyId}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-layout">
+                            <SelectValue placeholder={selectedCompanyId ? "Select layout" : "Select a company first"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {layouts.map((layout) => (
+                            <SelectItem key={layout.id} value={layout.id} data-testid={`select-option-layout-${layout.layoutName}`}>
+                              {layout.layoutName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="licensePlate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>License Plate</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value || ""}
-                      placeholder="e.g., ABC-1234"
-                      maxLength={20}
-                      data-testid="input-licensePlate"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="licensePlate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>License Plate</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="e.g., ABC-1234"
+                          maxLength={20}
+                          data-testid="input-licensePlate"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="companyId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={!isSuperuser}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-companyId">
-                        <SelectValue placeholder="Select company" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="companyId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={!isSuperuser}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-companyId">
+                            <SelectValue placeholder="Select company" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {companies.map((company) => (
+                            <SelectItem key={company.id} value={company.id}>
+                              {company.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-status">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="ACTIVE">Active</SelectItem>
-                      <SelectItem value="INACTIVE">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ACTIVE">Active</SelectItem>
+                          <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
 
-            <div className="flex gap-2 pt-4">
+            <div className="flex gap-2 pt-4 flex-shrink-0 border-t mt-4">
               <Button
                 type="button"
                 variant="outline"
