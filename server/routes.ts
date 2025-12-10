@@ -10,32 +10,8 @@ import { runSeed } from "./services/seedService";
 import { generateBrickConfig } from "./services/brickConfigService";
 import sharp from "sharp";
 
-// Dual-mode authentication middleware (supports both session and JWT during migration)
-function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
-  // Try JWT first
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return requireJWTAuth(req, res, next);
-  }
-  
-  // Fall back to session (legacy)
-  if (req.session.userId) {
-    console.log(`⚠️  [Auth] Using legacy session auth for user: ${req.session.userId}`);
-    // Populate req.auth from session for compatibility
-    // For legacy sessions, superusers (companyId === null) implicitly have customerAdminAccess
-    const isSuperuser = req.session.companyId === null;
-    req.auth = {
-      userId: req.session.userId,
-      companyId: req.session.companyId || null,
-      isSuperuser,
-      customerAdminAccess: isSuperuser, // Superusers implicitly have customer admin access
-      isDeviceToken: false,
-    };
-    return next();
-  }
-  
-  return res.status(401).json({ error: "Not authenticated" });
-}
+// Pure JWT authentication middleware
+const requireAuth = requireJWTAuth;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Query params validation schema
@@ -147,14 +123,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerAdminAccess: user.customerAdminAccess || false,
       });
       
-      // Also set session for dual-mode compatibility (legacy clients)
-      req.session.userId = user.userId;
-      req.session.companyId = user.companyId;
-      
       // Reset rate limit on successful login
       resetLoginRateLimit(req);
       console.log(`✅ [Routes] JWT token generated - userId: ${user.userId}, companyId: ${user.companyId || 'null (superuser)'}, customerAdmin: ${user.customerAdminAccess}`);
-      console.log(`🔄 [Routes] Session also populated for legacy client compatibility`);
       
       // Return token and user info
       res.json({
@@ -467,19 +438,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth: Logout
-  app.post("/api/auth/logout", (req, res) => {
-    const userId = req.session.userId;
-    console.log(`🚪 [Routes] POST /api/auth/logout - User: ${userId || 'UNKNOWN'}`);
-    
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("❌ [Routes] Error during logout:", err);
-        return res.status(500).json({ error: "Logout failed" });
-      }
-      console.log(`✅ [Routes] Logout successful for user: ${userId}`);
-      res.json({ success: true });
-    });
+  // Auth: Logout (JWT-based - client clears token, server just acknowledges)
+  app.post("/api/auth/logout", (_req, res) => {
+    console.log(`🚪 [Routes] POST /api/auth/logout - JWT logout (client-side token clear)`);
+    // With JWT, logout is client-side - just acknowledge the request
+    // The client clears the token from localStorage
+    console.log(`✅ [Routes] Logout acknowledged`);
+    res.json({ success: true });
   });
 
   // Admin: Reseed database (superuser only)
@@ -553,20 +518,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth: Get current user
-  app.get("/api/auth/me", async (req, res) => {
-    console.log(`👤 [Routes] GET /api/auth/me - Session userId: ${req.session.userId || 'NONE'}`);
+  // Auth: Get current user (JWT-based)
+  app.get("/api/auth/me", requireAuth, async (req: AuthRequest, res) => {
+    console.log(`👤 [Routes] GET /api/auth/me - JWT userId: ${req.auth?.userId || 'NONE'}`);
     
-    if (!req.session.userId) {
-      console.log(`❌ [Routes] Not authenticated - No session`);
+    if (!req.auth?.userId) {
+      console.log(`❌ [Routes] Not authenticated - No JWT token`);
       return res.status(401).json({ error: "Not authenticated" });
     }
     
     try {
-      const user = await storage.getUserById(req.session.userId);
+      const user = await storage.getUserById(req.auth.userId);
       if (!user) {
-        console.log(`❌ [Routes] User not found in database - destroying session`);
-        req.session.destroy(() => {});
+        console.log(`❌ [Routes] User not found in database`);
         return res.status(401).json({ error: "User not found" });
       }
       
@@ -583,7 +547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all companies (protected)
   app.get("/api/companies", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`🏢 [Routes] GET /api/companies - User: ${req.session.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
+    console.log(`🏢 [Routes] GET /api/companies - User: ${req.auth?.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
     
     try {
       const companies = await storage.getCompanies();
@@ -608,7 +572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get available filter values for users (protected)
   app.get("/api/users/filter-values", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`🔍 [Routes] GET /api/users/filter-values - User: ${req.session.userId}`);
+    console.log(`🔍 [Routes] GET /api/users/filter-values - User: ${req.auth?.userId}`);
     
     try {
       // Enforce company scoping: use session's companyId unless user is superuser
@@ -630,7 +594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all users (protected)
   app.get("/api/users", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`👥 [Routes] GET /api/users - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    console.log(`👥 [Routes] GET /api/users - User: ${req.auth?.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     console.log(`🔍 [Routes] Query params received:`, req.query);
     
     try {
@@ -765,7 +729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Prevent self-deletion
-      if (userId === req.session.userId) {
+      if (userId === req.auth?.userId) {
         console.log(`❌ [Routes] Cannot delete own user account`);
         return res.status(400).json({ error: "Cannot delete your own user account" });
       }
@@ -787,7 +751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get available filter values for assets (protected)
   app.get("/api/assets/filter-values", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`🔍 [Routes] GET /api/assets/filter-values - User: ${req.session.userId}`);
+    console.log(`🔍 [Routes] GET /api/assets/filter-values - User: ${req.auth?.userId}`);
     
     try {
       // Enforce company scoping: use session's companyId unless user is superuser
@@ -809,7 +773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all assets (protected)
   app.get("/api/assets", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`📦 [Routes] GET /api/assets - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    console.log(`📦 [Routes] GET /api/assets - User: ${req.auth?.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
       const params = assetQueryParamsSchema.parse(req.query);
@@ -945,7 +909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get layout by layoutName (customer admin protected)
   app.get("/api/layouts/:layoutName", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { layoutName } = req.params;
-    console.log(`🔍 [Routes] GET /api/layouts/${layoutName} - User: ${req.session.userId}`);
+    console.log(`🔍 [Routes] GET /api/layouts/${layoutName} - User: ${req.auth?.userId}`);
     
     try {
       const layout = await storage.getLayoutById(layoutName, req.auth?.companyId || undefined);
@@ -1634,7 +1598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get available filter values for inspection types (protected)
   app.get("/api/inspection-types/filter-values", requireCustomerAdmin, async (req: AuthRequest, res) => {
-    console.log(`🔍 [Routes] GET /api/inspection-types/filter-values - User: ${req.session.userId}`);
+    console.log(`🔍 [Routes] GET /api/inspection-types/filter-values - User: ${req.auth?.userId}`);
     
     try {
       const companyId = req.auth?.companyId || (req.query.companyId as string | undefined);
@@ -1655,7 +1619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all inspection types (protected)
   app.get("/api/inspection-types", requireCustomerAdmin, async (req: AuthRequest, res) => {
-    console.log(`📋 [Routes] GET /api/inspection-types - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    console.log(`📋 [Routes] GET /api/inspection-types - User: ${req.auth?.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
       const params = inspectionTypeQueryParamsSchema.parse(req.query);
@@ -1682,7 +1646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get a single inspection type with form fields (protected)
   app.get("/api/inspection-types/:inspectionTypeName", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { inspectionTypeName } = req.params;
-    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName} - User: ${req.session.userId}`);
+    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName} - User: ${req.auth?.userId}`);
     
     try {
       // Pass companyId to ensure we get the right inspection type when business IDs are shared across companies
@@ -1950,7 +1914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get available filter values for inspections (protected)
   app.get("/api/inspections/filter-values", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`🔍 [Routes] GET /api/inspections/filter-values - User: ${req.session.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
+    console.log(`🔍 [Routes] GET /api/inspections/filter-values - User: ${req.auth?.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
     
     try {
       // Enforce company scoping: use session's companyId unless user is superuser
@@ -1972,7 +1936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get inspection analytics for dashboard (protected)
   app.get("/api/inspections/analytics", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`📊 [Routes] GET /api/inspections/analytics - User: ${req.session.userId}`);
+    console.log(`📊 [Routes] GET /api/inspections/analytics - User: ${req.auth?.userId}`);
     
     try {
       // Enforce company scoping
@@ -1992,7 +1956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all inspections with their defects (with query params for search, sort, pagination) (protected)
   app.get("/api/inspections", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`📋 [Routes] GET /api/inspections - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    console.log(`📋 [Routes] GET /api/inspections - User: ${req.auth?.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
       const params = queryParamsSchema.parse(req.query);
@@ -2453,7 +2417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get available filter values for defects (protected)
   app.get("/api/defects/filter-values", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`🔍 [Routes] GET /api/defects/filter-values - User: ${req.session.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
+    console.log(`🔍 [Routes] GET /api/defects/filter-values - User: ${req.auth?.userId}, CompanyId: ${req.auth?.companyId || 'null (superuser)'}`);
     
     try {
       // Enforce company scoping: use session's companyId unless user is superuser
@@ -2475,7 +2439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get defect analytics for dashboard (protected)
   app.get("/api/defects/analytics", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`📊 [Routes] GET /api/defects/analytics - User: ${req.session.userId}`);
+    console.log(`📊 [Routes] GET /api/defects/analytics - User: ${req.auth?.userId}`);
     
     try {
       // Enforce company scoping
@@ -2495,7 +2459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all defects with pagination, search, and filters (protected)
   app.get("/api/defects", requireAuth, async (req: AuthRequest, res) => {
-    console.log(`📋 [Routes] GET /api/defects - User: ${req.session.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
+    console.log(`📋 [Routes] GET /api/defects - User: ${req.auth?.userId}, Requested companyId: ${req.query.companyId || 'NONE'}`);
     
     try {
       const params = defectQueryParamsSchema.parse(req.query);

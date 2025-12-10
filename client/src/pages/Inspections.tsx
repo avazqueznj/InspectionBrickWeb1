@@ -8,6 +8,7 @@ import { InspectionModal } from "@/components/InspectionModal";
 import { FilterBar } from "@/components/FilterBar";
 import { PageFooter } from "@/components/PageFooter";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
+import { getAuthHeaders } from "@/lib/queryClient";
 import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText, Printer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -89,7 +90,9 @@ export default function Inspections() {
       if (filters.driverName) queryParams.set("driverName", filters.driverName);
       if (filters.driverId) queryParams.set("driverId", filters.driverId);
       
-      const response = await fetch(`/api/inspections?${queryParams.toString()}`);
+      const response = await fetch(`/api/inspections?${queryParams.toString()}`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch inspections");
       }

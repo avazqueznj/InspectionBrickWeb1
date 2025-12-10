@@ -13,6 +13,7 @@ import { InspectionModal } from "@/components/InspectionModal";
 import { RepairDialog } from "@/components/RepairDialog";
 import { PageFooter } from "@/components/PageFooter";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
+import { getAuthHeaders } from "@/lib/queryClient";
 
 type SortField = "datetime" | "assetId" | "driverName" | "zoneName" | "componentName" | "defect" | "severity" | "status" | "mechanicName" | "repairDate";
 type SortDirection = "asc" | "desc";
@@ -80,7 +81,9 @@ export default function Defects() {
       const queryParams = new URLSearchParams();
       if (selectedCompany) queryParams.set("companyId", selectedCompany);
       
-      const response = await fetch(`/api/defects/filter-values?${queryParams.toString()}`);
+      const response = await fetch(`/api/defects/filter-values?${queryParams.toString()}`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch filter values");
       }
@@ -93,7 +96,9 @@ export default function Defects() {
   const { data: selectedInspection } = useQuery<InspectionWithDefects>({
     queryKey: ["/api/inspections", selectedInspectionId],
     queryFn: async () => {
-      const response = await fetch(`/api/inspections/${selectedInspectionId}`);
+      const response = await fetch(`/api/inspections/${selectedInspectionId}`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch inspection");
       }
@@ -141,7 +146,9 @@ export default function Defects() {
       if (filters.severityLevel) queryParams.set("severityLevel", filters.severityLevel);
       if (filters.status) queryParams.set("status", filters.status);
 
-      const response = await fetch(`/api/defects?${queryParams.toString()}`);
+      const response = await fetch(`/api/defects?${queryParams.toString()}`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch defects");
       }
