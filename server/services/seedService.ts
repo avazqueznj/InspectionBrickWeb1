@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionTypeLayouts, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects } from "@shared/schema";
 import { storage } from "../storage";
+import { randomUUID } from "crypto";
 
 export async function runSeed() {
   // Clear existing data (in reverse order due to foreign keys)
@@ -229,7 +230,7 @@ export async function runSeed() {
   // avazquez - can view all companies (no companyId assignment)
   await storage.createUser({
     userId: "avazquez",
-    password: "password123",
+    password: "casio",
     userFullName: "Antonio Vazquez",
     status: "ACTIVE",
     webAccess: true,
@@ -690,6 +691,7 @@ export async function runSeed() {
     const minute = (i * 15) % 60;
     
     necInspectionData.push({
+      id: randomUUID(),
       companyId: "NEC",
       datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
       inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
@@ -719,6 +721,7 @@ export async function runSeed() {
     const minute = (i * 20) % 60;
     
     walmartInspectionData.push({
+      id: randomUUID(),
       companyId: "WALMART",
       datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
       inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
@@ -748,6 +751,7 @@ export async function runSeed() {
     const minute = (i * 13) % 60;
     
     fedexInspectionData.push({
+      id: randomUUID(),
       companyId: "FEDEX",
       datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
       inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
@@ -777,6 +781,7 @@ export async function runSeed() {
   // NEC Multi-Asset Inspections
   const necMultiAssetInspections = await db.insert(inspections).values([
     {
+      id: randomUUID(),
       companyId: "NEC",
       datetime: new Date('2025-11-01T08:00:00'),
       inspectionType: "pre-trip",
@@ -785,6 +790,7 @@ export async function runSeed() {
       inspectionFormData: "Multi-asset inspection: Tractor + Dolly + Trailer",
     },
     {
+      id: randomUUID(),
       companyId: "NEC",
       datetime: new Date('2025-11-05T14:30:00'),
       inspectionType: "post-trip",
@@ -797,6 +803,7 @@ export async function runSeed() {
   // WALMART Multi-Asset Inspections
   const walmartMultiAssetInspections = await db.insert(inspections).values([
     {
+      id: randomUUID(),
       companyId: "WALMART",
       datetime: new Date('2025-11-02T09:15:00'),
       inspectionType: "delivery-pre-trip",
@@ -805,6 +812,7 @@ export async function runSeed() {
       inspectionFormData: "Multi-asset inspection: Truck + Trailer combo",
     },
     {
+      id: randomUUID(),
       companyId: "WALMART",
       datetime: new Date('2025-11-06T07:45:00'),
       inspectionType: "delivery-pre-trip",
@@ -817,6 +825,7 @@ export async function runSeed() {
   // FEDEX Multi-Asset Inspections
   const fedexMultiAssetInspections = await db.insert(inspections).values([
     {
+      id: randomUUID(),
       companyId: "FEDEX",
       datetime: new Date('2025-11-03T06:30:00'),
       inspectionType: "van-pre-route",
@@ -825,6 +834,7 @@ export async function runSeed() {
       inspectionFormData: "Multi-asset inspection: Van + Dolly + Trailer",
     },
     {
+      id: randomUUID(),
       companyId: "FEDEX",
       datetime: new Date('2025-11-07T13:00:00'),
       inspectionType: "van-pre-route",
