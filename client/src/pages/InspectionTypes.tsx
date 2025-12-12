@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { InspectionTypeModal } from "@/components/InspectionTypeModal";
 import { PageFooter } from "@/components/PageFooter";
-import { apiRequest, queryClient, getAuthHeaders } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type SortField = "inspectionTypeName" | "inspectionLayout" | "status";
@@ -65,9 +65,7 @@ export default function InspectionTypes() {
       const queryParams = new URLSearchParams();
       if (selectedCompany) queryParams.set("companyId", selectedCompany);
       
-      const response = await fetch(`/api/inspection-types/filter-values?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await fetch(`/api/inspection-types/filter-values?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch filter values");
       }
@@ -153,9 +151,7 @@ export default function InspectionTypes() {
         queryParams.set("status", statusFilter);
       }
       
-      const response = await fetch(`/api/inspection-types?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await fetch(`/api/inspection-types?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch inspection types");
       }

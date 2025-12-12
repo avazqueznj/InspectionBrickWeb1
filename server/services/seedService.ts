@@ -1,192 +1,345 @@
 import { db } from "../db";
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionTypeLayouts, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects, zoneImages, uploadErrors } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionTypeLayouts, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects } from "@shared/schema";
 import { storage } from "../storage";
-import { randomUUID } from "crypto";
 
 export async function runSeed() {
-  console.log("🌱 Starting database seed for demo environment...");
-  
   // Clear existing data (in reverse order due to foreign keys)
   console.log("🗑️  Clearing existing data...");
   await db.delete(defects);
   await db.delete(inspectionAssets);
   await db.delete(inspections);
-  await db.delete(uploadErrors);
   await db.delete(inspectionTypeFormFields);
-  await db.delete(inspectionTypeLayouts);
   await db.delete(inspectionTypes);
   await db.delete(assets);
   await db.delete(componentDefects);
   await db.delete(layoutZoneComponents);
   await db.delete(layoutZones);
-  await db.delete(zoneImages);
   await db.delete(layouts);
   await db.delete(users);
   await db.delete(companies);
   console.log("✅ Cleared existing data");
 
-  // ========================================
-  // 1. CREATE 3 COMPANIES
-  // ========================================
-  console.log("🏢 Creating 3 companies...");
+  // Create sample companies
+  console.log("🏢 Creating companies...");
   await db.insert(companies).values([
     {
-      id: "ACME",
-      name: "ACME Transportation",
+      id: "NEC",
+      name: "National Equipment Corp",
       address: "1234 Industrial Blvd, Houston, TX 77001",
-      dotNumber: "1234567",
       settings: JSON.stringify({ timezone: "America/Chicago", locale: "en-US" }),
     },
     {
-      id: "SWIFT",
-      name: "Swift Logistics",
-      address: "5678 Freight Way, Denver, CO 80205",
-      dotNumber: "2345678",
-      settings: JSON.stringify({ timezone: "America/Denver", locale: "en-US" }),
+      id: "WALMART",
+      name: "Walmart Distribution",
+      address: "5678 Logistics Way, Bentonville, AR 72712",
+      settings: JSON.stringify({ timezone: "America/Chicago", locale: "en-US" }),
     },
     {
-      id: "ATLAS",
-      name: "Atlas Fleet Services",
-      address: "9012 Highway Dr, Phoenix, AZ 85001",
-      dotNumber: "3456789",
-      settings: JSON.stringify({ timezone: "America/Phoenix", locale: "en-US" }),
+      id: "FEDEX",
+      name: "FedEx Ground Operations",
+      address: "9012 Freight Dr, Memphis, TN 38125",
+      settings: JSON.stringify({ timezone: "America/Central", locale: "en-US" }),
     },
   ]);
-  console.log("✅ Created 3 companies: ACME, SWIFT, ATLAS");
 
-  // ========================================
-  // 2. CREATE USERS
-  // ========================================
-  console.log("👥 Creating users...");
-  
-  // Superuser (can access all companies)
-  await storage.createUser({
-    userId: "avazquez",
-    password: "casio",
-    userFullName: "Antonio Vazquez",
-    userTag: "SUPERUSER",
-    status: "ACTIVE",
-    webAccess: true,
-    customerAdminAccess: false,
-    companyId: null,
-  });
-  console.log("   ✅ Superuser: avazquez (password: casio)");
-  
-  // ACME users
-  await storage.createUser({
-    userId: "jsmith",
-    password: "acme123",
-    userFullName: "John Smith",
-    userTag: "ADMIN",
-    status: "ACTIVE",
-    webAccess: true,
-    customerAdminAccess: true,
-    companyId: "ACME",
-  });
-  await storage.createUser({
-    userId: "mwilliams",
-    password: "acme123",
-    userFullName: "Mary Williams",
-    userTag: "MECHANIC",
-    status: "ACTIVE",
-    webAccess: true,
-    customerAdminAccess: false,
-    companyId: "ACME",
-  });
-  await storage.createUser({
-    userId: "rjohnson",
-    password: "acme123",
-    userFullName: "Robert Johnson",
-    userTag: "DRIVER",
-    status: "ACTIVE",
-    webAccess: false,
-    customerAdminAccess: false,
-    companyId: "ACME",
-  });
-  console.log("   ✅ ACME users: jsmith (admin), mwilliams (mechanic), rjohnson (driver)");
-  
-  // SWIFT users
-  await storage.createUser({
-    userId: "egarcia",
-    password: "swift123",
-    userFullName: "Elena Garcia",
-    userTag: "ADMIN",
-    status: "ACTIVE",
-    webAccess: true,
-    customerAdminAccess: true,
-    companyId: "SWIFT",
-  });
-  await storage.createUser({
-    userId: "dlee",
-    password: "swift123",
-    userFullName: "David Lee",
-    userTag: "MECHANIC",
-    status: "ACTIVE",
-    webAccess: true,
-    customerAdminAccess: false,
-    companyId: "SWIFT",
-  });
-  await storage.createUser({
-    userId: "akim",
-    password: "swift123",
-    userFullName: "Andrew Kim",
-    userTag: "DRIVER",
-    status: "ACTIVE",
-    webAccess: false,
-    customerAdminAccess: false,
-    companyId: "SWIFT",
-  });
-  console.log("   ✅ SWIFT users: egarcia (admin), dlee (mechanic), akim (driver)");
-  
-  // ATLAS users
-  await storage.createUser({
-    userId: "tbrown",
-    password: "atlas123",
-    userFullName: "Thomas Brown",
-    userTag: "ADMIN",
-    status: "ACTIVE",
-    webAccess: true,
-    customerAdminAccess: true,
-    companyId: "ATLAS",
-  });
-  await storage.createUser({
-    userId: "lmartinez",
-    password: "atlas123",
-    userFullName: "Lisa Martinez",
-    userTag: "MECHANIC",
-    status: "ACTIVE",
-    webAccess: true,
-    customerAdminAccess: false,
-    companyId: "ATLAS",
-  });
-  await storage.createUser({
-    userId: "cjones",
-    password: "atlas123",
-    userFullName: "Chris Jones",
-    userTag: "DRIVER",
-    status: "INACTIVE",
-    webAccess: false,
-    customerAdminAccess: false,
-    companyId: "ATLAS",
-  });
-  console.log("   ✅ ATLAS users: tbrown (admin), lmartinez (mechanic), cjones (driver-inactive)");
-  console.log("✅ Created 10 users (1 superuser + 9 company users)");
+  console.log("✅ Created 3 companies");
 
-  // ========================================
-  // 3. CREATE 3 LAYOUTS PER COMPANY (9 total)
-  // ========================================
-  console.log("📐 Creating 3 layouts per company (9 total)...");
+  // Create inspection types with form fields
+  console.log("📋 Creating inspection types...");
   
-  const companyIds = ["ACME", "SWIFT", "ATLAS"];
-  const layoutNames = ["SEMI-TRUCK", "DELIVERY-VAN", "TRAILER"];
+  // NEC Inspection Types (with layout mappings)
+  const necInspectionTypesData = [
+    {
+      inspectionTypeName: "preflight",
+      layoutKeys: [], // Empty array = ALL layouts
+      status: "ACTIVE" as const,
+      companyId: "NEC",
+    },
+    {
+      inspectionTypeName: "pre-trip",
+      layoutKeys: ["TRUCK"],
+      status: "ACTIVE" as const,
+      companyId: "NEC",
+    },
+    {
+      inspectionTypeName: "post-trip",
+      layoutKeys: ["TRUCK"],
+      status: "ACTIVE" as const,
+      companyId: "NEC",
+    },
+    {
+      inspectionTypeName: "10000-mile-check",
+      layoutKeys: ["TRUCK"],
+      status: "ACTIVE" as const,
+      companyId: "NEC",
+    },
+    {
+      inspectionTypeName: "crane-daily",
+      layoutKeys: ["CRANE"],
+      status: "ACTIVE" as const,
+      companyId: "NEC",
+    },
+  ];
   
-  const layoutsData = [];
-  for (const companyId of companyIds) {
-    for (const layoutName of layoutNames) {
-      layoutsData.push({ layoutName, companyId, isActive: true });
-    }
+  // WALMART Inspection Types
+  const walmartInspectionTypesData = [
+    {
+      inspectionTypeName: "warehouse-safety",
+      layoutKeys: [], // Empty array = ALL layouts
+      status: "ACTIVE" as const,
+      companyId: "WALMART",
+    },
+    {
+      inspectionTypeName: "forklift-daily",
+      layoutKeys: ["FORKLIFT"],
+      status: "ACTIVE" as const,
+      companyId: "WALMART",
+    },
+    {
+      inspectionTypeName: "delivery-pre-trip",
+      layoutKeys: ["VAN"],
+      status: "ACTIVE" as const,
+      companyId: "WALMART",
+    },
+    {
+      inspectionTypeName: "equipment-monthly",
+      layoutKeys: [], // Empty array = ALL layouts
+      status: "INACTIVE" as const,
+      companyId: "WALMART",
+    },
+  ];
+  
+  // FEDEX Inspection Types
+  const fedexInspectionTypesData = [
+    {
+      inspectionTypeName: "sortation-check",
+      layoutKeys: ["SORTATION-UNIT"],
+      status: "ACTIVE" as const,
+      companyId: "FEDEX",
+    },
+    {
+      inspectionTypeName: "van-pre-route",
+      layoutKeys: ["VAN"],
+      status: "ACTIVE" as const,
+      companyId: "FEDEX",
+    },
+    {
+      inspectionTypeName: "conveyor-weekly",
+      layoutKeys: ["CONVEYOR"],
+      status: "ACTIVE" as const,
+      companyId: "FEDEX",
+    },
+  ];
+  
+  // Insert inspection types (without layoutKeys field)
+  const createdInspectionTypes = await db.insert(inspectionTypes).values([
+    ...necInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
+    ...walmartInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
+    ...fedexInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
+  ]).returning();
+  console.log(`✅ Created ${necInspectionTypesData.length + walmartInspectionTypesData.length + fedexInspectionTypesData.length} inspection types`);
+  
+  // Create a mapping from (companyId + business inspectionTypeName) to UUID id
+  // Use composite key to handle multiple companies using same business ID
+  const inspectionTypeIdMap = new Map<string, string>();
+  for (const it of createdInspectionTypes) {
+    const compositeKey = `${it.companyId}:${it.inspectionTypeName}`;
+    inspectionTypeIdMap.set(compositeKey, it.id);
   }
   
+  // Create form fields for inspection types
+  console.log("📝 Creating form fields...");
+  
+  const formFieldsData = [
+    // Preflight inspection fields (ALL layouts) - NEC
+    { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "NEC", businessInspectionTypeId: "preflight" },
+    { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "preflight" },
+    { formFieldName: "route", formFieldType: "TEXT" as const, formFieldLength: 64, companyId: "NEC", businessInspectionTypeId: "preflight" },
+    { formFieldName: "destination", formFieldType: "TEXT" as const, formFieldLength: 64, companyId: "NEC", businessInspectionTypeId: "preflight" },
+    
+    // Pre-trip inspection fields (TRUCK layout) - NEC
+    { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+    { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+    { formFieldName: "tire-pressure-fl", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+    { formFieldName: "tire-pressure-fr", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+    { formFieldName: "tire-pressure-rl", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+    { formFieldName: "tire-pressure-rr", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+    { formFieldName: "cargo-weight", formFieldType: "NUM" as const, formFieldLength: 6, companyId: "NEC", businessInspectionTypeId: "pre-trip" },
+    
+    // Post-trip inspection fields - NEC
+    { formFieldName: "ending-odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "NEC", businessInspectionTypeId: "post-trip" },
+    { formFieldName: "fuel-remaining", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "post-trip" },
+    { formFieldName: "issues-noted", formFieldType: "TEXT" as const, formFieldLength: 64, companyId: "NEC", businessInspectionTypeId: "post-trip" },
+    
+    // 10,000 mile check fields - NEC
+    { formFieldName: "oil-level", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "NEC", businessInspectionTypeId: "10000-mile-check" },
+    { formFieldName: "brake-wear", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "NEC", businessInspectionTypeId: "10000-mile-check" },
+    { formFieldName: "coolant-level", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "NEC", businessInspectionTypeId: "10000-mile-check" },
+    
+    // Crane daily inspection fields - NEC
+    { formFieldName: "load-capacity", formFieldType: "NUM" as const, formFieldLength: 6, companyId: "NEC", businessInspectionTypeId: "crane-daily" },
+    { formFieldName: "hydraulic-pressure", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "NEC", businessInspectionTypeId: "crane-daily" },
+    { formFieldName: "cable-condition", formFieldType: "TEXT" as const, formFieldLength: 32, companyId: "NEC", businessInspectionTypeId: "crane-daily" },
+    
+    // Warehouse safety fields - WALMART
+    { formFieldName: "walkway-clear", formFieldType: "TEXT" as const, formFieldLength: 10, companyId: "WALMART", businessInspectionTypeId: "warehouse-safety" },
+    { formFieldName: "emergency-exit", formFieldType: "TEXT" as const, formFieldLength: 10, companyId: "WALMART", businessInspectionTypeId: "warehouse-safety" },
+    { formFieldName: "fire-extinguisher", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "WALMART", businessInspectionTypeId: "warehouse-safety" },
+    
+    // Forklift daily fields - WALMART
+    { formFieldName: "battery-charge", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "WALMART", businessInspectionTypeId: "forklift-daily" },
+    { formFieldName: "forks-condition", formFieldType: "TEXT" as const, formFieldLength: 32, companyId: "WALMART", businessInspectionTypeId: "forklift-daily" },
+    { formFieldName: "hours-meter", formFieldType: "NUM" as const, formFieldLength: 8, companyId: "WALMART", businessInspectionTypeId: "forklift-daily" },
+    
+    // Delivery pre-trip fields (WALMART VAN)
+    { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "WALMART", businessInspectionTypeId: "delivery-pre-trip" },
+    { formFieldName: "packages-loaded", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "WALMART", businessInspectionTypeId: "delivery-pre-trip" },
+    { formFieldName: "route-number", formFieldType: "TEXT" as const, formFieldLength: 16, companyId: "WALMART", businessInspectionTypeId: "delivery-pre-trip" },
+    
+    // Sortation check fields - FEDEX
+    { formFieldName: "throughput-rate", formFieldType: "NUM" as const, formFieldLength: 6, companyId: "FEDEX", businessInspectionTypeId: "sortation-check" },
+    { formFieldName: "error-rate", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "sortation-check" },
+    { formFieldName: "scanner-status", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "FEDEX", businessInspectionTypeId: "sortation-check" },
+    
+    // Van pre-route fields (FEDEX)
+    { formFieldName: "odometer-start", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "FEDEX", businessInspectionTypeId: "van-pre-route" },
+    { formFieldName: "route-id", formFieldType: "TEXT" as const, formFieldLength: 16, companyId: "FEDEX", businessInspectionTypeId: "van-pre-route" },
+    { formFieldName: "package-count", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "van-pre-route" },
+    
+    // Conveyor weekly fields - FEDEX
+    { formFieldName: "belt-tension", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
+    { formFieldName: "motor-temp", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
+    { formFieldName: "alignment-check", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
+  ];
+  
+  // Map business IDs to UUID FKs using composite key (companyId:inspectionTypeName)
+  const formFields = formFieldsData.map(ff => ({
+    formFieldName: ff.formFieldName,
+    formFieldType: ff.formFieldType,
+    formFieldLength: ff.formFieldLength,
+    inspectionTypeId: inspectionTypeIdMap.get(`${ff.companyId}:${ff.businessInspectionTypeId}`)!,
+  }));
+  
+  await db.insert(inspectionTypeFormFields).values(formFields);
+  console.log(`✅ Created ${formFields.length} form fields for inspection types`);
+
+  // Create users with plain text passwords (pilot configuration)
+  console.log("👥 Creating users...");
+  
+  // avazquez - can view all companies (no companyId assignment)
+  await storage.createUser({
+    userId: "avazquez",
+    password: "password123",
+    userFullName: "Antonio Vazquez",
+    status: "ACTIVE",
+    webAccess: true,
+    companyId: null,
+  });
+  console.log("   ✅ Created superuser: avazquez (companyId: null)");
+  
+  // Company-specific users
+  await storage.createUser({
+    userId: "john_nec",
+    password: "password123",
+    userFullName: "John Smith",
+    userTag: "SUPERVISOR",
+    status: "ACTIVE",
+    webAccess: true,
+    companyId: "NEC",
+  });
+  console.log("   ✅ Created user: john_nec (companyId: NEC)");
+  
+  await storage.createUser({
+    userId: "sarah_walmart",
+    password: "password123",
+    userFullName: "Sarah Johnson",
+    userTag: "MECHANIC",
+    status: "ACTIVE",
+    webAccess: true,
+    companyId: "WALMART",
+  });
+  console.log("   ✅ Created user: sarah_walmart (companyId: WALMART)");
+  
+  await storage.createUser({
+    userId: "mike_fedex",
+    password: "password123",
+    userFullName: "Mike Davis",
+    status: "ACTIVE",
+    webAccess: true,
+    companyId: "FEDEX",
+  });
+  console.log("   ✅ Created user: mike_fedex (companyId: FEDEX)");
+  
+  // Additional user to test login (adrianal from production logs)
+  await storage.createUser({
+    userId: "adrianal",
+    password: "password123",
+    userFullName: "Adriana Lopez",
+    status: "ACTIVE",
+    webAccess: true,
+    companyId: "WALMART",
+  });
+  console.log("   ✅ Created user: adrianal (companyId: WALMART)");
+  
+  // Add inactive users for testing filters
+  await storage.createUser({
+    userId: "bob_inactive",
+    password: "password123",
+    userFullName: "Bob Inactive",
+    status: "INACTIVE",
+    webAccess: false,
+    companyId: "NEC",
+  });
+  console.log("   ✅ Created inactive user: bob_inactive (companyId: NEC)");
+  
+  await storage.createUser({
+    userId: "jane_former",
+    password: "password123",
+    userFullName: "Jane Former",
+    status: "INACTIVE",
+    webAccess: false,
+    companyId: "FEDEX",
+  });
+  console.log("   ✅ Created inactive user: jane_former (companyId: FEDEX)");
+  
+  console.log("✅ Created 7 users (1 superuser + 4 active company users + 2 inactive users)");
+
+  // Create layouts first (required for assets)
+  console.log("📐 Creating layouts...");
+  const layoutsData = [
+    // NEC layouts
+    { layoutName: "SCHOOL-BUS", companyId: "NEC" },
+    { layoutName: "TRUCK", companyId: "NEC" },
+    { layoutName: "VAN", companyId: "NEC" },
+    { layoutName: "FORKLIFT", companyId: "NEC" },
+    { layoutName: "CRANE", companyId: "NEC" },
+    { layoutName: "PALLET-JACK", companyId: "NEC" },
+    // WALMART layouts
+    { layoutName: "SCHOOL-BUS", companyId: "WALMART" },
+    { layoutName: "TRUCK", companyId: "WALMART" },
+    { layoutName: "VAN", companyId: "WALMART" },
+    { layoutName: "EXCAVATOR", companyId: "WALMART" },
+    { layoutName: "LOADER", companyId: "WALMART" },
+    { layoutName: "FORKLIFT", companyId: "WALMART" },
+    { layoutName: "CONVEYOR", companyId: "WALMART" },
+    { layoutName: "PALLET-JACK", companyId: "WALMART" },
+    // FEDEX layouts
+    { layoutName: "SCHOOL-BUS", companyId: "FEDEX" },
+    { layoutName: "CONVEYOR", companyId: "FEDEX" },
+    { layoutName: "SORTATION-UNIT", companyId: "FEDEX" },
+    { layoutName: "VAN", companyId: "FEDEX" },
+    { layoutName: "TRUCK", companyId: "FEDEX" },
+    { layoutName: "FORKLIFT", companyId: "FEDEX" },
+    { layoutName: "LOADER", companyId: "FEDEX" },
+    { layoutName: "PALLET-JACK", companyId: "FEDEX" },
+    { layoutName: "CRANE", companyId: "FEDEX" },
+    // Multi-asset layouts
+    { layoutName: "DOLLY", companyId: "NEC" },
+    { layoutName: "TRAILER", companyId: "NEC" },
+    { layoutName: "TRAILER", companyId: "WALMART" },
+    { layoutName: "DOLLY", companyId: "FEDEX" },
+    { layoutName: "TRAILER", companyId: "FEDEX" },
+  ];
   const createdLayouts = await db.insert(layouts).values(layoutsData).returning();
   
   // Create layout mapping: "{companyId}:{layoutName}" → UUID
@@ -196,166 +349,191 @@ export async function runSeed() {
   }
   console.log(`✅ Created ${createdLayouts.length} layouts with UUID mapping`);
 
-  // ========================================
-  // 4. CREATE LAYOUT STRUCTURES (Zones, Components, Defects)
-  // ========================================
+  // Create inspection type to layout mappings in junction table
+  console.log("🔗 Creating inspection type to layout mappings...");
+  const allInspectionTypesData = [...necInspectionTypesData, ...walmartInspectionTypesData, ...fedexInspectionTypesData];
+  const inspectionTypeLayoutMappings: Array<{ inspectionTypeId: string; layoutId: string }> = [];
+  
+  for (const itData of allInspectionTypesData) {
+    // Find the created inspection type UUID
+    const createdIT = createdInspectionTypes.find(
+      it => it.companyId === itData.companyId && it.inspectionTypeName === itData.inspectionTypeName
+    );
+    
+    if (!createdIT) {
+      throw new Error(`Inspection type not found: ${itData.companyId}:${itData.inspectionTypeName}`);
+    }
+    
+    // If layoutKeys is empty, it means ALL layouts (no junction records needed)
+    // If layoutKeys has values, create junction records for each layout
+    if (itData.layoutKeys.length > 0) {
+      for (const layoutKey of itData.layoutKeys) {
+        const layoutId = layoutMap.get(`${itData.companyId}:${layoutKey}`);
+        if (!layoutId) {
+          throw new Error(`Layout not found for ${itData.companyId}:${layoutKey}`);
+        }
+        inspectionTypeLayoutMappings.push({
+          inspectionTypeId: createdIT.id,
+          layoutId,
+        });
+      }
+    }
+  }
+  
+  if (inspectionTypeLayoutMappings.length > 0) {
+    await db.insert(inspectionTypeLayouts).values(inspectionTypeLayoutMappings);
+    console.log(`✅ Created ${inspectionTypeLayoutMappings.length} inspection type to layout mappings`);
+  } else {
+    console.log("✅ No specific layout mappings needed (all inspection types apply to ALL layouts)");
+  }
+
+  // Create layout zones, components, and defects based on NJ DOT inspection form
   console.log("🔧 Creating layout structures (zones, components, defects)...");
   
-  // Layout templates based on DOT vehicle inspection requirements
-  const layoutTemplates: Record<string, { zones: Array<{ name: string; tag: string; components: Array<{ name: string; instructions: string; defects: Array<{ name: string; severity: number; instructions: string }> }> }> }> = {
-    "SEMI-TRUCK": {
+  // Layout templates based on NJ DOT vehicle inspection requirements
+  const layoutTemplates = {
+    "SCHOOL-BUS": {
       zones: [
-        { name: "Engine Compartment", tag: "ENGINE", components: [
-          { name: "Engine Oil", instructions: "Check oil level on dipstick", defects: [
-            { name: "Oil level low", severity: 7, instructions: "Add oil to proper level" },
-            { name: "Oil leak detected", severity: 9, instructions: "Identify source and repair before operation" },
+        { name: "Before Operating", tag: "PRE-OP", components: [
+          { name: "Bus Interior Damage", instructions: "Check for tears, damage, or unsafe conditions", defects: [
+            { name: "Torn seat", severity: 4, instructions: "Repair or replace damaged seat" },
+            { name: "Damaged handrails", severity: 6, instructions: "Replace or secure handrails" },
           ]},
-          { name: "Coolant System", instructions: "Check coolant level and hoses", defects: [
-            { name: "Low coolant", severity: 6, instructions: "Top off coolant" },
-            { name: "Hose leak", severity: 8, instructions: "Replace damaged hose" },
+          { name: "Fire Extinguisher", instructions: "Verify charged and accessible", defects: [
+            { name: "Expired", severity: 8, instructions: "Replace immediately - safety critical" },
+            { name: "Low pressure", severity: 7, instructions: "Recharge or replace" },
           ]},
-          { name: "Belts", instructions: "Inspect all belts for wear and tension", defects: [
-            { name: "Belt worn", severity: 5, instructions: "Schedule belt replacement" },
-            { name: "Belt frayed", severity: 8, instructions: "Replace belt immediately" },
+          { name: "Emergency Exits", instructions: "Test all emergency doors and windows", defects: [
+            { name: "Door won't open", severity: 10, instructions: "Out of service - repair immediately" },
+            { name: "Buzzer not working", severity: 6, instructions: "Repair buzzer system" },
           ]},
-        ]},
-        { name: "Cab Interior", tag: "CAB", components: [
-          { name: "Gauges and Indicators", instructions: "Verify all dashboard indicators function", defects: [
-            { name: "Warning light on", severity: 8, instructions: "Diagnose and resolve issue" },
-            { name: "Gauge malfunction", severity: 6, instructions: "Repair or replace gauge" },
-          ]},
-          { name: "Horn", instructions: "Test horn functionality", defects: [
-            { name: "Horn not working", severity: 9, instructions: "Repair horn - safety requirement" },
-          ]},
-          { name: "Windshield and Wipers", instructions: "Check windshield condition and wiper operation", defects: [
-            { name: "Cracked windshield", severity: 7, instructions: "Replace if in driver view" },
-            { name: "Wipers streaking", severity: 4, instructions: "Replace wiper blades" },
-            { name: "Wipers not working", severity: 9, instructions: "Repair wiper motor" },
+          { name: "Seats", instructions: "Check all passenger seats for security", defects: [
+            { name: "Loose mounting", severity: 7, instructions: "Tighten or replace mounts" },
+            { name: "Missing seatbelt", severity: 8, instructions: "Install replacement belt" },
           ]},
         ]},
-        { name: "Brakes and Tires", tag: "BRAKES", components: [
-          { name: "Air Brake System", instructions: "Check air pressure and brake response", defects: [
-            { name: "Low air pressure", severity: 10, instructions: "OUT OF SERVICE - repair air system" },
-            { name: "Air leak detected", severity: 9, instructions: "Find and repair leak" },
+        { name: "During Warm-Up", tag: "WARM-UP", components: [
+          { name: "Service Brakes", instructions: "Test brake pedal response and hold", defects: [
+            { name: "Spongy pedal", severity: 8, instructions: "Bleed brakes or check for leaks" },
+            { name: "Pulls to one side", severity: 7, instructions: "Inspect brake calipers" },
           ]},
-          { name: "Tires", instructions: "Inspect tread depth and sidewall condition", defects: [
-            { name: "Low tread depth", severity: 8, instructions: "Replace tire if below 4/32 inch" },
-            { name: "Sidewall damage", severity: 10, instructions: "Replace tire immediately" },
-            { name: "Tire underinflated", severity: 6, instructions: "Inflate to proper PSI" },
+          { name: "Windshield Wipers", instructions: "Test all speeds and washer fluid", defects: [
+            { name: "Streaking", severity: 3, instructions: "Replace wiper blades" },
+            { name: "Not working", severity: 9, instructions: "Repair wiper motor - weather safety" },
           ]},
-          { name: "Wheel Seals", instructions: "Check for oil leaks at wheel hubs", defects: [
-            { name: "Wheel seal leaking", severity: 8, instructions: "Replace wheel seal" },
+          { name: "Headlights", instructions: "Check high and low beams", defects: [
+            { name: "Bulb out", severity: 8, instructions: "Replace bulb before operation" },
+            { name: "Lens cracked", severity: 5, instructions: "Replace headlight assembly" },
+          ]},
+          { name: "Stop Lights", instructions: "Verify all brake lights illuminate", defects: [
+            { name: "Bulb out", severity: 9, instructions: "Replace immediately - safety critical" },
+            { name: "Dim light", severity: 6, instructions: "Check wiring and bulb" },
+          ]},
+          { name: "School Bus Warning Lights", instructions: "Test amber and red warning lights", defects: [
+            { name: "Lights not working", severity: 10, instructions: "Out of service - must repair" },
+            { name: "Flashing incorrectly", severity: 8, instructions: "Repair flasher unit" },
           ]},
         ]},
-        { name: "Lights and Reflectors", tag: "LIGHTS", components: [
-          { name: "Headlights", instructions: "Test high and low beams", defects: [
-            { name: "Headlight out", severity: 9, instructions: "Replace bulb before night operation" },
-            { name: "Headlight dim", severity: 5, instructions: "Clean or replace lens" },
+        { name: "Exterior Walkaround", tag: "EXTERIOR", components: [
+          { name: "Tires", instructions: "Check tread depth and sidewall condition", defects: [
+            { name: "Low tread", severity: 8, instructions: "Replace if below 4/32 inch" },
+            { name: "Sidewall damage", severity: 9, instructions: "Replace tire immediately" },
           ]},
-          { name: "Brake Lights", instructions: "Verify all brake lights illuminate", defects: [
-            { name: "Brake light out", severity: 10, instructions: "Replace immediately - safety critical" },
+          { name: "Mirrors", instructions: "Check all mirrors for visibility and security", defects: [
+            { name: "Cracked", severity: 6, instructions: "Replace mirror" },
+            { name: "Loose mounting", severity: 7, instructions: "Tighten or repair mount" },
           ]},
-          { name: "Turn Signals", instructions: "Test left and right turn signals", defects: [
-            { name: "Turn signal out", severity: 8, instructions: "Replace bulb or fuse" },
-            { name: "Turn signal flashing fast", severity: 5, instructions: "Replace failing bulb" },
-          ]},
-          { name: "Reflectors", instructions: "Ensure all reflectors are present and clean", defects: [
-            { name: "Missing reflector", severity: 6, instructions: "Replace reflector" },
+          { name: "Stop Arm", instructions: "Test stop arm extension and lights", defects: [
+            { name: "Won't extend", severity: 10, instructions: "Out of service - repair mechanism" },
+            { name: "Lights not working", severity: 9, instructions: "Repair stop arm lights" },
           ]},
         ]},
       ]
     },
-    "DELIVERY-VAN": {
+    "TRUCK": {
       zones: [
-        { name: "Pre-Trip Cabin", tag: "CABIN", components: [
-          { name: "Seat Belts", instructions: "Test all seat belts for proper operation", defects: [
-            { name: "Seat belt frayed", severity: 8, instructions: "Replace seat belt" },
-            { name: "Buckle not latching", severity: 9, instructions: "Repair or replace buckle" },
+        { name: "Before Operating", tag: "PRE-OP", components: [
+          { name: "Fuel Level", instructions: "Verify sufficient fuel for route", defects: [
+            { name: "Below 1/4 tank", severity: 4, instructions: "Refuel before departure" },
+            { name: "Fuel leak detected", severity: 10, instructions: "Out of service - repair leak" },
           ]},
-          { name: "Mirrors", instructions: "Check all mirrors for visibility", defects: [
-            { name: "Mirror cracked", severity: 6, instructions: "Replace mirror" },
-            { name: "Mirror loose", severity: 5, instructions: "Tighten mounting hardware" },
+          { name: "Engine Oil", instructions: "Check oil level and condition", defects: [
+            { name: "Low oil level", severity: 7, instructions: "Add oil to proper level" },
+            { name: "Oil leak", severity: 8, instructions: "Repair leak before operation" },
           ]},
-          { name: "Horn", instructions: "Test horn functionality", defects: [
-            { name: "Horn weak", severity: 5, instructions: "Check wiring and replace if needed" },
-            { name: "Horn not working", severity: 8, instructions: "Repair horn circuit" },
-          ]},
-        ]},
-        { name: "Engine and Fluids", tag: "ENGINE", components: [
-          { name: "Oil Level", instructions: "Check engine oil level", defects: [
-            { name: "Oil low", severity: 6, instructions: "Add engine oil" },
-            { name: "Oil dirty", severity: 4, instructions: "Schedule oil change" },
-          ]},
-          { name: "Brake Fluid", instructions: "Check brake fluid reservoir", defects: [
-            { name: "Brake fluid low", severity: 8, instructions: "Add fluid and check for leaks" },
-          ]},
-          { name: "Washer Fluid", instructions: "Verify washer fluid level", defects: [
-            { name: "Washer fluid empty", severity: 2, instructions: "Refill washer reservoir" },
+          { name: "Coolant", instructions: "Check coolant level in reservoir", defects: [
+            { name: "Low coolant", severity: 6, instructions: "Top off coolant" },
+            { name: "Leak detected", severity: 9, instructions: "Repair cooling system" },
           ]},
         ]},
-        { name: "Exterior and Cargo", tag: "EXTERIOR", components: [
-          { name: "Cargo Door", instructions: "Test cargo door operation and locks", defects: [
-            { name: "Door won't latch", severity: 7, instructions: "Adjust or repair latch mechanism" },
-            { name: "Door seal damaged", severity: 4, instructions: "Replace door seal" },
+        { name: "During Warm-Up", tag: "WARM-UP", components: [
+          { name: "Air Brakes", instructions: "Test air pressure and brake response", defects: [
+            { name: "Low air pressure", severity: 10, instructions: "Out of service - repair air system" },
+            { name: "Slow build time", severity: 7, instructions: "Inspect compressor" },
           ]},
-          { name: "Tires", instructions: "Check all four tires", defects: [
-            { name: "Tire worn", severity: 7, instructions: "Replace tire" },
-            { name: "Tire flat", severity: 10, instructions: "Replace or repair immediately" },
+          { name: "Parking Brake", instructions: "Test parking brake hold", defects: [
+            { name: "Won't hold", severity: 10, instructions: "Out of service - adjust or repair" },
+            { name: "Slow release", severity: 5, instructions: "Inspect brake linkage" },
+          ]},
+          { name: "Gauges", instructions: "Check all instrument readings", defects: [
+            { name: "Warning light on", severity: 8, instructions: "Diagnose and repair issue" },
+            { name: "Gauge not working", severity: 6, instructions: "Replace gauge or sensor" },
+          ]},
+        ]},
+        { name: "Exterior Walkaround", tag: "EXTERIOR", components: [
+          { name: "Tires", instructions: "Inspect all tires for wear and damage", defects: [
+            { name: "Tread below limit", severity: 9, instructions: "Replace tire" },
+            { name: "Uneven wear", severity: 6, instructions: "Check alignment" },
           ]},
           { name: "Lights", instructions: "Test all exterior lights", defects: [
-            { name: "Tail light out", severity: 8, instructions: "Replace bulb" },
-            { name: "Backup light out", severity: 6, instructions: "Replace bulb" },
+            { name: "Light out", severity: 8, instructions: "Replace bulb or fixture" },
+            { name: "Lens damaged", severity: 5, instructions: "Replace lens" },
+          ]},
+          { name: "Cargo Securement", instructions: "Verify load is properly secured", defects: [
+            { name: "Loose straps", severity: 9, instructions: "Tighten all cargo straps" },
+            { name: "Shifted load", severity: 10, instructions: "Resecure load before departure" },
           ]},
         ]},
       ]
     },
     "TRAILER": {
       zones: [
-        { name: "Coupling System", tag: "COUPLING", components: [
-          { name: "Fifth Wheel", instructions: "Verify fifth wheel connection and lock", defects: [
-            { name: "Fifth wheel not locked", severity: 10, instructions: "OUT OF SERVICE - secure kingpin" },
-            { name: "Kingpin worn", severity: 9, instructions: "Replace kingpin" },
+        { name: "Coupling", tag: "COUPLING", components: [
+          { name: "Fifth Wheel", instructions: "Check fifth wheel connection and lock", defects: [
+            { name: "Not locked", severity: 10, instructions: "Out of service - ensure proper lock" },
+            { name: "Worn kingpin", severity: 8, instructions: "Replace kingpin" },
           ]},
-          { name: "Glad Hands", instructions: "Check air and electrical connections", defects: [
-            { name: "Air leak at glad hands", severity: 9, instructions: "Replace seals or connections" },
-            { name: "Electrical connection loose", severity: 7, instructions: "Secure connection" },
+          { name: "Glad Hands", instructions: "Check air line connections", defects: [
+            { name: "Leak detected", severity: 9, instructions: "Replace seals or lines" },
+            { name: "Cross-threaded", severity: 7, instructions: "Replace glad hand" },
           ]},
-          { name: "Safety Chains", instructions: "Verify chains are properly attached", defects: [
-            { name: "Safety chain not attached", severity: 10, instructions: "Attach chains before departure" },
-            { name: "Chain links damaged", severity: 8, instructions: "Replace safety chains" },
-          ]},
-        ]},
-        { name: "Trailer Body", tag: "BODY", components: [
-          { name: "Rear Doors", instructions: "Test door operation and seals", defects: [
-            { name: "Door hinge damaged", severity: 6, instructions: "Repair or replace hinge" },
-            { name: "Door seal missing", severity: 4, instructions: "Install new door seal" },
-            { name: "Door latch broken", severity: 8, instructions: "Repair latch mechanism" },
-          ]},
-          { name: "Floor Condition", instructions: "Inspect floor for damage or rot", defects: [
-            { name: "Floor boards damaged", severity: 7, instructions: "Replace damaged sections" },
-            { name: "Floor soft spots", severity: 8, instructions: "Evaluate structural integrity" },
-          ]},
-          { name: "Sidewalls", instructions: "Check sidewalls for damage", defects: [
-            { name: "Sidewall puncture", severity: 6, instructions: "Repair or patch sidewall" },
-            { name: "Rivets missing", severity: 4, instructions: "Replace missing rivets" },
+          { name: "Safety Chains", instructions: "Verify chains are attached and secure", defects: [
+            { name: "Not attached", severity: 10, instructions: "Attach safety chains" },
+            { name: "Damaged links", severity: 8, instructions: "Replace chains" },
           ]},
         ]},
-        { name: "Trailer Running Gear", tag: "RUNNING", components: [
-          { name: "Trailer Brakes", instructions: "Check brake adjustment and condition", defects: [
-            { name: "Brakes out of adjustment", severity: 9, instructions: "Adjust brakes per specification" },
-            { name: "Brake drum cracked", severity: 10, instructions: "OUT OF SERVICE - replace drum" },
-          ]},
+        { name: "Exterior Inspection", tag: "EXTERIOR", components: [
           { name: "Trailer Tires", instructions: "Inspect all trailer tires", defects: [
-            { name: "Trailer tire worn", severity: 8, instructions: "Replace tire" },
-            { name: "Tire separation", severity: 10, instructions: "Replace immediately" },
+            { name: "Flat tire", severity: 10, instructions: "Replace or repair tire" },
+            { name: "Low tread", severity: 8, instructions: "Replace tire" },
           ]},
           { name: "Trailer Lights", instructions: "Test all trailer lights", defects: [
-            { name: "Marker light out", severity: 6, instructions: "Replace bulb" },
-            { name: "All trailer lights out", severity: 10, instructions: "Check electrical connection" },
+            { name: "Light not working", severity: 9, instructions: "Repair wiring or replace bulb" },
+            { name: "Corroded socket", severity: 6, instructions: "Clean or replace socket" },
           ]},
-          { name: "Landing Gear", instructions: "Test landing gear operation", defects: [
-            { name: "Landing gear won't crank", severity: 7, instructions: "Lubricate or repair mechanism" },
-            { name: "Landing gear bent", severity: 8, instructions: "Replace landing gear leg" },
+          { name: "Doors", instructions: "Check rear and side doors for operation", defects: [
+            { name: "Won't latch", severity: 8, instructions: "Adjust or replace latch" },
+            { name: "Damaged seals", severity: 4, instructions: "Replace door seals" },
+          ]},
+        ]},
+        { name: "Brake System", tag: "BRAKES", components: [
+          { name: "Brake Adjustment", instructions: "Check brake adjustment on all wheels", defects: [
+            { name: "Out of adjustment", severity: 9, instructions: "Adjust brakes per spec" },
+            { name: "Brake drag", severity: 7, instructions: "Inspect brake chamber" },
+          ]},
+          { name: "Brake Hoses", instructions: "Inspect all brake hoses for damage", defects: [
+            { name: "Cracked hose", severity: 10, instructions: "Replace hose immediately" },
+            { name: "Rubbing on frame", severity: 6, instructions: "Reroute or protect hose" },
           ]},
         ]},
       ]
@@ -363,14 +541,20 @@ export async function runSeed() {
   };
 
   // Helper function to instantiate a layout template
-  const instantiateLayout = async (template: typeof layoutTemplates["SEMI-TRUCK"], layoutUuid: string) => {
+  const instantiateLayout = async (template: typeof layoutTemplates["SCHOOL-BUS"], layoutUuid: string) => {
+    const zoneMap = new Map<string, string>();
+    
     for (const zoneTemplate of template.zones) {
+      // Insert zone
       const [zone] = await db.insert(layoutZones).values({
         zoneName: zoneTemplate.name,
         zoneTag: zoneTemplate.tag,
         layoutId: layoutUuid,
       }).returning();
       
+      zoneMap.set(zoneTemplate.name, zone.id);
+      
+      // Insert components for this zone
       for (const compTemplate of zoneTemplate.components) {
         const [component] = await db.insert(layoutZoneComponents).values({
           componentName: compTemplate.name,
@@ -378,6 +562,7 @@ export async function runSeed() {
           zoneId: zone.id,
         }).returning();
         
+        // Insert defects for this component
         for (const defectTemplate of compTemplate.defects) {
           await db.insert(componentDefects).values({
             defectName: defectTemplate.name,
@@ -390,334 +575,447 @@ export async function runSeed() {
     }
   };
 
-  // Apply templates to all companies' layouts
-  for (const company of companyIds) {
-    for (const layoutName of layoutNames) {
-      const layoutUuid = layoutMap.get(`${company}:${layoutName}`);
-      if (layoutUuid && layoutTemplates[layoutName]) {
-        await instantiateLayout(layoutTemplates[layoutName], layoutUuid);
-        console.log(`   ✅ Created ${layoutName} structure for ${company}`);
-      }
-    }
-  }
-  console.log("✅ Created layout structures for 9 layouts (3 companies × 3 layout types)");
-
-  // ========================================
-  // 5. CREATE INSPECTION TYPES
-  // ========================================
-  console.log("📋 Creating inspection types...");
+  // Apply templates to all companies' SCHOOL-BUS, TRUCK, and TRAILER layouts
+  const layoutsToPopulate = ["SCHOOL-BUS", "TRUCK", "TRAILER"];
+  const companiesToPopulate = ["NEC", "WALMART", "FEDEX"];
   
-  const inspectionTypesData = [
-    // ACME inspection types
-    { inspectionTypeName: "Pre-Trip Inspection", status: "ACTIVE" as const, companyId: "ACME", layoutKeys: [] },
-    { inspectionTypeName: "Post-Trip Inspection", status: "ACTIVE" as const, companyId: "ACME", layoutKeys: [] },
-    { inspectionTypeName: "DOT Annual Inspection", status: "ACTIVE" as const, companyId: "ACME", layoutKeys: ["SEMI-TRUCK", "TRAILER"] },
-    // SWIFT inspection types
-    { inspectionTypeName: "Pre-Trip Inspection", status: "ACTIVE" as const, companyId: "SWIFT", layoutKeys: [] },
-    { inspectionTypeName: "Post-Trip Inspection", status: "ACTIVE" as const, companyId: "SWIFT", layoutKeys: [] },
-    { inspectionTypeName: "Weekly Safety Check", status: "ACTIVE" as const, companyId: "SWIFT", layoutKeys: ["DELIVERY-VAN"] },
-    // ATLAS inspection types
-    { inspectionTypeName: "Pre-Trip Inspection", status: "ACTIVE" as const, companyId: "ATLAS", layoutKeys: [] },
-    { inspectionTypeName: "Post-Trip Inspection", status: "ACTIVE" as const, companyId: "ATLAS", layoutKeys: [] },
-    { inspectionTypeName: "Maintenance Check", status: "INACTIVE" as const, companyId: "ATLAS", layoutKeys: [] },
-  ];
-  
-  const createdInspectionTypes = await db.insert(inspectionTypes).values(
-    inspectionTypesData.map(({ layoutKeys, ...rest }) => rest)
-  ).returning();
-  
-  // Create inspection type ID map
-  const inspectionTypeIdMap = new Map<string, string>();
-  for (const it of createdInspectionTypes) {
-    inspectionTypeIdMap.set(`${it.companyId}:${it.inspectionTypeName}`, it.id);
-  }
-  
-  // Create inspection type to layout mappings
-  const inspectionTypeLayoutMappings: Array<{ inspectionTypeId: string; layoutId: string }> = [];
-  for (const itData of inspectionTypesData) {
-    const createdIT = createdInspectionTypes.find(
-      it => it.companyId === itData.companyId && it.inspectionTypeName === itData.inspectionTypeName
-    );
-    
-    if (createdIT && itData.layoutKeys.length > 0) {
-      for (const layoutKey of itData.layoutKeys) {
-        const layoutId = layoutMap.get(`${itData.companyId}:${layoutKey}`);
-        if (layoutId) {
-          inspectionTypeLayoutMappings.push({ inspectionTypeId: createdIT.id, layoutId });
-        }
+  for (const company of companiesToPopulate) {
+    for (const layoutType of layoutsToPopulate) {
+      const layoutUuid = layoutMap.get(`${company}:${layoutType}`);
+      if (layoutUuid && layoutTemplates[layoutType as keyof typeof layoutTemplates]) {
+        await instantiateLayout(layoutTemplates[layoutType as keyof typeof layoutTemplates], layoutUuid);
+        console.log(`   ✅ Created ${layoutType} structure for ${company}`);
       }
     }
   }
   
-  if (inspectionTypeLayoutMappings.length > 0) {
-    await db.insert(inspectionTypeLayouts).values(inspectionTypeLayoutMappings);
-  }
-  
-  // Create form fields for inspection types
-  const formFieldsData = [
-    { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "ACME", businessInspectionTypeId: "Pre-Trip Inspection" },
-    { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "ACME", businessInspectionTypeId: "Pre-Trip Inspection" },
-    { formFieldName: "ending-odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "ACME", businessInspectionTypeId: "Post-Trip Inspection" },
-    { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "SWIFT", businessInspectionTypeId: "Pre-Trip Inspection" },
-    { formFieldName: "route-number", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "SWIFT", businessInspectionTypeId: "Pre-Trip Inspection" },
-    { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "ATLAS", businessInspectionTypeId: "Pre-Trip Inspection" },
-  ];
-  
-  const formFields = formFieldsData.map(ff => ({
-    formFieldName: ff.formFieldName,
-    formFieldType: ff.formFieldType,
-    formFieldLength: ff.formFieldLength,
-    inspectionTypeId: inspectionTypeIdMap.get(`${ff.companyId}:${ff.businessInspectionTypeId}`)!,
-  })).filter(ff => ff.inspectionTypeId);
-  
-  if (formFields.length > 0) {
-    await db.insert(inspectionTypeFormFields).values(formFields);
-  }
-  
-  console.log(`✅ Created ${createdInspectionTypes.length} inspection types with form fields`);
+  console.log("✅ Created layout structures for 9 vehicle layouts (3 companies × 3 layout types)");
 
-  // ========================================
-  // 6. CREATE ASSETS
-  // ========================================
+  // Create assets for all companies
   console.log("📦 Creating assets...");
   
-  const assetsData = [
-    // ACME assets
-    { assetId: "TRUCK-101", layoutKey: "SEMI-TRUCK", assetName: "Freightliner Cascadia 101", licensePlate: "TX-ABC1234", status: "ACTIVE" as const, companyId: "ACME" },
-    { assetId: "TRUCK-102", layoutKey: "SEMI-TRUCK", assetName: "Peterbilt 579 102", licensePlate: "TX-DEF5678", status: "ACTIVE" as const, companyId: "ACME" },
-    { assetId: "VAN-201", layoutKey: "DELIVERY-VAN", assetName: "Ford Transit 201", licensePlate: "TX-GHI9012", status: "ACTIVE" as const, companyId: "ACME" },
-    { assetId: "VAN-202", layoutKey: "DELIVERY-VAN", assetName: "Mercedes Sprinter 202", licensePlate: "TX-JKL3456", status: "INACTIVE" as const, companyId: "ACME" },
-    { assetId: "TRL-301", layoutKey: "TRAILER", assetName: "Great Dane Trailer 301", licensePlate: "TX-MNO7890", status: "ACTIVE" as const, companyId: "ACME" },
-    { assetId: "TRL-302", layoutKey: "TRAILER", assetName: "Utility Trailer 302", licensePlate: "TX-PQR1234", status: "ACTIVE" as const, companyId: "ACME" },
-    // SWIFT assets
-    { assetId: "TRUCK-501", layoutKey: "SEMI-TRUCK", assetName: "Kenworth T680 501", licensePlate: "CO-AAA1111", status: "ACTIVE" as const, companyId: "SWIFT" },
-    { assetId: "TRUCK-502", layoutKey: "SEMI-TRUCK", assetName: "Volvo VNL 502", licensePlate: "CO-BBB2222", status: "ACTIVE" as const, companyId: "SWIFT" },
-    { assetId: "VAN-601", layoutKey: "DELIVERY-VAN", assetName: "RAM ProMaster 601", licensePlate: "CO-CCC3333", status: "ACTIVE" as const, companyId: "SWIFT" },
-    { assetId: "VAN-602", layoutKey: "DELIVERY-VAN", assetName: "Chevrolet Express 602", licensePlate: "CO-DDD4444", status: "ACTIVE" as const, companyId: "SWIFT" },
-    { assetId: "TRL-701", layoutKey: "TRAILER", assetName: "Wabash Trailer 701", licensePlate: "CO-EEE5555", status: "ACTIVE" as const, companyId: "SWIFT" },
-    { assetId: "TRL-702", layoutKey: "TRAILER", assetName: "Hyundai Trailer 702", licensePlate: "CO-FFF6666", status: "INACTIVE" as const, companyId: "SWIFT" },
-    // ATLAS assets
-    { assetId: "TRUCK-801", layoutKey: "SEMI-TRUCK", assetName: "Mack Anthem 801", licensePlate: "AZ-XXX1111", status: "ACTIVE" as const, companyId: "ATLAS" },
-    { assetId: "TRUCK-802", layoutKey: "SEMI-TRUCK", assetName: "International LT 802", licensePlate: "AZ-YYY2222", status: "ACTIVE" as const, companyId: "ATLAS" },
-    { assetId: "VAN-901", layoutKey: "DELIVERY-VAN", assetName: "Nissan NV 901", licensePlate: "AZ-ZZZ3333", status: "ACTIVE" as const, companyId: "ATLAS" },
-    { assetId: "TRL-1001", layoutKey: "TRAILER", assetName: "Stoughton Trailer 1001", licensePlate: "AZ-AAA4444", status: "ACTIVE" as const, companyId: "ATLAS" },
-    { assetId: "TRL-1002", layoutKey: "TRAILER", assetName: "Vanguard Trailer 1002", licensePlate: "AZ-BBB5555", status: "ACTIVE" as const, companyId: "ATLAS" },
-  ];
-  
-  const mappedAssets = assetsData.map(asset => {
+  // Helper function to map asset data to include layout UUID
+  const mapAssetToLayout = (asset: {assetId: string, layoutKey: string, assetName: string, status: "ACTIVE" | "INACTIVE", companyId: string}) => {
     const layoutId = layoutMap.get(`${asset.companyId}:${asset.layoutKey}`);
-    if (!layoutId) throw new Error(`Layout not found: ${asset.companyId}:${asset.layoutKey}`);
+    if (!layoutId) {
+      throw new Error(`Layout not found for ${asset.companyId}:${asset.layoutKey}`);
+    }
     return {
       assetId: asset.assetId,
       layout: layoutId,
       assetName: asset.assetName,
-      licensePlate: asset.licensePlate,
       status: asset.status,
       companyId: asset.companyId,
     };
-  });
-  
-  await db.insert(assets).values(mappedAssets);
-  console.log(`✅ Created ${mappedAssets.length} assets`);
-
-  // ========================================
-  // 7. CREATE INSPECTIONS
-  // ========================================
-  console.log("📋 Creating inspections...");
-  
-  const drivers: Record<string, Array<{ name: string; id: string }>> = {
-    ACME: [
-      { name: "Robert Johnson", id: "DRV-A001" },
-      { name: "Michael Davis", id: "DRV-A002" },
-      { name: "James Wilson", id: "DRV-A003" },
-    ],
-    SWIFT: [
-      { name: "Andrew Kim", id: "DRV-S001" },
-      { name: "Steven Chen", id: "DRV-S002" },
-      { name: "Daniel Park", id: "DRV-S003" },
-    ],
-    ATLAS: [
-      { name: "Chris Jones", id: "DRV-T001" },
-      { name: "Brian Taylor", id: "DRV-T002" },
-      { name: "Kevin Moore", id: "DRV-T003" },
-    ],
   };
   
-  const assetsByCompany: Record<string, string[]> = {
-    ACME: ["TRUCK-101", "TRUCK-102", "VAN-201", "TRL-301", "TRL-302"],
-    SWIFT: ["TRUCK-501", "TRUCK-502", "VAN-601", "VAN-602", "TRL-701"],
-    ATLAS: ["TRUCK-801", "TRUCK-802", "VAN-901", "TRL-1001", "TRL-1002"],
-  };
-  
-  const inspectionTypesByCompany: Record<string, string[]> = {
-    ACME: ["Pre-Trip Inspection", "Post-Trip Inspection", "DOT Annual Inspection"],
-    SWIFT: ["Pre-Trip Inspection", "Post-Trip Inspection", "Weekly Safety Check"],
-    ATLAS: ["Pre-Trip Inspection", "Post-Trip Inspection"],
-  };
-  
-  const allInspections: Array<{
-    id: string;
-    companyId: string;
-    datetime: Date;
-    inspectionType: string;
-    driverName: string;
-    driverId: string;
-    inspectionFormData: string;
-  }> = [];
-  
-  // Generate 30 inspections per company (90 total)
-  for (const company of companyIds) {
-    const companyDrivers = drivers[company];
-    const companyAssets = assetsByCompany[company];
-    const companyTypes = inspectionTypesByCompany[company];
-    
-    for (let i = 0; i < 30; i++) {
-      const day = Math.floor(i / 2) + 1;
-      const hour = 6 + (i % 12);
-      const minute = (i * 17) % 60;
-      const driver = companyDrivers[i % companyDrivers.length];
-      
-      allInspections.push({
-        id: randomUUID(),
-        companyId: company,
-        datetime: new Date(`2025-12-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
-        inspectionType: companyTypes[i % companyTypes.length],
-        driverName: driver.name,
-        driverId: driver.id,
-        inspectionFormData: JSON.stringify({ odometer: 50000 + (i * 100), notes: `Inspection #${i + 1}` }),
-      });
-    }
-  }
-  
-  const createdInspections = await db.insert(inspections).values(allInspections).returning();
-  
-  // Create inspection_assets associations
-  const inspectionAssetsData = createdInspections.map((insp, i) => {
-    const companyAssets = assetsByCompany[insp.companyId];
-    return {
-      inspectionId: insp.id,
-      assetId: companyAssets[i % companyAssets.length],
-    };
-  });
-  
-  await db.insert(inspectionAssets).values(inspectionAssetsData);
-  console.log(`✅ Created ${createdInspections.length} inspections with asset associations`);
-
-  // ========================================
-  // 8. CREATE DEFECTS
-  // ========================================
-  console.log("🔧 Creating defects...");
-  
-  const defectTemplates = [
-    // Critical (8-10)
-    { zoneName: "Brakes and Tires", componentName: "Air Brake System", defect: "Low air pressure warning", severity: 10, status: "open" as const, driverNotes: "Pressure below 60 PSI on startup" },
-    { zoneName: "Brakes and Tires", componentName: "Tires", defect: "Sidewall damage on front right tire", severity: 10, status: "pending" as const, driverNotes: "Visible cord showing", repairNotes: "New tire ordered" },
-    { zoneName: "Coupling System", componentName: "Fifth Wheel", defect: "Fifth wheel not locking properly", severity: 10, status: "repaired" as const, driverNotes: "Had to re-couple twice", repairNotes: "Adjusted jaw mechanism", mechanicName: "Mary Williams" },
-    { zoneName: "Lights and Reflectors", componentName: "Brake Lights", defect: "Both brake lights not functioning", severity: 10, status: "open" as const, driverNotes: "Noticed during pre-trip" },
-    
-    // High (7-8)
-    { zoneName: "Engine Compartment", componentName: "Engine Oil", defect: "Oil leak detected at valve cover", severity: 8, status: "pending" as const, driverNotes: "Oil spots under truck after parking", repairNotes: "Scheduled for shop visit" },
-    { zoneName: "Engine Compartment", componentName: "Coolant System", defect: "Coolant hose showing cracks", severity: 8, status: "open" as const, driverNotes: "Visible wear on upper radiator hose" },
-    { zoneName: "Cab Interior", componentName: "Windshield and Wipers", defect: "Cracked windshield in driver view", severity: 7, status: "pending" as const, driverNotes: "Rock chip has spread", repairNotes: "Replacement scheduled" },
-    { zoneName: "Trailer Running Gear", componentName: "Trailer Brakes", defect: "Brakes out of adjustment on axle 2", severity: 9, status: "repaired" as const, driverNotes: "Pulling to left when braking", repairNotes: "Adjusted per spec", mechanicName: "David Lee" },
-    
-    // Medium (4-6)
-    { zoneName: "Cab Interior", componentName: "Gauges and Indicators", defect: "Fuel gauge reading inaccurately", severity: 6, status: "open" as const, driverNotes: "Shows empty when tank is half full" },
-    { zoneName: "Pre-Trip Cabin", componentName: "Mirrors", defect: "Passenger mirror loose", severity: 5, status: "repaired" as const, driverNotes: "Vibrates at highway speed", repairNotes: "Tightened mounting bolts", mechanicName: "Lisa Martinez" },
-    { zoneName: "Trailer Body", componentName: "Rear Doors", defect: "Door seal damaged on right door", severity: 4, status: "open" as const, driverNotes: "Rain getting into cargo area" },
-    { zoneName: "Exterior and Cargo", componentName: "Cargo Door", defect: "Cargo door hinge squeaking", severity: 4, status: "not-needed" as const, driverNotes: "Makes noise when opening", repairNotes: "Lubricated per driver request" },
-    
-    // Low (1-3)
-    { zoneName: "Engine and Fluids", componentName: "Washer Fluid", defect: "Washer fluid low", severity: 2, status: "repaired" as const, driverNotes: "Streaking on windshield", repairNotes: "Filled reservoir", mechanicName: "Mary Williams" },
-    { zoneName: "Lights and Reflectors", componentName: "Reflectors", defect: "Reflector dirty on rear right", severity: 3, status: "open" as const, driverNotes: "Needs cleaning" },
+  // NEC Assets - matching the inspection data
+  const necAssetData = [
+    { assetId: "TRUCK-2401", layoutKey: "TRUCK", assetName: "Freightliner 2401", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "TRUCK-2402", layoutKey: "TRUCK", assetName: "Peterbilt 2402", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "TRUCK-2403", layoutKey: "TRUCK", assetName: "Kenworth 2403", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "VAN-1501", layoutKey: "VAN", assetName: "Ford Transit 1501", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "VAN-1502", layoutKey: "VAN", assetName: "Mercedes Sprinter 1502", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "FORKLIFT-089", layoutKey: "FORKLIFT", assetName: "Toyota 089", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "FORKLIFT-090", layoutKey: "FORKLIFT", assetName: "Caterpillar 090", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "CRANE-12", layoutKey: "CRANE", assetName: "Mobile Crane 12", status: "ACTIVE" as const, companyId: "NEC" },
+    { assetId: "CRANE-13", layoutKey: "CRANE", assetName: "Tower Crane 13", status: "INACTIVE" as const, companyId: "NEC" },
+    { assetId: "PALLET-JACK-05", layoutKey: "PALLET-JACK", assetName: "Electric Jack 05", status: "ACTIVE" as const, companyId: "NEC" },
   ];
   
-  const allDefects: Array<{
-    inspectionId: string;
-    assetId: string;
-    zoneName: string;
-    componentName: string;
-    defect: string;
-    severity: number;
-    status: "open" | "pending" | "repaired" | "not-needed";
-    driverNotes?: string;
-    repairNotes?: string | null;
-    mechanicName?: string | null;
-    repairDate?: Date | null;
-  }> = [];
+  // WALMART Assets
+  const walmartAssetData = [
+    { assetId: "VAN-1145", layoutKey: "VAN", assetName: "Delivery Van 1145", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "VAN-1146", layoutKey: "VAN", assetName: "Delivery Van 1146", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "TRUCK-5001", layoutKey: "TRUCK", assetName: "Semi Truck 5001", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "TRUCK-5002", layoutKey: "TRUCK", assetName: "Semi Truck 5002", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "EXCAVATOR-45", layoutKey: "EXCAVATOR", assetName: "Excavator 45", status: "INACTIVE" as const, companyId: "WALMART" },
+    { assetId: "LOADER-22", layoutKey: "LOADER", assetName: "Front Loader 22", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "FORKLIFT-W01", layoutKey: "FORKLIFT", assetName: "Warehouse Forklift W01", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "FORKLIFT-W02", layoutKey: "FORKLIFT", assetName: "Warehouse Forklift W02", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "CONVEYOR-W3", layoutKey: "CONVEYOR", assetName: "Belt Conveyor W3", status: "ACTIVE" as const, companyId: "WALMART" },
+    { assetId: "PALLET-JACK-W10", layoutKey: "PALLET-JACK", assetName: "Manual Jack W10", status: "ACTIVE" as const, companyId: "WALMART" },
+  ];
   
-  // Add defects to ~60% of inspections
-  for (let i = 0; i < createdInspections.length; i++) {
-    if (Math.random() < 0.6) {
-      const numDefects = Math.floor(Math.random() * 3) + 1; // 1-3 defects
-      const usedTemplates = new Set<number>();
+  // FEDEX Assets
+  const fedexAssetData = [
+    { assetId: "CONVEYOR-C3", layoutKey: "CONVEYOR", assetName: "Sortation Belt C3", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "SORTATION-UNIT-4", layoutKey: "SORTATION-UNIT", assetName: "Auto Sort Unit 4", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "VAN-8803", layoutKey: "VAN", assetName: "Delivery Van 8803", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "TRUCK-5503", layoutKey: "TRUCK", assetName: "Box Truck 5503", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "FORKLIFT-F10", layoutKey: "FORKLIFT", assetName: "Hyster F10", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "LOADER-F22", layoutKey: "LOADER", assetName: "Front Loader F22", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "PALLET-JACK-F05", layoutKey: "PALLET-JACK", assetName: "Electric Jack F05", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "TRUCK-5504", layoutKey: "TRUCK", assetName: "Box Truck 5504", status: "INACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "VAN-8804", layoutKey: "VAN", assetName: "Delivery Van 8804", status: "ACTIVE" as const, companyId: "FEDEX" },
+    { assetId: "CRANE-F1", layoutKey: "CRANE", assetName: "Gantry Crane F1", status: "ACTIVE" as const, companyId: "FEDEX" },
+  ];
+  
+  // Map asset data to include layout UUIDs and insert
+  const allAssets = [
+    ...necAssetData.map(mapAssetToLayout),
+    ...walmartAssetData.map(mapAssetToLayout),
+    ...fedexAssetData.map(mapAssetToLayout),
+  ];
+  await db.insert(assets).values(allAssets);
+  
+  console.log(`✅ Created ${necAssetData.length + walmartAssetData.length + fedexAssetData.length} assets (${necAssetData.length} NEC, ${walmartAssetData.length} WALMART, ${fedexAssetData.length} FEDEX)`);
+
+  // Create sample inspections - 45 per company with varied data
+  console.log("📋 Creating sample inspections...");
+  
+  // Helper arrays for varied data
+  const inspectionTypeNames = [
+    "DOT Vehicle Inspection",
+    "Equipment Safety Check",
+    "Heavy Equipment Check",
+    "Warehouse Equipment Check",
+    "Pre-Trip Safety Check",
+  ];
+  
+  const necAssets = ["TRUCK-2401", "TRUCK-2402", "TRUCK-2403", "VAN-1501", "VAN-1502", "FORKLIFT-089", "FORKLIFT-090", "CRANE-12", "CRANE-13", "PALLET-JACK-05"];
+  const necDrivers = [
+    { name: "John Smith", id: "DRV-10234" },
+    { name: "Sarah Johnson", id: "DRV-10567" },
+    { name: "Mike Davis", id: "DRV-10890" },
+    { name: "Emily Chen", id: "DRV-10445" },
+    { name: "Robert Wilson", id: "DRV-10778" },
+  ];
+  
+  // Generate 45 NEC inspections across October 2025
+  const necInspectionData = [];
+  for (let i = 0; i < 45; i++) {
+    const day = (i % 22) + 1; // Days 1-22
+    const hour = 7 + (i % 10); // Hours 7-16
+    const minute = (i * 15) % 60;
+    
+    necInspectionData.push({
+      companyId: "NEC",
+      datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
+      inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
+      driverName: necDrivers[i % necDrivers.length].name,
+      driverId: necDrivers[i % necDrivers.length].id,
+      inspectionFormData: `Inspection #${i + 1} - Routine check completed.`,
+    });
+  }
+  
+  const necInspections = await db.insert(inspections).values(necInspectionData).returning();
+  
+  // WALMART data
+  const walmartAssets = ["VAN-1145", "VAN-1146", "TRUCK-5001", "TRUCK-5002", "EXCAVATOR-45", "LOADER-22", "FORKLIFT-W01", "FORKLIFT-W02", "CONVEYOR-C3", "PALLET-JACK-W10"];
+  const walmartDrivers = [
+    { name: "Michael Brown", id: "DRV-10892" },
+    { name: "Emily Davis", id: "DRV-10123" },
+    { name: "Robert Lee", id: "DRV-10678" },
+    { name: "Jennifer Park", id: "DRV-10334" },
+    { name: "David Martinez", id: "DRV-10556" },
+  ];
+  
+  // Generate 45 WALMART inspections
+  const walmartInspectionData = [];
+  for (let i = 0; i < 45; i++) {
+    const day = (i % 22) + 1;
+    const hour = 8 + (i % 9);
+    const minute = (i * 20) % 60;
+    
+    walmartInspectionData.push({
+      companyId: "WALMART",
+      datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
+      inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
+      driverName: walmartDrivers[i % walmartDrivers.length].name,
+      driverId: walmartDrivers[i % walmartDrivers.length].id,
+      inspectionFormData: `Inspection #${i + 1} - Standard inspection protocol.`,
+    });
+  }
+  
+  const walmartInspections = await db.insert(inspections).values(walmartInspectionData).returning();
+  
+  // FEDEX data
+  const fedexAssets = ["CONVEYOR-C3", "SORTATION-UNIT-4", "VAN-8803", "TRUCK-5503", "FORKLIFT-F10", "LOADER-F22", "PALLET-JACK-F05", "TRUCK-5504", "VAN-8804", "CRANE-F1"];
+  const fedexDrivers = [
+    { name: "James Wilson", id: "DRV-20445" },
+    { name: "Maria Garcia", id: "DRV-20567" },
+    { name: "David Chen", id: "DRV-20789" },
+    { name: "Linda Martinez", id: "DRV-20123" },
+    { name: "Thomas Anderson", id: "DRV-20334" },
+  ];
+  
+  // Generate 45 FEDEX inspections
+  const fedexInspectionData = [];
+  for (let i = 0; i < 45; i++) {
+    const day = (i % 22) + 1;
+    const hour = 6 + (i % 11);
+    const minute = (i * 13) % 60;
+    
+    fedexInspectionData.push({
+      companyId: "FEDEX",
+      datetime: new Date(`2025-10-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`),
+      inspectionType: inspectionTypeNames[i % inspectionTypeNames.length],
+      driverName: fedexDrivers[i % fedexDrivers.length].name,
+      driverId: fedexDrivers[i % fedexDrivers.length].id,
+      inspectionFormData: `Inspection #${i + 1} - Operations check complete.`,
+    });
+  }
+  
+  const fedexInspections = await db.insert(inspections).values(fedexInspectionData).returning();
+  
+  console.log(`✅ Created ${necInspections.length + walmartInspections.length + fedexInspections.length} inspections (${necInspections.length} NEC, ${walmartInspections.length} WALMART, ${fedexInspections.length} FEDEX)`);
+
+  // Populate inspection_assets for all single-asset inspections
+  console.log("🔗 Creating inspection_assets for single-asset inspections...");
+  const singleAssetAssociations = [
+    ...necInspections.map((insp, i) => ({ inspectionId: insp.id, assetId: necAssets[i % necAssets.length] })),
+    ...walmartInspections.map((insp, i) => ({ inspectionId: insp.id, assetId: walmartAssets[i % walmartAssets.length] })),
+    ...fedexInspections.map((insp, i) => ({ inspectionId: insp.id, assetId: fedexAssets[i % fedexAssets.length] })),
+  ];
+  await db.insert(inspectionAssets).values(singleAssetAssociations);
+  console.log(`✅ Created ${singleAssetAssociations.length} single-asset associations`);
+
+  // Create multi-asset inspection test data
+  console.log("🚛 Creating multi-asset inspection test data...");
+  
+  // NEC Multi-Asset Inspections
+  const necMultiAssetInspections = await db.insert(inspections).values([
+    {
+      companyId: "NEC",
+      datetime: new Date('2025-11-01T08:00:00'),
+      inspectionType: "pre-trip",
+      driverName: "John Smith",
+      driverId: "DRV-12345",
+      inspectionFormData: "Multi-asset inspection: Tractor + Dolly + Trailer",
+    },
+    {
+      companyId: "NEC",
+      datetime: new Date('2025-11-05T14:30:00'),
+      inspectionType: "post-trip",
+      driverName: "Sarah Johnson",
+      driverId: "DRV-54321",
+      inspectionFormData: "Multi-asset inspection: Tractor + Trailer",
+    },
+  ]).returning();
+  
+  // WALMART Multi-Asset Inspections
+  const walmartMultiAssetInspections = await db.insert(inspections).values([
+    {
+      companyId: "WALMART",
+      datetime: new Date('2025-11-02T09:15:00'),
+      inspectionType: "delivery-pre-trip",
+      driverName: "Michael Brown",
+      driverId: "DRV-10892",
+      inspectionFormData: "Multi-asset inspection: Truck + Trailer combo",
+    },
+    {
+      companyId: "WALMART",
+      datetime: new Date('2025-11-06T07:45:00'),
+      inspectionType: "delivery-pre-trip",
+      driverName: "Emily Davis",
+      driverId: "DRV-10123",
+      inspectionFormData: "Multi-asset inspection: Van with attached equipment",
+    },
+  ]).returning();
+  
+  // FEDEX Multi-Asset Inspections
+  const fedexMultiAssetInspections = await db.insert(inspections).values([
+    {
+      companyId: "FEDEX",
+      datetime: new Date('2025-11-03T06:30:00'),
+      inspectionType: "van-pre-route",
+      driverName: "James Wilson",
+      driverId: "DRV-20445",
+      inspectionFormData: "Multi-asset inspection: Van + Dolly + Trailer",
+    },
+    {
+      companyId: "FEDEX",
+      datetime: new Date('2025-11-07T13:00:00'),
+      inspectionType: "van-pre-route",
+      driverName: "Maria Garcia",
+      driverId: "DRV-20567",
+      inspectionFormData: "Multi-asset inspection: Truck + Trailer",
+    },
+  ]).returning();
+  
+  // Create inspection_assets junction table entries
+  console.log("🔗 Creating inspection_assets associations...");
+  
+  const inspectionAssetsData = [
+    // NEC multi-asset associations
+    { inspectionId: necMultiAssetInspections[0].id, assetId: "127" },
+    { inspectionId: necMultiAssetInspections[0].id, assetId: "DOLLY-5" },
+    { inspectionId: necMultiAssetInspections[0].id, assetId: "TRAILER-101" },
+    { inspectionId: necMultiAssetInspections[1].id, assetId: "127" },
+    { inspectionId: necMultiAssetInspections[1].id, assetId: "TRAILER-102" },
+    
+    // WALMART multi-asset associations
+    { inspectionId: walmartMultiAssetInspections[0].id, assetId: "TRUCK-5001" },
+    { inspectionId: walmartMultiAssetInspections[0].id, assetId: "TRAILER-W50" },
+    { inspectionId: walmartMultiAssetInspections[1].id, assetId: "VAN-1145" },
+    { inspectionId: walmartMultiAssetInspections[1].id, assetId: "LOADER-22" },
+    
+    // FEDEX multi-asset associations
+    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "VAN-8803" },
+    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "DOLLY-F2" },
+    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "TRAILER-F10" },
+    { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRUCK-5503" },
+    { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRAILER-F11" },
+  ];
+  
+  await db.insert(inspectionAssets).values(inspectionAssetsData);
+  
+  console.log(`✅ Created ${necMultiAssetInspections.length + walmartMultiAssetInspections.length + fedexMultiAssetInspections.length} multi-asset inspections with ${inspectionAssetsData.length} asset associations`);
+  
+  // Create defects for multi-asset inspections with specific assetId values
+  console.log("🔧 Creating defects for multi-asset inspections...");
+  
+  const multiAssetDefects = [
+    // NEC Inspection 1: Tractor + Dolly + Trailer
+    { inspectionId: necMultiAssetInspections[0].id, assetId: "127", zoneName: "Brakes", componentName: "Front Brake Pads", defect: "Worn brake pads", severity: 9, status: "open" as const, driverNotes: "Tractor brakes need attention" },
+    { inspectionId: necMultiAssetInspections[0].id, assetId: "DOLLY-5", zoneName: "Tires", componentName: "Left Tire", defect: "Low tire pressure", severity: 5, status: "open" as const, driverNotes: "Dolly tire needs inflation" },
+    { inspectionId: necMultiAssetInspections[0].id, assetId: "TRAILER-101", zoneName: "Lights", componentName: "Brake Lights", defect: "Broken brake light", severity: 8, status: "pending" as const, driverNotes: "Trailer light not working" },
+    
+    // NEC Inspection 2: Tractor + Trailer
+    { inspectionId: necMultiAssetInspections[1].id, assetId: "127", zoneName: "Engine", componentName: "Oil Level", defect: "Oil level low", severity: 6, status: "repaired" as const, driverNotes: "Tractor oil topped up", repairNotes: "Added 2 quarts" },
+    { inspectionId: necMultiAssetInspections[1].id, assetId: "TRAILER-102", zoneName: "Cargo Area", componentName: "Tie-Down Points", defect: "Rusty tie-down anchor", severity: 5, status: "open" as const, driverNotes: "Trailer cargo anchors need inspection" },
+    
+    // WALMART Inspection 1: Truck + Trailer
+    { inspectionId: walmartMultiAssetInspections[0].id, assetId: "TRUCK-5001", zoneName: "Steering", componentName: "Power Steering", defect: "Steering fluid leak", severity: 8, status: "pending" as const, driverNotes: "Truck steering issue", repairNotes: "Scheduled for repair" },
+    { inspectionId: walmartMultiAssetInspections[0].id, assetId: "TRAILER-W50", zoneName: "Suspension", componentName: "Leaf Springs", defect: "Cracked leaf spring", severity: 7, status: "open" as const, driverNotes: "Trailer suspension damaged" },
+    
+    // WALMART Inspection 2: Van + Equipment
+    { inspectionId: walmartMultiAssetInspections[1].id, assetId: "VAN-1145", zoneName: "Electrical", componentName: "Battery", defect: "Weak battery", severity: 6, status: "open" as const, driverNotes: "Van battery needs testing" },
+    { inspectionId: walmartMultiAssetInspections[1].id, assetId: "LOADER-22", zoneName: "Hydraulics", componentName: "Lift Cylinder", defect: "Hydraulic leak", severity: 9, status: "open" as const, driverNotes: "Loader hydraulics leaking" },
+    
+    // FEDEX Inspection 1: Van + Dolly + Trailer
+    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "VAN-8803", zoneName: "Cabin", componentName: "Driver Seat", defect: "Torn seat cover", severity: 3, status: "open" as const, driverNotes: "Van seat needs repair" },
+    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "DOLLY-F2", zoneName: "Brakes", componentName: "Brake Lines", defect: "Corroded brake line", severity: 10, status: "pending" as const, driverNotes: "Dolly brake line critical", repairNotes: "Emergency repair scheduled" },
+    { inspectionId: fedexMultiAssetInspections[0].id, assetId: "TRAILER-F10", zoneName: "Body", componentName: "Door Seals", defect: "Damaged door seal", severity: 4, status: "open" as const, driverNotes: "Trailer door seal worn" },
+    
+    // FEDEX Inspection 2: Truck + Trailer
+    { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRUCK-5503", zoneName: "Tires", componentName: "Front Tires", defect: "Uneven tire wear", severity: 7, status: "open" as const, driverNotes: "Truck tires need rotation" },
+    { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRAILER-F11", zoneName: "Lights", componentName: "Marker Lights", defect: "Missing marker light cover", severity: 4, status: "repaired" as const, driverNotes: "Trailer light cover replaced", repairNotes: "New cover installed" },
+  ];
+  
+  await db.insert(defects).values(multiAssetDefects);
+  
+  console.log(`✅ Created ${multiAssetDefects.length} defects for multi-asset inspections`);
+
+  // Create comprehensive defects for realistic legal inspection reports
+  console.log("🔧 Creating comprehensive defect data...");
+  
+  // Defect templates for variety
+  const defectTemplates = [
+    // Critical Safety Defects (Severity 8-10)
+    { zoneName: "Brakes", componentName: "Front Brake Pads", defect: "Brake pads worn below minimum thickness (2mm remaining)", severity: 9, status: "open" as const, driverNotes: "Grinding noise when braking, requires immediate attention" },
+    { zoneName: "Steering", componentName: "Power Steering Pump", defect: "Power steering fluid leak detected at pump seal", severity: 9, status: "pending" as const, driverNotes: "Leak rate approximately 10ml/hour, steering becoming stiff", repairNotes: "Parts ordered, scheduled for replacement" },
+    { zoneName: "Lights", componentName: "Brake Lights", defect: "Both rear brake lights not functioning", severity: 10, status: "open" as const, driverNotes: "Critical safety issue - vehicle not road safe" },
+    { zoneName: "Tires", componentName: "Front Right Tire", defect: "Tire tread depth below legal minimum (1.6mm), visible steel belts", severity: 10, status: "pending" as const, driverNotes: "Tire failure risk - immediate replacement required", repairNotes: "New tire on order" },
+    
+    // Moderate Defects (Severity 4-7)
+    { zoneName: "Engine", componentName: "Air Filter", defect: "Air filter heavily contaminated, restricting airflow", severity: 5, status: "repaired" as const, driverNotes: "Reduced engine performance noted", repairNotes: "Air filter replaced with OEM part" },
+    { zoneName: "Suspension", componentName: "Shock Absorbers", defect: "Front left shock absorber leaking hydraulic fluid", severity: 7, status: "pending" as const, driverNotes: "Vehicle handling affected, bouncing on rough roads", repairNotes: "Repair scheduled for next maintenance window" },
+    { zoneName: "Electrical", componentName: "Battery Terminals", defect: "Battery terminals corroded, loose connection on positive terminal", severity: 6, status: "repaired" as const, driverNotes: "Intermittent starting issues reported", repairNotes: "Terminals cleaned and tightened, protective coating applied" },
+    { zoneName: "Windshield", componentName: "Wiper Blades", defect: "Wiper blades cracked and torn, leaving streaks", severity: 5, status: "repaired" as const, driverNotes: "Poor visibility during rain", repairNotes: "Both wiper blades replaced" },
+    { zoneName: "Cabin", componentName: "Driver Seat", defect: "Driver seat adjustment mechanism jammed, seat will not move", severity: 4, status: "open" as const, driverNotes: "Unable to adjust seat position for proper driving posture" },
+    
+    // Minor Defects (Severity 1-3)
+    { zoneName: "Exterior", componentName: "Side Mirror", defect: "Passenger side mirror glass has small crack in lower corner", severity: 3, status: "pending" as const, driverNotes: "Does not affect visibility significantly", repairNotes: "Replacement mirror ordered" },
+    { zoneName: "Interior", componentName: "Door Handle", defect: "Interior door handle loose, requires extra force to open", severity: 2, status: "open" as const, driverNotes: "Minor inconvenience, handle still functional" },
+    { zoneName: "Fluids", componentName: "Windshield Washer Fluid", defect: "Windshield washer fluid reservoir empty", severity: 1, status: "repaired" as const, driverNotes: "Unable to clean windshield during inspection", repairNotes: "Reservoir refilled with winter formula" },
+    { zoneName: "Body", componentName: "Front Bumper", defect: "Minor cosmetic damage - small dent on front bumper", severity: 2, status: "open" as const, driverNotes: "Cosmetic only, no structural damage" },
+    { zoneName: "Lights", componentName: "License Plate Light", defect: "License plate light bulb burned out", severity: 3, status: "repaired" as const, driverNotes: "May result in traffic citation", repairNotes: "Bulb replaced" },
+    
+    // Equipment-Specific Defects
+    { zoneName: "Hydraulics", componentName: "Lift Cylinder", defect: "Hydraulic lift cylinder showing slow leak at rod seal", severity: 7, status: "pending" as const, driverNotes: "Lift operation becoming sluggish, safety concern", repairNotes: "Seal replacement parts requisitioned" },
+    { zoneName: "Safety Equipment", componentName: "Fire Extinguisher", defect: "Fire extinguisher pressure gauge in red zone, expired inspection tag", severity: 8, status: "open" as const, driverNotes: "Fire extinguisher may not function properly in emergency" },
+    { zoneName: "Cargo Area", componentName: "Tie-Down Points", defect: "Two cargo tie-down anchors showing signs of stress fractures", severity: 6, status: "pending" as const, driverNotes: "Load securing capability compromised", repairNotes: "Structural engineer assessment scheduled" },
+  ];
+  
+  let totalDefects = 0;
+  
+  // Add varied defects to first 20 NEC inspections (will appear in first 2 pages)
+  for (let i = 0; i < Math.min(20, necInspections.length); i++) {
+    // 70% chance of having defects
+    if (Math.random() < 0.7) {
+      const numDefects = Math.floor(Math.random() * 4) + 1; // 1-4 defects per inspection
+      const selectedDefects = [];
       
       for (let j = 0; j < numDefects; j++) {
-        let templateIdx: number;
-        do {
-          templateIdx = Math.floor(Math.random() * defectTemplates.length);
-        } while (usedTemplates.has(templateIdx) && usedTemplates.size < defectTemplates.length);
-        usedTemplates.add(templateIdx);
-        
-        const template = defectTemplates[templateIdx];
-        const inspection = createdInspections[i];
-        const companyAssets = assetsByCompany[inspection.companyId];
-        
-        allDefects.push({
-          inspectionId: inspection.id,
-          assetId: companyAssets[i % companyAssets.length],
+        const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
+        selectedDefects.push({
+          inspectionId: necInspections[i].id,
+          assetId: necAssets[i % necAssets.length],
           zoneName: template.zoneName,
           componentName: template.componentName,
           defect: template.defect,
           severity: template.severity,
-          status: template.status,
           driverNotes: template.driverNotes,
+          status: template.status,
           repairNotes: template.repairNotes || null,
-          mechanicName: template.mechanicName || null,
-          repairDate: template.status === "repaired" ? new Date() : null,
         });
       }
+      
+      await db.insert(defects).values(selectedDefects);
+      totalDefects += selectedDefects.length;
     }
   }
   
-  // Also add some severity=0 entries (no defect found - audit trail)
-  for (let i = 0; i < 20; i++) {
-    const inspection = createdInspections[Math.floor(Math.random() * createdInspections.length)];
-    const companyAssets = assetsByCompany[inspection.companyId];
-    
-    allDefects.push({
-      inspectionId: inspection.id,
-      assetId: companyAssets[0],
-      zoneName: "Engine Compartment",
-      componentName: "Engine Oil",
-      defect: "No defect found",
-      severity: 0,
-      status: "not-needed" as const,
-      driverNotes: "Checked - OK",
-    });
+  // Add varied defects to first 20 WALMART inspections
+  for (let i = 0; i < Math.min(20, walmartInspections.length); i++) {
+    if (Math.random() < 0.7) {
+      const numDefects = Math.floor(Math.random() * 4) + 1;
+      const selectedDefects = [];
+      
+      for (let j = 0; j < numDefects; j++) {
+        const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
+        selectedDefects.push({
+          inspectionId: walmartInspections[i].id,
+          assetId: walmartAssets[i % walmartAssets.length],
+          zoneName: template.zoneName,
+          componentName: template.componentName,
+          defect: template.defect,
+          severity: template.severity,
+          driverNotes: template.driverNotes,
+          status: template.status,
+          repairNotes: template.repairNotes || null,
+        });
+      }
+      
+      await db.insert(defects).values(selectedDefects);
+      totalDefects += selectedDefects.length;
+    }
   }
   
-  if (allDefects.length > 0) {
-    await db.insert(defects).values(allDefects);
+  // Add varied defects to first 20 FEDEX inspections
+  for (let i = 0; i < Math.min(20, fedexInspections.length); i++) {
+    if (Math.random() < 0.7) {
+      const numDefects = Math.floor(Math.random() * 4) + 1;
+      const selectedDefects = [];
+      
+      for (let j = 0; j < numDefects; j++) {
+        const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
+        selectedDefects.push({
+          inspectionId: fedexInspections[i].id,
+          assetId: fedexAssets[i % fedexAssets.length],
+          zoneName: template.zoneName,
+          componentName: template.componentName,
+          defect: template.defect,
+          severity: template.severity,
+          driverNotes: template.driverNotes,
+          status: template.status,
+          repairNotes: template.repairNotes || null,
+        });
+      }
+      
+      await db.insert(defects).values(selectedDefects);
+      totalDefects += selectedDefects.length;
+    }
   }
-  
-  console.log(`✅ Created ${allDefects.length} defects (including ${allDefects.filter(d => d.severity === 0).length} audit entries)`);
 
-  // ========================================
-  // SUMMARY
-  // ========================================
-  console.log("\n🎉 Seeding completed successfully!");
+  console.log(`✅ Created ${totalDefects} defects across ${Math.floor(totalDefects / 2)} inspections with varied severity levels`);
+  console.log("🎉 Seeding completed successfully!");
   console.log("📊 Summary:");
-  console.log("   - 3 companies: ACME, SWIFT, ATLAS");
-  console.log("   - 3 layouts per company: SEMI-TRUCK, DELIVERY-VAN, TRAILER");
-  console.log("   - 10 users (1 superuser + 9 company users)");
-  console.log(`   - ${mappedAssets.length} assets`);
-  console.log(`   - ${createdInspectionTypes.length} inspection types`);
-  console.log(`   - ${createdInspections.length} inspections`);
-  console.log(`   - ${allDefects.length} defects`);
-  console.log("\n🔑 Login credentials:");
-  console.log("   Superuser: avazquez / casio (access all companies)");
-  console.log("   ACME Admin: jsmith / acme123");
-  console.log("   SWIFT Admin: egarcia / swift123");
-  console.log("   ATLAS Admin: tbrown / atlas123");
+  console.log("   - 3 companies");
+  console.log("   - 7 users (1 superuser + 4 active company users + 2 inactive users)");
+  console.log("   - 30 assets (10 per company with varied types and statuses)");
+  console.log(`   - ${necInspections.length + walmartInspections.length + fedexInspections.length} inspections (${necInspections.length} per company)`);
+  console.log(`   - ${totalDefects} defects across different statuses`);
 }

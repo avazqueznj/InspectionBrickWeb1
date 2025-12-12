@@ -15,7 +15,7 @@ export function clearAuthToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-export function getAuthHeaders(): Record<string, string> {
+function getAuthHeaders(): Record<string, string> {
   const token = getAuthToken();
   const headers: Record<string, string> = {};
   

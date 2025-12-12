@@ -8,7 +8,6 @@ import { InspectionModal } from "@/components/InspectionModal";
 import { FilterBar } from "@/components/FilterBar";
 import { PageFooter } from "@/components/PageFooter";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
-import { getAuthHeaders } from "@/lib/queryClient";
 import { Search, ChevronLeft, ChevronRight, Pencil, ArrowUpDown, FileText, Printer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -90,9 +89,7 @@ export default function Inspections() {
       if (filters.driverName) queryParams.set("driverName", filters.driverName);
       if (filters.driverId) queryParams.set("driverId", filters.driverId);
       
-      const response = await fetch(`/api/inspections?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await fetch(`/api/inspections?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch inspections");
       }
@@ -115,27 +112,12 @@ export default function Inspections() {
     setIsModalOpen(true);
   };
 
-  const handlePrintReport = async (inspectionId: string) => {
-    // Fetch with auth headers, then write to new window
-    try {
-      const response = await fetch(`/api/inspections/${inspectionId}/print`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch print view");
-      }
-      const html = await response.text();
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(html);
-        newWindow.document.close();
-      }
-    } catch (error) {
-      console.error("Print error:", error);
-    }
+  const handlePrintReport = (inspectionId: string) => {
+    // Open in new browser tab
+    window.open(`/api/inspections/${inspectionId}/print`, '_blank');
   };
 
-  const handlePrintList = async () => {
+  const handlePrintList = () => {
     // Build query params from current filters
     const queryParams = new URLSearchParams();
     if (selectedCompany) queryParams.set("companyId", selectedCompany);
@@ -149,23 +131,8 @@ export default function Inspections() {
     if (filters.driverName) queryParams.set("driverName", filters.driverName);
     if (filters.driverId) queryParams.set("driverId", filters.driverId);
     
-    // Fetch with auth headers, then write to new window
-    try {
-      const response = await fetch(`/api/inspections/print-list?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch print list");
-      }
-      const html = await response.text();
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(html);
-        newWindow.document.close();
-      }
-    } catch (error) {
-      console.error("Print error:", error);
-    }
+    // Open in new browser tab
+    window.open(`/api/inspections/print-list?${queryParams.toString()}`, '_blank');
   };
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (

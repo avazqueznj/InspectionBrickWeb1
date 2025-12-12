@@ -147,60 +147,110 @@ export function getAuthFailures(limit: number = 100): AuthFailureLog[] {
 }
 
 /**
- * Middleware to require superuser access (JWT only)
+ * Middleware to require superuser access (supports both JWT and session auth)
  */
 export async function requireSuperuser(req: AuthRequest, res: Response, next: NextFunction) {
+  // Try JWT first
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log(`❌ [Auth] No JWT token provided`);
-    return res.status(401).json({ error: "Authentication required" });
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.substring(7);
+      const verified = await verifyToken(token);
+      req.auth = verified;
+      
+      // Check if user is superuser
+      if (!verified.isSuperuser) {
+        console.log(`❌ [Auth] Superuser access denied for JWT user: ${verified.userId}`);
+        return res.status(403).json({ error: "Superuser access required" });
+      }
+      
+      return next();
+    } catch (error) {
+      console.error('❌ [Auth] JWT authentication failed:', error);
+      logAuthFailure(req, error instanceof Error ? error.message : 'Unknown error');
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
   }
-
-  try {
-    const token = authHeader.substring(7);
-    const verified = await verifyToken(token);
-    req.auth = verified;
+  
+  // Fall back to session (legacy)
+  if (req.session.userId) {
+    console.log(`⚠️  [Auth] Using legacy session auth for user: ${req.session.userId}`);
     
-    // Check if user is superuser
-    if (!verified.isSuperuser) {
-      console.log(`❌ [Auth] Superuser access denied for user: ${verified.userId}`);
+    // Check if session user is superuser (companyId must be EXPLICITLY null, not undefined)
+    if (req.session.companyId !== null) {
+      console.log(`❌ [Auth] Superuser access denied for session user: ${req.session.userId} (companyId: ${req.session.companyId || 'undefined'})`);
       return res.status(403).json({ error: "Superuser access required" });
     }
     
+    // Double-check: companyId must be explicitly null (not undefined)
+    if (req.session.companyId === undefined) {
+      console.log(`❌ [Auth] Superuser access denied for session user: ${req.session.userId} (companyId is undefined, not null)`);
+      return res.status(403).json({ error: "Superuser access required" });
+    }
+    
+    // Populate req.auth from session for compatibility
+    req.auth = {
+      userId: req.session.userId,
+      companyId: null,
+      isSuperuser: true,
+      customerAdminAccess: true,
+      isDeviceToken: false,
+    };
     return next();
-  } catch (error) {
-    console.error('❌ [Auth] JWT authentication failed:', error);
-    logAuthFailure(req, error instanceof Error ? error.message : 'Unknown error');
-    return res.status(401).json({ error: "Invalid or expired token" });
   }
+  
+  console.log(`❌ [Auth] No authentication provided`);
+  return res.status(401).json({ error: "Authentication required" });
 }
 
 /**
  * Middleware to require customer admin access (superuser OR customerAdminAccess)
- * Used for layouts and inspection-types management (JWT only)
+ * Used for layouts and inspection-types management
  */
 export async function requireCustomerAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  // Try JWT first
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log(`❌ [Auth] No JWT token provided`);
-    return res.status(401).json({ error: "Authentication required" });
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.substring(7);
+      const verified = await verifyToken(token);
+      req.auth = verified;
+      
+      // Check if user is superuser or has customerAdminAccess
+      if (!verified.isSuperuser && !verified.customerAdminAccess) {
+        console.log(`❌ [Auth] Customer admin access denied for JWT user: ${verified.userId}`);
+        return res.status(403).json({ error: "Customer admin access required" });
+      }
+      
+      return next();
+    } catch (error) {
+      console.error('❌ [Auth] JWT authentication failed:', error);
+      logAuthFailure(req, error instanceof Error ? error.message : 'Unknown error');
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
   }
-
-  try {
-    const token = authHeader.substring(7);
-    const verified = await verifyToken(token);
-    req.auth = verified;
+  
+  // Fall back to session (legacy) - superusers always have customer admin access
+  if (req.session.userId) {
+    console.log(`⚠️  [Auth] Using legacy session auth for user: ${req.session.userId}`);
     
-    // Check if user is superuser or has customerAdminAccess
-    if (!verified.isSuperuser && !verified.customerAdminAccess) {
-      console.log(`❌ [Auth] Customer admin access denied for user: ${verified.userId}`);
+    // For legacy sessions, only superusers (companyId === null) have customer admin access
+    if (req.session.companyId !== null) {
+      console.log(`❌ [Auth] Customer admin access denied for session user: ${req.session.userId}`);
       return res.status(403).json({ error: "Customer admin access required" });
     }
     
+    // Populate req.auth from session for compatibility
+    req.auth = {
+      userId: req.session.userId,
+      companyId: null,
+      isSuperuser: true,
+      customerAdminAccess: true,
+      isDeviceToken: false,
+    };
     return next();
-  } catch (error) {
-    console.error('❌ [Auth] JWT authentication failed:', error);
-    logAuthFailure(req, error instanceof Error ? error.message : 'Unknown error');
-    return res.status(401).json({ error: "Invalid or expired token" });
   }
+  
+  console.log(`❌ [Auth] No authentication provided`);
+  return res.status(401).json({ error: "Authentication required" });
 }

@@ -47,8 +47,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 ### Technical Implementations
 
 **Authentication & Authorization:**
-- Pure JWT-based authentication with RS256 signing (no server-side sessions).
-- Stateless authentication - tokens are self-contained with embedded expiration.
+- JWT-based authentication with RS256 signing.
 - Access tokens expire in 24 hours (no refresh tokens).
 - Device tokens have a 10-year expiration for perpetual, company-scoped access.
 - Supports Company Code Login, allowing users to authenticate with `(userId, companyId, password)`. Superusers have `companyId = null`.
@@ -57,7 +56,6 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 - Customer Admin toggle: Superusers can grant/revoke customerAdminAccess via a switch in the Users table.
 - Rate limiting and audit logging for failed login attempts.
 - All data access is company-scoped, verified via JWT payload.
-- Logout is client-side (token cleared from localStorage).
 
 **Multi-Company Support:**
 - Data isolation enforced at database and API levels, with a client-side company selector.

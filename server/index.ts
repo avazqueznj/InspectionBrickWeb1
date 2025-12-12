@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -6,10 +7,19 @@ const app = express();
 
 console.log("🚀 Starting Inspection Brick Server");
 console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🔐 Session Secret: ${process.env.SESSION_SECRET ? 'SET (from env)' : 'USING DEFAULT (not secure for production)'}`);
 
 // Trust proxy - required for Replit deployments to handle cookies correctly
 app.set('trust proxy', 1);
 console.log(`🔒 Trust proxy: enabled (required for production deployments)`);
+
+// Extend session data type
+declare module 'express-session' {
+  interface SessionData {
+    userId?: string;
+    companyId?: string | null;
+  }
+}
 
 declare module 'http' {
   interface IncomingMessage {
@@ -17,9 +27,22 @@ declare module 'http' {
   }
 }
 
-// Pure JWT authentication - no server-side sessions needed
-// JWT tokens are self-contained with embedded expiration (24 hours)
-console.log(`🔐 Using pure JWT authentication (24h token expiration)`);
+// Session configuration optimized for production
+const isProduction = process.env.NODE_ENV === "production";
+app.use(session({
+  secret: process.env.SESSION_SECRET || "inspection-brick-secret-key-change-in-production",
+  resave: false,
+  saveUninitialized: false,
+  proxy: true, // Trust the reverse proxy for secure cookies
+  cookie: {
+    secure: isProduction, // Require HTTPS in production
+    httpOnly: true, // Prevent client-side JS access
+    sameSite: isProduction ? 'none' : 'lax', // Required for cross-site cookies in production
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  },
+}));
+
+console.log(`🍪 Session configured - secure: ${isProduction}, sameSite: ${isProduction ? 'none' : 'lax'}, maxAge: 24h`);
 
 app.use(express.text({ type: 'text/plain', limit: '10mb' }));
 app.use(express.json({
