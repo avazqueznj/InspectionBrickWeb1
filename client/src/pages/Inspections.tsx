@@ -156,9 +156,9 @@ export default function Inspections() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       <div className="p-6 space-y-6">
-        <div className="relative overflow-hidden rounded-lg bg-card border p-4">
+        <div className="relative overflow-hidden">
           <div className="relative z-10">
-            <h1 className="text-2xl font-semibold mb-1">Inspections</h1>
+            <h1 className="text-2xl font-semibold mb-2">Inspections</h1>
             <p className="text-sm text-muted-foreground">
               View and manage all equipment and vehicle inspections
             </p>
@@ -166,10 +166,10 @@ export default function Inspections() {
           <img 
             src={deviceImage}
             alt=""
-            className="absolute right-4 top-1/2 -translate-y-1/2 h-20 opacity-20 pointer-events-none select-none"
+            className="absolute right-0 top-1/2 -translate-y-1/2 h-28 pointer-events-none select-none"
             style={{
-              maskImage: 'linear-gradient(to right, transparent 0%, black 40%)',
-              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 40%)',
+              maskImage: 'linear-gradient(to right, black 0%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to right, black 0%, transparent 100%)',
             }}
           />
         </div>
