@@ -238,7 +238,7 @@ export async function runSeed() {
   });
   console.log("   ✅ Created superuser: avazquez (companyId: null)");
   
-  // Company-specific users
+  // Company-specific users - john_nec is a customer admin
   await storage.createUser({
     userId: "john_nec",
     password: "password123",
@@ -246,9 +246,10 @@ export async function runSeed() {
     userTag: "SUPERVISOR",
     status: "ACTIVE",
     webAccess: true,
+    customerAdminAccess: true,
     companyId: "NEC",
   });
-  console.log("   ✅ Created user: john_nec (companyId: NEC)");
+  console.log("   ✅ Created customer admin: john_nec (companyId: NEC)");
   
   await storage.createUser({
     userId: "sarah_walmart",

@@ -19,27 +19,31 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // avazquez can switch companies, others cannot
-  const canSwitchCompany = user?.userId === "avazquez";
+  // Superusers can switch companies, others cannot
+  const canSwitchCompany = user?.isSuperuser === true;
 
   useEffect(() => {
     if (!user) return;
     
-    // For avazquez, check localStorage or use first company
+    // For superusers, check localStorage or wait for companies to load
     if (canSwitchCompany) {
       const stored = localStorage.getItem("selectedCompany");
       if (stored) {
         setSelectedCompanyState(stored);
+        setIsLoading(false);
       }
+      // If no stored company, keep loading until companies are fetched
     } else {
-      // For other users, use their assigned company
-      setSelectedCompanyState(user.companyId);
+      // For regular users and customer admins, use their assigned company
+      if (user.companyId) {
+        setSelectedCompanyState(user.companyId);
+      }
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [user, canSwitchCompany]);
 
   const setSelectedCompany = (companyId: string) => {
-    // Only allow switching if user is avazquez
+    // Only allow switching if user is superuser
     if (!canSwitchCompany) {
       return;
     }

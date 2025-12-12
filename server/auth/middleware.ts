@@ -230,22 +230,25 @@ export async function requireCustomerAdmin(req: AuthRequest, res: Response, next
     }
   }
   
-  // Fall back to session (legacy) - superusers always have customer admin access
+  // Fall back to session (legacy) - check both superuser and customerAdminAccess
   if (req.session.userId) {
     console.log(`⚠️  [Auth] Using legacy session auth for user: ${req.session.userId}`);
     
-    // For legacy sessions, only superusers (companyId === null) have customer admin access
-    if (req.session.companyId !== null) {
-      console.log(`❌ [Auth] Customer admin access denied for session user: ${req.session.userId}`);
+    const isSuperuser = req.session.companyId === null;
+    const hasCustomerAdminAccess = req.session.customerAdminAccess === true;
+    
+    // Allow access if superuser OR has customerAdminAccess
+    if (!isSuperuser && !hasCustomerAdminAccess) {
+      console.log(`❌ [Auth] Customer admin access denied for session user: ${req.session.userId} (not superuser and no customerAdminAccess)`);
       return res.status(403).json({ error: "Customer admin access required" });
     }
     
     // Populate req.auth from session for compatibility
     req.auth = {
       userId: req.session.userId,
-      companyId: null,
-      isSuperuser: true,
-      customerAdminAccess: true,
+      companyId: req.session.companyId || null,
+      isSuperuser,
+      customerAdminAccess: isSuperuser || hasCustomerAdminAccess,
       isDeviceToken: false,
     };
     return next();

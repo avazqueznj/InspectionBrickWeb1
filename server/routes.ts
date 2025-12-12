@@ -150,6 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Also set session for dual-mode compatibility (legacy clients)
       req.session.userId = user.userId;
       req.session.companyId = user.companyId;
+      req.session.customerAdminAccess = user.customerAdminAccess || false;
       
       // Reset rate limit on successful login
       resetLoginRateLimit(req);
