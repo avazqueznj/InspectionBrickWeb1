@@ -1825,16 +1825,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new form field for an inspection type (protected)
-  app.post("/api/inspection-types/:inspectionTypeName/form-fields", requireCustomerAdmin, async (req: AuthRequest, res) => {
-    const { inspectionTypeName } = req.params;
-    console.log(`➕ [Routes] POST /api/inspection-types/${inspectionTypeName}/form-fields - Creating form field`);
+  app.post("/api/inspection-types/:inspectionTypeIdOrName/form-fields", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    const { inspectionTypeIdOrName } = req.params;
+    console.log(`➕ [Routes] POST /api/inspection-types/${inspectionTypeIdOrName}/form-fields - Creating form field`);
     
     try {
-      // Verify the inspection type exists and user has access (use companyId for proper scoping)
+      // Verify the inspection type exists and user has access
+      // Try UUID lookup first if it looks like a UUID, then fall back to name lookup
       const companyId = req.auth?.companyId || undefined;
-      const inspectionType = await storage.getInspectionTypeById(inspectionTypeName, companyId);
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(inspectionTypeIdOrName);
+      
+      let inspectionType;
+      if (isUUID) {
+        inspectionType = await storage.getInspectionTypeByUUID(inspectionTypeIdOrName);
+        // For non-superusers, verify company access
+        if (inspectionType && companyId && inspectionType.companyId !== companyId) {
+          inspectionType = undefined;
+        }
+      } else {
+        inspectionType = await storage.getInspectionTypeById(inspectionTypeIdOrName, companyId);
+      }
+      
       if (!inspectionType) {
-        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeName}`);
+        console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeIdOrName}`);
         return res.status(404).json({ error: "Inspection type not found" });
       }
       
