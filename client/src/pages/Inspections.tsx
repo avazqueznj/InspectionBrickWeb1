@@ -115,12 +115,27 @@ export default function Inspections() {
     setIsModalOpen(true);
   };
 
-  const handlePrintReport = (inspectionId: string) => {
-    // Open in new browser tab
-    window.open(`/api/inspections/${inspectionId}/print`, '_blank');
+  const handlePrintReport = async (inspectionId: string) => {
+    // Fetch with auth headers, then write to new window
+    try {
+      const response = await fetch(`/api/inspections/${inspectionId}/print`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch print view");
+      }
+      const html = await response.text();
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(html);
+        newWindow.document.close();
+      }
+    } catch (error) {
+      console.error("Print error:", error);
+    }
   };
 
-  const handlePrintList = () => {
+  const handlePrintList = async () => {
     // Build query params from current filters
     const queryParams = new URLSearchParams();
     if (selectedCompany) queryParams.set("companyId", selectedCompany);
@@ -134,8 +149,23 @@ export default function Inspections() {
     if (filters.driverName) queryParams.set("driverName", filters.driverName);
     if (filters.driverId) queryParams.set("driverId", filters.driverId);
     
-    // Open in new browser tab
-    window.open(`/api/inspections/print-list?${queryParams.toString()}`, '_blank');
+    // Fetch with auth headers, then write to new window
+    try {
+      const response = await fetch(`/api/inspections/print-list?${queryParams.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch print list");
+      }
+      const html = await response.text();
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(html);
+        newWindow.document.close();
+      }
+    } catch (error) {
+      console.error("Print error:", error);
+    }
   };
 
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
