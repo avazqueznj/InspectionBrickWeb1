@@ -166,7 +166,7 @@ export default function Inspections() {
           <img 
             src={deviceImage}
             alt=""
-            className="absolute right-0 top-1/2 -translate-y-1/2 h-28 pointer-events-none select-none"
+            className="absolute right-0 top-1/2 -translate-y-1/2 h-56 pointer-events-none select-none"
             style={{
               maskImage: 'linear-gradient(to right, black 0%, transparent 100%)',
               WebkitMaskImage: 'linear-gradient(to right, black 0%, transparent 100%)',
