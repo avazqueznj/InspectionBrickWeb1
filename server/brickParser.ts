@@ -18,7 +18,7 @@ export interface ParsedInspection {
   formFields: Record<string, string>;
   checks: {
     assetId: string;
-    zoneId: number;
+    zoneName: string;
     componentName: string;
     defectType: string;
     severity: number;
@@ -27,7 +27,7 @@ export interface ParsedInspection {
   }[];
   defects: {
     assetId: string;
-    zoneId: number;
+    zoneName: string;
     componentName: string;
     defectType: string;
     severity: number;
@@ -239,15 +239,15 @@ export function parseBrickInspection(data: string): ParsedInspection {
     }
     
     const assetId = checkParts[1];
-    const zoneId = parseInt(checkParts[2]);
+    const zoneName = checkParts[2];
     const componentName = checkParts[3];
     const defectType = checkParts[4];
     const severity = parseInt(checkParts[5]);
     const inspectedAtUtc = parseDateTimeAndConvertToUtc(checkParts[6], inspTimeOffset);
     const notes = checkParts[7] || "";
 
-    if (isNaN(zoneId)) {
-      throw new Error(`Invalid zone ID in CHECK: ${checkParts[2]}`);
+    if (!zoneName || zoneName.trim().length === 0) {
+      throw new Error(`Zone name cannot be empty in CHECK`);
     }
     if (isNaN(severity)) {
       throw new Error(`Invalid severity in CHECK: ${checkParts[5]}`);
@@ -255,7 +255,7 @@ export function parseBrickInspection(data: string): ParsedInspection {
 
     checks.push({
       assetId,
-      zoneId,
+      zoneName,
       componentName,
       defectType,
       severity,
@@ -278,15 +278,15 @@ export function parseBrickInspection(data: string): ParsedInspection {
     }
 
     const assetId = defectParts[1];
-    const zoneId = parseInt(defectParts[2]);
+    const zoneName = defectParts[2];
     const componentName = defectParts[3];
     const defectType = defectParts[4];
     const severity = parseInt(defectParts[5]);
     const inspectedAtUtc = parseDateTimeAndConvertToUtc(defectParts[6], inspTimeOffset);
     const notes = defectParts[7] || "";
 
-    if (isNaN(zoneId)) {
-      throw new Error(`Invalid zone ID in DEFECT: ${defectParts[2]}`);
+    if (!zoneName || zoneName.trim().length === 0) {
+      throw new Error(`Zone name cannot be empty in DEFECT`);
     }
     if (isNaN(severity)) {
       throw new Error(`Invalid severity in DEFECT: ${defectParts[5]}`);
@@ -294,7 +294,7 @@ export function parseBrickInspection(data: string): ParsedInspection {
 
     defects.push({
       assetId,
-      zoneId,
+      zoneName,
       componentName,
       defectType,
       severity,

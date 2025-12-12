@@ -307,8 +307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...parsed.checks.map((check: any) => ({
           inspectionId: inspection.id,
           assetId: check.assetId,
-          zoneId: check.zoneId,
-          zoneName: `Zone ${check.zoneId}`,
+          zoneId: null,
+          zoneName: check.zoneName,
           componentName: check.componentName,
           defect: check.defectType,
           severity: check.severity,
@@ -320,8 +320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...parsed.defects.map((defect: any) => ({
           inspectionId: inspection.id,
           assetId: defect.assetId,
-          zoneId: defect.zoneId,
-          zoneName: `Zone ${defect.zoneId}`,
+          zoneId: null,
+          zoneName: defect.zoneName,
           componentName: defect.componentName,
           defect: defect.defectType,
           severity: defect.severity,

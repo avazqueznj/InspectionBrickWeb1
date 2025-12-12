@@ -1,0 +1,62 @@
+POSTing to server...
+WIFI connect....
+Attempting to connect to SSID: 
+irazu2G
+casiocasio
+ not WL_CONNECTED ... status: 4
+ not WL_CONNECTED ... status: 4
+Connected !!
+SSID: irazu2G
+IP Address: 10.0.0.140
+signal strength (RSSI):-45 dBm
+Connecting to server... inspection-brick.replit.app
+Connected to server!
+Sending ...
+POST /api/device/inspections?company=NEC HTTP/1.1
+Host: inspection-brick.replit.app
+Content-Type: text/plain
+Authorization: Bearer eyJhbGciOiJSUzI1NiJ9.eyJ1c2VySWQiOiJhdmF6cXVleiIsImNvbXBhbnlJZCI6Ik5FQyIsImlzU3VwZXJ1c2VyIjpmYWxzZSwiaXNEZXZpY2VUb2tlbiI6dHJ1ZSwiaWF0IjoxNzY0NTkwMDM1LCJpc3MiOiJpbnNwZWN0aW9uLWJyaWNrIiwiYXVkIjoiaW5zcGVjdGlvbi1icmljay1hcGkiLCJleHAiOjIwNzk5NTAwMzUsInN1YiI6ImF2YXpxdWV6In0.SSJ7G0oF8KeVTHVkfvRn7iA7sjUAgN_Ipr3FWP842JPd7A2tWUVhyGWD2NB9WzLnIMpPGIHz3I3tZdVNvL0-UuaFgpPsOj3T3U4vxUTKuKOk83doBe-g2WX8O2vIPF9AmjTeKsnmIUHdwF2sE0wy9imMHrHPBAK58a-hjBZyxW87DEdlH8nYjx_iSHk9BCGPNdhvz8Pmq_Qwtx3TcopeKV0aiEsU9k3DtXICXNmCKRfir5kOuQ-g8JG2k8U-3ZqDwm5aewSo2xazLAWsR9Uid88pHTiBci-t52HxmFcIoX1Tk4IGJHdWrRalqOInsFA0GILf7p4joh6VUfpaSzFIYg
+User-Agent: InspectionBrick/1.0 ( ARM; v 1.96)
+Content-Length: 644
+Connection: close
+
+BRICKINSPECTION*1
+DISPLAYHEADER*1765507272*69431(zFIYg)*2025-12-11 18:41:12*Adriana Lopez*TRUCK-2401: TRUCK*ï±
+INSPHEADER
+INSPID*057a07f1-0d0c-4792-acb2-a496ffe69431
+COMPANYID*NEC
+DRIVER*Adriana Lopez*123
+INSPSTARTTIME*2025-12-11 18:41:05
+INSPSUBTIME*2025-12-11 18:41:12
+INSPTIMEOFFSET*-480
+INSPTIMEDST*0
+ASSETS
+ASSET*TRUCK-2401*TRUCK*
+INSPTYPE
+INSPTYPENAME*post-trip
+FORMFIELDS
+FF*ending-odometer*
+FF*fuel-remaining*
+FF*issues-noted*
+CHECKS
+CHECK*TRUCK-2401*PRE-OP*Coolant*GOOD*0*2025-12-11 18:41:09*
+CHECK*TRUCK-2401*PRE-OP*Engine Oil*GOOD*0*2025-12-11 18:41:09*
+CHECK*TRUCK-2401*PRE-OP*Fuel Level*GOOD*0*2025-12-11 18:41:09*
+DEFECTS
+END***
+
+read reply done!:
+HTTP/1.1 400 Bad Request
+Content-Length: 561
+Content-Type: application/json; charset=utf-8
+Date: Fri, 12 Dec 2025 02:41:32 GMT
+Etag: W/"231-REcKRuHzaDGYruJknXaNUNHJodA"
+Server: Google Frontend
+Strict-Transport-Security: max-age=63072000; includeSubDomains
+X-Cloud-Trace-Context: 9c7e7140730ffdec9247aa64e1b5c7d7;o=1
+X-Powered-By: Express
+Via: 1.1 google
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+Connection: close
+
+{"error":"Failed to parse or store inspection data","message":"Invalid zone ID in CHECK: PRE-OP","stack":"Error: Invalid zone ID in CHECK: PRE-OP\n    at parseBrickInspection (file:///home/runner/workspace/dist/index.js:1786:13)\n    at file:///home/runner/workspace/dist/index.js:3279:16\n    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)\n    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)\n    at requireAuth (file:///home/runner/workspace/dist/index.js:1959:5)"}
