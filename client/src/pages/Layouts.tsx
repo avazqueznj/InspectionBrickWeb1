@@ -494,6 +494,14 @@ function ZoneManager({ layoutId, zones }: { layoutId: string; zones: LayoutZone[
       });
       return;
     }
+    if (!zoneTag.trim()) {
+      toast({
+        title: "Error",
+        description: "Zone tag is required",
+        variant: "destructive",
+      });
+      return;
+    }
     createZoneMutation.mutate({ zoneName, zoneTag });
   };
 
@@ -528,7 +536,7 @@ function ZoneManager({ layoutId, zones }: { layoutId: string; zones: LayoutZone[
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="zoneTag">Zone Tag (Optional)</Label>
+                <Label htmlFor="zoneTag">Zone Tag</Label>
                 <Input
                   id="zoneTag"
                   placeholder="e.g., FRONT, REAR"
@@ -759,6 +767,14 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
       });
       return;
     }
+    if (!editZoneTag.trim()) {
+      toast({
+        title: "Error",
+        description: "Zone tag is required",
+        variant: "destructive",
+      });
+      return;
+    }
     updateZoneMutation.mutate({ zoneName: editZoneName, zoneTag: editZoneTag });
   };
 
@@ -897,7 +913,7 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="editZoneTag">Zone Tag (Optional)</Label>
+              <Label htmlFor="editZoneTag">Zone Tag</Label>
               <Input
                 id="editZoneTag"
                 value={editZoneTag}

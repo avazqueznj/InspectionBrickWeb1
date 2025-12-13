@@ -148,7 +148,7 @@ export const zoneImages = pgTable("zone_images", {
 export const layoutZones = pgTable("layout_zones", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   zoneName: text("zone_name").notNull(),
-  zoneTag: text("zone_tag"),
+  zoneTag: text("zone_tag").notNull(),
   layoutId: varchar("layout_id").notNull().references(() => layouts.id, { onDelete: "cascade" }),
   imageId: varchar("image_id").references(() => zoneImages.id, { onDelete: "set null" }),
 });
