@@ -33,7 +33,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
       licensePlate: "",
       status: "ACTIVE",
       companyId: currentCompanyId || "",
-      locationId: null,
+      locationId: "",
     },
   });
 
@@ -82,7 +82,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         prevCompanyIdRef.current !== selectedCompanyId) {
       // Company has genuinely changed - reset layout and location to prevent stale cross-tenant selection
       form.setValue("layout", "");
-      form.setValue("locationId", null);
+      form.setValue("locationId", "");
     }
     // Only update the ref if we have a meaningful value
     if (selectedCompanyId) {
@@ -101,7 +101,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         licensePlate: asset.licensePlate || "",
         status: asset.status,
         companyId: asset.companyId,
-        locationId: asset.locationId || null,
+        locationId: asset.locationId || "",
       });
       // Initialize the ref with the asset's company to prevent false change detection
       prevCompanyIdRef.current = asset.companyId;
@@ -114,7 +114,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         licensePlate: "",
         status: "ACTIVE",
         companyId: currentCompanyId || "",
-        locationId: null,
+        locationId: "",
       });
       // Initialize the ref with the current company
       prevCompanyIdRef.current = currentCompanyId || "";
@@ -127,7 +127,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         licensePlate: "",
         status: "ACTIVE",
         companyId: "",
-        locationId: null,
+        locationId: "",
       });
       // Reset the ref when modal closes
       prevCompanyIdRef.current = undefined;
@@ -308,10 +308,10 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
                   name="locationId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Location (Optional)</FormLabel>
+                      <FormLabel>Location</FormLabel>
                       <Select
-                        onValueChange={(value) => field.onChange(value === "none" ? null : value)}
-                        value={field.value || "none"}
+                        onValueChange={field.onChange}
+                        value={field.value || ""}
                       >
                         <FormControl>
                           <SelectTrigger data-testid="select-locationId">
@@ -319,7 +319,6 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="none">No Location</SelectItem>
                           {locations.map((location) => (
                             <SelectItem key={location.id} value={location.id}>
                               {location.locationName}

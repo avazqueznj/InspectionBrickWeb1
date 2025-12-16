@@ -62,7 +62,7 @@ export const users = pgTable("users", {
   webAccess: boolean("web_access").notNull().default(false),
   customerAdminAccess: boolean("customer_admin_access").notNull().default(false),
   companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }),
-  locationId: varchar("location_id").references(() => locations.id, { onDelete: "set null" }),
+  locationId: varchar("location_id").notNull().references(() => locations.id, { onDelete: "restrict" }),
 }, (table) => ({
   // Unique constraint: same userId can exist across companies, but not within same company
   uniqueUserPerCompany: unique().on(table.companyId, table.userId),
@@ -79,7 +79,7 @@ export const assets = pgTable("assets", {
   licensePlate: text("license_plate"),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  locationId: varchar("location_id").references(() => locations.id, { onDelete: "set null" }),
+  locationId: varchar("location_id").notNull().references(() => locations.id, { onDelete: "restrict" }),
 }, (table) => ({
   // Unique constraint: same assetId can exist across companies, but not within same company
   uniqueAssetPerCompany: unique().on(table.companyId, table.assetId),
@@ -369,12 +369,14 @@ export const insertUserSchema = createInsertSchema(users).omit({
 }).extend({
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
   webAccess: z.boolean().default(false),
+  locationId: z.string().min(1, "Location is required"),
 });
 
 export const insertAssetSchema = createInsertSchema(assets).omit({
   id: true,
 }).extend({
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+  locationId: z.string().min(1, "Location is required"),
 });
 
 export const insertInspectionSchema = createInsertSchema(inspections).extend({

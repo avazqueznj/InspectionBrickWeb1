@@ -46,7 +46,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
       status: "ACTIVE",
       webAccess: false,
       companyId: currentCompanyId,
-      locationId: null,
+      locationId: "",
     },
   });
 
@@ -77,7 +77,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         prevCompanyIdRef.current !== undefined && 
         prevCompanyIdRef.current !== selectedCompanyId) {
       // Company has genuinely changed - reset locationId to prevent stale cross-tenant selection
-      form.setValue("locationId", null);
+      form.setValue("locationId", "");
     }
     // Always update the ref
     prevCompanyIdRef.current = selectedCompanyId;
@@ -94,7 +94,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         status: user.status,
         webAccess: user.webAccess,
         companyId: currentCompanyId, // Always use current company context in edit mode
-        locationId: user.locationId || null,
+        locationId: user.locationId || "",
       });
     } else if (!open) {
       form.reset({
@@ -105,7 +105,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         status: "ACTIVE",
         webAccess: false,
         companyId: currentCompanyId, // Default to current company in create mode
-        locationId: null,
+        locationId: "",
       });
     }
   }, [open, user, form, currentCompanyId]);
@@ -288,10 +288,10 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                   name="locationId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Location (Optional)</FormLabel>
+                      <FormLabel>Location</FormLabel>
                       <Select
-                        onValueChange={(value) => field.onChange(value === "none" ? null : value)}
-                        value={field.value || "none"}
+                        onValueChange={field.onChange}
+                        value={field.value || ""}
                       >
                         <FormControl>
                           <SelectTrigger data-testid="select-locationId">
@@ -299,7 +299,6 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="none">No Location</SelectItem>
                           {locations.map((location) => (
                             <SelectItem key={location.id} value={location.id}>
                               {location.locationName}

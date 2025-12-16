@@ -90,10 +90,18 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 - **Layout Activation:** Layouts have an `isActive` boolean field (default: false). Only active layouts are sent to devices via the config endpoint. Activation requires validation: layout must have at least one zone, each zone must have at least one component, and each component must have at least one defect. All names must be non-empty. Toggle UI shows green power icon for active layouts with validation feedback on errors.
 - **Admin Tools:** Superuser-only features including database reseed functionality and a device config preview tool.
 
+**Locations Feature:**
+- Locations represent organizational hierarchy with geographical coordinates for large customers
+- **Locations are mandatory** - users and assets must have locationId (NOT NULL FK with onDelete: "restrict")
+- Location dropdown is required in User and Asset creation/edit forms
+- Locations are company-scoped with CRUD management page at /locations
+- Simple locations endpoint `/api/locations/simple?companyId=X` for dropdown population
+
 ### Database Schema
 - **Multi-Tenant ID Architecture:** Uses UUID primary keys and human-readable business IDs unique per company.
 - **Business Key Naming Convention:** Noun-based (e.g., `inspectionTypeName`), immutable, and unique within company scope.
-- **Core Tables:** Companies, Users, Assets, Inspection Types, Layouts, Inspections, Defects, Upload Errors, with appropriate junction tables and `CHECK` constraints. Includes `dotNumber` for companies and `licensePlate` for assets.
+- **Core Tables:** Companies, Users, Assets, Locations, Inspection Types, Layouts, Inspections, Defects, Upload Errors, with appropriate junction tables and `CHECK` constraints. Includes `dotNumber` for companies and `licensePlate` for assets.
+- **Locations Constraint:** locationId is NOT NULL on both users and assets tables with FK onDelete: "restrict" to prevent deleting locations that have users/assets assigned.
 
 ### API Endpoints
 Endpoints exist for authentication, managing companies, assets, layouts, inspection types, inspections, defects, and device integration.

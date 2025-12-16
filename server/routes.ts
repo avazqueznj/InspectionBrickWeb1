@@ -701,6 +701,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updateData = insertUserSchema.partial().parse(req.body);
       
+      // Validate locationId if present - cannot be empty string (required field)
+      if ('locationId' in updateData && (!updateData.locationId || updateData.locationId.trim() === '')) {
+        return res.status(400).json({ error: "Location is required" });
+      }
+      
       // Security: Only superusers can modify customerAdminAccess
       if ('customerAdminAccess' in updateData && !req.auth?.isSuperuser) {
         console.log(`❌ [Routes] Authorization failed - Only superusers can modify customerAdminAccess`);
@@ -874,6 +879,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const updateData = insertAssetSchema.partial().parse(req.body);
+      
+      // Validate locationId if present - cannot be empty string (required field)
+      if ('locationId' in updateData && (!updateData.locationId || updateData.locationId.trim() === '')) {
+        return res.status(400).json({ error: "Location is required" });
+      }
       
       // Get the existing asset to check authorization (fetch all assets to avoid pagination issues)
       const existingAssets = await storage.getAssets({ 
