@@ -230,12 +230,26 @@ export const companiesRelations = relations(companies, ({ many }) => ({
   assets: many(assets),
   inspectionTypes: many(inspectionTypes),
   layouts: many(layouts),
+  locations: many(locations),
+}));
+
+export const locationsRelations = relations(locations, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [locations.companyId],
+    references: [companies.id],
+  }),
+  users: many(users),
+  assets: many(assets),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
   company: one(companies, {
     fields: [users.companyId],
     references: [companies.id],
+  }),
+  location: one(locations, {
+    fields: [users.locationId],
+    references: [locations.id],
   }),
 }));
 
@@ -247,6 +261,10 @@ export const assetsRelations = relations(assets, ({ one }) => ({
   layoutRelation: one(layouts, {
     fields: [assets.layout],
     references: [layouts.id],
+  }),
+  location: one(locations, {
+    fields: [assets.locationId],
+    references: [locations.id],
   }),
 }));
 
@@ -338,6 +356,12 @@ export const inspectionTypeLayoutsRelations = relations(inspectionTypeLayouts, (
 }));
 
 // Insert schemas
+export const insertLocationSchema = createInsertSchema(locations).omit({
+  id: true,
+}).extend({
+  status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+});
+
 export const insertCompanySchema = createInsertSchema(companies);
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -409,6 +433,8 @@ export const insertZoneImageSchema = createInsertSchema(zoneImages).omit({
 });
 
 // Types
+export type Location = typeof locations.$inferSelect;
+export type InsertLocation = z.infer<typeof insertLocationSchema>;
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type User = typeof users.$inferSelect;
