@@ -101,6 +101,8 @@ export const inspections = pgTable("inspections", {
   inspTimeOffset: integer("insp_time_offset"),
   inspTimeDst: integer("insp_time_dst"),
   rawData: text("raw_data"),
+  locationId: varchar("location_id"),
+  locationName: text("location_name"),
 });
 
 // Defects table
