@@ -444,6 +444,10 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UserWithoutPassword = Omit<User, 'password'>;
 export type Asset = typeof assets.$inferSelect;
 export type InsertAsset = z.infer<typeof insertAssetSchema>;
+export type AssetWithLocation = Asset & {
+  layoutName?: string;
+  locationName?: string | null;
+};
 export type Inspection = typeof inspections.$inferSelect;
 export type InsertInspection = z.infer<typeof insertInspectionSchema>;
 export type Defect = typeof defects.$inferSelect;

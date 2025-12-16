@@ -2322,6 +2322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
     <div class="info-row"><span class="label">Asset ID${inspection.assets && inspection.assets.length > 1 ? 's' : ''}:</span> ${inspection.assets && inspection.assets.length > 0 ? inspection.assets.join(', ') : 'N/A'}</div>
     ${asset?.licensePlate ? `<div class="info-row"><span class="label">License Plate:</span> ${asset.licensePlate}</div>` : ''}
+    ${asset?.locationName ? `<div class="info-row"><span class="label">Location:</span> ${asset.locationName}</div>` : ''}
     <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName} (${inspection.driverId})</div>
     
     ${formDataRows ? `
@@ -2493,6 +2494,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <div class="info-row"><span class="label">Time:</span> ${formattedTime}</div>
   <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
   <div class="info-row"><span class="label">Asset${assetIds.length > 1 ? 's' : ''}:</span> ${assetInfo}</div>
+  ${(() => {
+    const primaryAssetId = assetIds[0];
+    if (primaryAssetId && primaryAssetId !== 'N/A') {
+      const primaryAsset = assetsResult.data.find(a => a.assetId === primaryAssetId);
+      if (primaryAsset?.locationName) {
+        return `<div class="info-row"><span class="label">Location:</span> ${primaryAsset.locationName}</div>`;
+      }
+    }
+    return '';
+  })()}
   <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName}</div>
   <div class="info-row"><span class="label">Driver ID:</span> ${inspection.driverId}</div>
   

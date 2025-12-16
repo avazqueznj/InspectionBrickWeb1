@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, zoneImages, locations, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset, type ZoneImage, type Location, type InsertLocation } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, zoneImages, locations, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type AssetWithLocation, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset, type ZoneImage, type Location, type InsertLocation } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and, inArray } from "drizzle-orm";
 
@@ -167,7 +167,7 @@ export interface IStorage {
   getUserFilterValues(companyId?: string): Promise<UserFilterValues>;
   
   // Assets
-  getAssets(params?: AssetQueryParams): Promise<PaginatedResult<Asset>>;
+  getAssets(params?: AssetQueryParams): Promise<PaginatedResult<AssetWithLocation>>;
   createAsset(asset: InsertAsset): Promise<Asset>;
   updateAsset(assetId: string, asset: Partial<InsertAsset>): Promise<Asset | undefined>;
   getAssetFilterValues(companyId?: string): Promise<AssetFilterValues>;
@@ -460,7 +460,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getAssets(params?: AssetQueryParams): Promise<PaginatedResult<Asset>> {
+  async getAssets(params?: AssetQueryParams): Promise<PaginatedResult<AssetWithLocation>> {
     const { 
       companyId, 
       search, 
@@ -541,8 +541,8 @@ export class DatabaseStorage implements IStorage {
       .limit(limit)
       .offset(offset);
 
-    // Map results to Asset type with layoutName and locationName added
-    const data = results.map(r => ({
+    // Map results to AssetWithLocation type
+    const data: AssetWithLocation[] = results.map(r => ({
       id: r.id,
       assetId: r.assetId,
       layout: r.layout,
@@ -553,7 +553,7 @@ export class DatabaseStorage implements IStorage {
       locationId: r.locationId,
       layoutName: r.layoutName,
       locationName: r.locationName,
-    })) as any;
+    }));
 
     console.log(`✅ [Storage] getAssets - Found ${results.length} of ${total} total assets`);
     
