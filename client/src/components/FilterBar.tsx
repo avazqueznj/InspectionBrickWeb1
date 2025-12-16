@@ -15,8 +15,14 @@ interface FilterValues {
   driverIds: string[];
 }
 
+interface SimpleLocation {
+  id: string;
+  locationName: string;
+}
+
 interface FilterBarProps {
   companyId: string | undefined;
+  initialLocationId?: string;
   onFilterChange: (filters: {
     dateFrom?: string;
     dateTo?: string;
@@ -24,10 +30,11 @@ interface FilterBarProps {
     assetId?: string;
     driverName?: string;
     driverId?: string;
+    locationId?: string;
   }) => void;
 }
 
-export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
+export function FilterBar({ companyId, initialLocationId, onFilterChange }: FilterBarProps) {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [dateFromOpen, setDateFromOpen] = useState(false);
@@ -36,6 +43,7 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
   const [assetId, setAssetId] = useState<string>("");
   const [driverName, setDriverName] = useState<string>("");
   const [driverId, setDriverId] = useState<string>("");
+  const [locationId, setLocationId] = useState<string>(initialLocationId || "");
 
   // Fetch available filter values
   const { data: filterValues } = useQuery<FilterValues>({
@@ -51,6 +59,32 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
     enabled: !!companyId,
   });
 
+  // Fetch locations for filter dropdown
+  const { data: locations } = useQuery<SimpleLocation[]>({
+    queryKey: ["/api/locations/simple", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const response = await fetch(`/api/locations/simple?companyId=${companyId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch locations");
+      }
+      return response.json();
+    },
+    enabled: !!companyId,
+  });
+
+  // Reset all company-specific filters when company changes
+  useEffect(() => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setInspectionType("");
+    setAssetId("");
+    setDriverName("");
+    setDriverId("");
+    // Reset location to initialLocationId (user's location) or empty
+    setLocationId(initialLocationId || "");
+  }, [companyId, initialLocationId]);
+
   // Memoize the filters object to prevent unnecessary re-renders
   const filters = useMemo(() => ({
     dateFrom: dateFrom ? format(dateFrom, "yyyy-MM-dd") : undefined,
@@ -59,7 +93,8 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
     assetId: assetId || undefined,
     driverName: driverName || undefined,
     driverId: driverId || undefined,
-  }), [dateFrom, dateTo, inspectionType, assetId, driverName, driverId]);
+    locationId: locationId || undefined,
+  }), [dateFrom, dateTo, inspectionType, assetId, driverName, driverId, locationId]);
 
   // Update parent component when filters change
   useEffect(() => {
@@ -67,7 +102,7 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
   }, [filters, onFilterChange]);
 
   // Check if any filters are active
-  const hasActiveFilters = dateFrom || dateTo || inspectionType || assetId || driverName || driverId;
+  const hasActiveFilters = dateFrom || dateTo || inspectionType || assetId || driverName || driverId || locationId;
 
   // Reset all filters
   const handleReset = () => {
@@ -77,6 +112,7 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
     setAssetId("");
     setDriverName("");
     setDriverId("");
+    setLocationId("");
   };
 
   return (
@@ -237,6 +273,31 @@ export function FilterBar({ companyId, onFilterChange }: FilterBarProps) {
             {filterValues?.driverIds.map((id) => (
               <SelectItem key={id} value={id} data-testid={`filter-driver-id-${id}`}>
                 {id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Location */}
+      <div className="flex flex-col gap-1.5 min-w-[160px]">
+        <Label htmlFor="location" className="text-xs font-medium">
+          Location
+        </Label>
+        <Select 
+          value={locationId || "__clear__"} 
+          onValueChange={(val) => setLocationId(val === "__clear__" ? "" : val)}
+        >
+          <SelectTrigger id="location" data-testid="filter-location">
+            <SelectValue placeholder="All locations" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__clear__" data-testid="filter-location-clear">
+              All locations
+            </SelectItem>
+            {locations?.map((loc) => (
+              <SelectItem key={loc.id} value={loc.id} data-testid={`filter-location-${loc.id}`}>
+                {loc.locationName}
               </SelectItem>
             ))}
           </SelectContent>

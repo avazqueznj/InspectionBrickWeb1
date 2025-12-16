@@ -17,6 +17,7 @@ export interface QueryParams {
   assetId?: string;
   driverName?: string;
   driverId?: string;
+  locationId?: string;
 }
 
 export interface UserQueryParams {
@@ -997,12 +998,13 @@ export class DatabaseStorage implements IStorage {
       inspectionType,
       assetId,
       driverName,
-      driverId
+      driverId,
+      locationId
     } = params || {};
     
     console.log(`📊 [Storage] getInspections - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}`);
-    if (dateFrom || dateTo || inspectionType || assetId || driverName || driverId) {
-      console.log(`🔍 [Storage] Filters - dateFrom: ${dateFrom || 'none'}, dateTo: ${dateTo || 'none'}, type: ${inspectionType || 'none'}, asset: ${assetId || 'none'}, driver: ${driverName || 'none'}, driverId: ${driverId || 'none'}`);
+    if (dateFrom || dateTo || inspectionType || assetId || driverName || driverId || locationId) {
+      console.log(`🔍 [Storage] Filters - dateFrom: ${dateFrom || 'none'}, dateTo: ${dateTo || 'none'}, type: ${inspectionType || 'none'}, asset: ${assetId || 'none'}, driver: ${driverName || 'none'}, driverId: ${driverId || 'none'}, locationId: ${locationId || 'none'}`);
     }
     
     // Build where conditions array
@@ -1055,6 +1057,9 @@ export class DatabaseStorage implements IStorage {
     if (driverId) {
       conditions.push(eq(inspections.driverId, driverId));
     }
+    if (locationId) {
+      conditions.push(eq(inspections.locationId, locationId));
+    }
     
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -1063,6 +1068,7 @@ export class DatabaseStorage implements IStorage {
       datetime: inspections.datetime,
       inspectionType: inspections.inspectionType,
       driverName: inspections.driverName,
+      locationName: inspections.locationName,
     };
     
     const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || inspections.datetime;

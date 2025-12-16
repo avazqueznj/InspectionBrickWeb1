@@ -11,6 +11,7 @@ interface TokenPayload {
   isSuperuser: boolean;
   customerAdminAccess?: boolean;
   isDeviceToken?: boolean;
+  locationId?: string | null;
 }
 
 interface VerifiedToken {
@@ -19,6 +20,7 @@ interface VerifiedToken {
   isSuperuser: boolean;
   customerAdminAccess: boolean;
   isDeviceToken: boolean;
+  locationId: string | null;
 }
 
 let privateKey: CryptoKey | null = null;
@@ -72,6 +74,7 @@ export async function generateAccessToken(payload: TokenPayload): Promise<string
     isSuperuser: payload.isSuperuser,
     customerAdminAccess: payload.customerAdminAccess || false,
     isDeviceToken: false,
+    locationId: payload.locationId || null,
   })
     .setProtectedHeader({ alg: JWT_ALGORITHM })
     .setIssuedAt()
@@ -132,6 +135,7 @@ export async function verifyToken(token: string): Promise<VerifiedToken> {
     const isSuperuser = payload.isSuperuser as boolean;
     const customerAdminAccess = payload.customerAdminAccess as boolean || false;
     const isDeviceToken = payload.isDeviceToken as boolean || false;
+    const locationId = payload.locationId as string | null || null;
     
     if (!userId) {
       throw new Error('Token missing userId claim');
@@ -145,6 +149,7 @@ export async function verifyToken(token: string): Promise<VerifiedToken> {
       isSuperuser,
       customerAdminAccess,
       isDeviceToken,
+      locationId,
     };
   } catch (error) {
     console.error('❌ [JWT] Token verification failed:', error);

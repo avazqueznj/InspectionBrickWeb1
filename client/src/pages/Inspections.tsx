@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type InspectionWithDefects } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
@@ -29,17 +30,22 @@ interface Filters {
   assetId?: string;
   driverName?: string;
   driverId?: string;
+  locationId?: string;
 }
 
 export default function Inspections() {
   const { selectedCompany } = useCompany();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>("datetime");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedInspection, setSelectedInspection] = useState<InspectionWithDefects | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filters, setFilters] = useState<Filters>({});
+  // Initialize filter with user's location if they have one (non-superusers)
+  const [filters, setFilters] = useState<Filters>(() => 
+    user?.locationId ? { locationId: user.locationId } : {}
+  );
   const itemsPerPage = 10;
 
   // Reset to page 1 when search query, filters, or company changes
@@ -53,7 +59,8 @@ export default function Inspections() {
     filters.inspectionType, 
     filters.assetId, 
     filters.driverName, 
-    filters.driverId
+    filters.driverId,
+    filters.locationId
   ]);
 
   const { data, isLoading } = useQuery<PaginatedResponse>({
@@ -70,7 +77,8 @@ export default function Inspections() {
       filters.inspectionType,
       filters.assetId,
       filters.driverName,
-      filters.driverId
+      filters.driverId,
+      filters.locationId
     ],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
@@ -89,6 +97,7 @@ export default function Inspections() {
       if (filters.assetId) queryParams.set("assetId", filters.assetId);
       if (filters.driverName) queryParams.set("driverName", filters.driverName);
       if (filters.driverId) queryParams.set("driverId", filters.driverId);
+      if (filters.locationId) queryParams.set("locationId", filters.locationId);
       
       const response = await fetch(`/api/inspections?${queryParams.toString()}`);
       if (!response.ok) {
@@ -131,6 +140,7 @@ export default function Inspections() {
     if (filters.assetId) queryParams.set("assetId", filters.assetId);
     if (filters.driverName) queryParams.set("driverName", filters.driverName);
     if (filters.driverId) queryParams.set("driverId", filters.driverId);
+    if (filters.locationId) queryParams.set("locationId", filters.locationId);
     
     // Open in new browser tab
     window.open(`/api/inspections/print-list?${queryParams.toString()}`, '_blank');
@@ -197,7 +207,11 @@ export default function Inspections() {
         </div>
 
         {/* Filter Bar */}
-        <FilterBar companyId={selectedCompany || undefined} onFilterChange={setFilters} />
+        <FilterBar 
+          companyId={selectedCompany || undefined} 
+          initialLocationId={user?.locationId || undefined}
+          onFilterChange={setFilters} 
+        />
 
         {/* Analytics Dashboard */}
         <AnalyticsDashboard companyId={selectedCompany} type="inspections" />
@@ -228,6 +242,9 @@ export default function Inspections() {
                       <SortableHeader field="driverName">Driver Name</SortableHeader>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Driver ID
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Location
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Defects
@@ -268,6 +285,9 @@ export default function Inspections() {
                         </td>
                         <td className="px-4 py-3 text-sm font-mono text-muted-foreground">
                           {inspection.driverId}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground" data-testid={`text-location-${inspection.id}`}>
+                          {inspection.locationName || "-"}
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center justify-center min-w-8 h-6 px-2 rounded-full bg-muted text-xs font-medium">

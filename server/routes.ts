@@ -42,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const queryParamsSchema = z.object({
     companyId: z.string().optional(),
     search: z.string().optional(),
-    sortField: z.enum(["datetime", "inspectionType", "assetId", "driverName"]).optional(),
+    sortField: z.enum(["datetime", "inspectionType", "assetId", "driverName", "locationName"]).optional(),
     sortDirection: z.enum(["asc", "desc"]).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(1000).optional(),
@@ -53,6 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     assetId: z.string().optional(),
     driverName: z.string().optional(),
     driverId: z.string().optional(),
+    locationId: z.string().optional(),
   });
 
   // User query params validation schema
@@ -145,6 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId: user.companyId,
         isSuperuser: user.companyId === null,
         customerAdminAccess: user.customerAdminAccess || false,
+        locationId: user.locationId || null,
       });
       
       // Also set session for dual-mode compatibility (legacy clients)
@@ -165,6 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyId: user.companyId,
           isSuperuser: user.companyId === null,
           customerAdminAccess: user.customerAdminAccess || false,
+          locationId: user.locationId || null,
         },
       });
       console.log(`✅ [Routes] Login successful for user: ${userId}`);
@@ -265,6 +268,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const formFieldsJson = JSON.stringify(parsed.formFields);
       const primaryAssetId = parsed.assets.length > 0 ? parsed.assets[0].assetId : "UNKNOWN";
 
+      // Look up user location by driverId (includes inactive users)
+      let locationId: string | null = null;
+      let locationName: string | null = null;
+      
+      try {
+        const driver = await storage.getUserById(parsed.driverId);
+        if (driver && driver.locationId) {
+          locationId = driver.locationId;
+          const location = await storage.getLocationById(driver.locationId);
+          if (location) {
+            locationName = location.locationName;
+          }
+          console.log(`📍 [Routes] Driver location found: ${locationName} (${locationId})`);
+        } else {
+          console.log(`⚠️  [Routes] Driver ${parsed.driverId} has no location or not found`);
+        }
+      } catch (locationError) {
+        console.log(`⚠️  [Routes] Could not retrieve driver location: ${locationError}`);
+      }
+
       const inspectionData = {
         id: parsed.inspectionId,
         companyId: parsed.companyId,
@@ -278,6 +301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inspTimeOffset: parsed.inspTimeOffset,
         inspTimeDst: parsed.inspTimeDst,
         rawData: rawData,
+        locationId: locationId,
+        locationName: locationName,
       };
 
       const existingInspection = await storage.getInspection(parsed.inspectionId);
@@ -2330,7 +2355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
     <div class="info-row"><span class="label">Asset ID${inspection.assets && inspection.assets.length > 1 ? 's' : ''}:</span> ${inspection.assets && inspection.assets.length > 0 ? inspection.assets.join(', ') : 'N/A'}</div>
     ${asset?.licensePlate ? `<div class="info-row"><span class="label">License Plate:</span> ${asset.licensePlate}</div>` : ''}
-    ${asset?.locationName ? `<div class="info-row"><span class="label">Location:</span> ${asset.locationName}</div>` : ''}
+    ${inspection.locationName ? `<div class="info-row"><span class="label">Location:</span> ${inspection.locationName}</div>` : ''}
     <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName} (${inspection.driverId})</div>
     
     ${formDataRows ? `
@@ -2502,16 +2527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <div class="info-row"><span class="label">Time:</span> ${formattedTime}</div>
   <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
   <div class="info-row"><span class="label">Asset${assetIds.length > 1 ? 's' : ''}:</span> ${assetInfo}</div>
-  ${(() => {
-    const primaryAssetId = assetIds[0];
-    if (primaryAssetId && primaryAssetId !== 'N/A') {
-      const primaryAsset = assetsResult.data.find(a => a.assetId === primaryAssetId);
-      if (primaryAsset?.locationName) {
-        return `<div class="info-row"><span class="label">Location:</span> ${primaryAsset.locationName}</div>`;
-      }
-    }
-    return '';
-  })()}
+  ${inspection.locationName ? `<div class="info-row"><span class="label">Location:</span> ${inspection.locationName}</div>` : ''}
   <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName}</div>
   <div class="info-row"><span class="label">Driver ID:</span> ${inspection.driverId}</div>
   

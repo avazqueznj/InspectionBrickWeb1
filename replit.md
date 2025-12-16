@@ -97,6 +97,13 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 - Locations are company-scoped with CRUD management page at /locations
 - Simple locations endpoint `/api/locations/simple?companyId=X` for dropdown population
 
+**Inspection Location Capture:**
+- Inspections table has nullable locationId (UUID) and locationName (text) fields - NO FK constraints (preserves historical data)
+- When inspections are uploaded, system looks up driver's locationId from users table and denormalizes to inspection
+- JWT tokens include locationId for the authenticated user
+- Inspections page: Location column displayed, location filter dropdown, defaults to user's location
+- Print reports include location information
+
 ### Database Schema
 - **Multi-Tenant ID Architecture:** Uses UUID primary keys and human-readable business IDs unique per company.
 - **Business Key Naming Convention:** Noun-based (e.g., `inspectionTypeName`), immutable, and unique within company scope.
