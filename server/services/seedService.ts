@@ -42,9 +42,16 @@ export async function runSeed() {
       address: "9012 Freight Dr, Memphis, TN 38125",
       settings: JSON.stringify({ timezone: "America/Central", locale: "en-US" }),
     },
+    {
+      id: "ACME",
+      name: "ACME National Logistics",
+      address: "1000 Commerce Parkway, Atlanta, GA 30301",
+      dotNumber: "DOT-4567890",
+      settings: JSON.stringify({ timezone: "America/New_York", locale: "en-US" }),
+    },
   ]);
 
-  console.log("✅ Created 3 companies");
+  console.log("✅ Created 4 companies");
 
   // Create locations for each company (required for users and assets)
   console.log("📍 Creating locations...");
@@ -61,9 +68,15 @@ export async function runSeed() {
     { id: "FEDEX-HUB", locationName: "Memphis Hub", address: "9012 Freight Dr, Memphis, TN 38125", status: "ACTIVE" as const, companyId: "FEDEX" },
     { id: "FEDEX-SORT", locationName: "Sortation Center", address: "456 Package Ln, Memphis, TN 38126", status: "ACTIVE" as const, companyId: "FEDEX" },
     { id: "FEDEX-DEPOT", locationName: "Local Depot", address: "789 Delivery St, Nashville, TN 37203", status: "ACTIVE" as const, companyId: "FEDEX" },
+    // ACME locations (5 locations for volume testing)
+    { id: "ACME-ATL", locationName: "Atlanta Hub", address: "1000 Commerce Parkway, Atlanta, GA 30301", status: "ACTIVE" as const, companyId: "ACME" },
+    { id: "ACME-DAL", locationName: "Dallas Terminal", address: "2500 Freight Boulevard, Dallas, TX 75201", status: "ACTIVE" as const, companyId: "ACME" },
+    { id: "ACME-CHI", locationName: "Chicago Distribution", address: "3200 Logistics Ave, Chicago, IL 60601", status: "ACTIVE" as const, companyId: "ACME" },
+    { id: "ACME-LAX", locationName: "Los Angeles Port", address: "4100 Harbor Way, Los Angeles, CA 90001", status: "ACTIVE" as const, companyId: "ACME" },
+    { id: "ACME-NYC", locationName: "New York Terminal", address: "5500 Industrial Blvd, Newark, NJ 07101", status: "ACTIVE" as const, companyId: "ACME" },
   ];
   await db.insert(locations).values(locationsData);
-  console.log(`✅ Created ${locationsData.length} locations (3 per company)`);
+  console.log(`✅ Created ${locationsData.length} locations`);
 
   // Create inspection types with form fields
   console.log("📋 Creating inspection types...");
@@ -152,13 +165,42 @@ export async function runSeed() {
     },
   ];
   
+  // ACME Inspection Types (high volume company)
+  const acmeInspectionTypesData = [
+    {
+      inspectionTypeName: "pre-trip",
+      layoutKeys: ["TRUCK", "TRAILER"],
+      status: "ACTIVE" as const,
+      companyId: "ACME",
+    },
+    {
+      inspectionTypeName: "post-trip",
+      layoutKeys: ["TRUCK", "TRAILER"],
+      status: "ACTIVE" as const,
+      companyId: "ACME",
+    },
+    {
+      inspectionTypeName: "yard-check",
+      layoutKeys: [],
+      status: "ACTIVE" as const,
+      companyId: "ACME",
+    },
+    {
+      inspectionTypeName: "forklift-daily",
+      layoutKeys: ["FORKLIFT"],
+      status: "ACTIVE" as const,
+      companyId: "ACME",
+    },
+  ];
+  
   // Insert inspection types (without layoutKeys field)
   const createdInspectionTypes = await db.insert(inspectionTypes).values([
     ...necInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
     ...walmartInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
     ...fedexInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
+    ...acmeInspectionTypesData.map(({ layoutKeys, ...rest }) => rest),
   ]).returning();
-  console.log(`✅ Created ${necInspectionTypesData.length + walmartInspectionTypesData.length + fedexInspectionTypesData.length} inspection types`);
+  console.log(`✅ Created ${createdInspectionTypes.length} inspection types`);
   
   // Create a mapping from (companyId + business inspectionTypeName) to UUID id
   // Use composite key to handle multiple companies using same business ID
@@ -368,6 +410,12 @@ export async function runSeed() {
     { layoutName: "TRAILER", companyId: "WALMART" },
     { layoutName: "DOLLY", companyId: "FEDEX" },
     { layoutName: "TRAILER", companyId: "FEDEX" },
+    // ACME layouts (high volume)
+    { layoutName: "TRUCK", companyId: "ACME" },
+    { layoutName: "TRAILER", companyId: "ACME" },
+    { layoutName: "VAN", companyId: "ACME" },
+    { layoutName: "FORKLIFT", companyId: "ACME" },
+    { layoutName: "PALLET-JACK", companyId: "ACME" },
   ];
   const createdLayouts = await db.insert(layouts).values(layoutsData).returning();
   
@@ -380,7 +428,7 @@ export async function runSeed() {
 
   // Create inspection type to layout mappings in junction table
   console.log("🔗 Creating inspection type to layout mappings...");
-  const allInspectionTypesData = [...necInspectionTypesData, ...walmartInspectionTypesData, ...fedexInspectionTypesData];
+  const allInspectionTypesData = [...necInspectionTypesData, ...walmartInspectionTypesData, ...fedexInspectionTypesData, ...acmeInspectionTypesData];
   const inspectionTypeLayoutMappings: Array<{ inspectionTypeId: string; layoutId: string }> = [];
   
   for (const itData of allInspectionTypesData) {
@@ -606,7 +654,7 @@ export async function runSeed() {
 
   // Apply templates to all companies' SCHOOL-BUS, TRUCK, and TRAILER layouts
   const layoutsToPopulate = ["SCHOOL-BUS", "TRUCK", "TRAILER"];
-  const companiesToPopulate = ["NEC", "WALMART", "FEDEX"];
+  const companiesToPopulate = ["NEC", "WALMART", "FEDEX", "ACME"];
   
   for (const company of companiesToPopulate) {
     for (const layoutType of layoutsToPopulate) {
@@ -618,7 +666,7 @@ export async function runSeed() {
     }
   }
   
-  console.log("✅ Created layout structures for 9 vehicle layouts (3 companies × 3 layout types)");
+  console.log("✅ Created layout structures for all companies");
 
   // Create assets for all companies
   console.log("📦 Creating assets...");
@@ -1126,12 +1174,207 @@ export async function runSeed() {
     }
   }
 
-  console.log(`✅ Created ${totalDefects} defects across ${Math.floor(totalDefects / 2)} inspections with varied severity levels`);
+  console.log(`✅ Created ${totalDefects} defects for existing companies`);
+
+  // ============================================
+  // ACME VOLUME DATA - 500 users, 500 assets, 10,000 inspections
+  // ============================================
+  console.log("🏭 Creating ACME volume data (500 users, 500 assets, 10,000 inspections)...");
+  
+  const acmeLocations = [
+    { id: "ACME-ATL", name: "Atlanta Hub" },
+    { id: "ACME-DAL", name: "Dallas Terminal" },
+    { id: "ACME-CHI", name: "Chicago Distribution" },
+    { id: "ACME-LAX", name: "Los Angeles Port" },
+    { id: "ACME-NYC", name: "New York Terminal" },
+  ];
+  
+  const acmeLayoutKeys = ["TRUCK", "TRAILER", "VAN", "FORKLIFT", "PALLET-JACK"];
+  
+  // Create 500 ACME users (100 per location) using direct DB insert for speed
+  console.log("👥 Creating 500 ACME users...");
+  const acmeUsersData = [];
+  const firstNames = ["James", "Michael", "Robert", "David", "John", "William", "Richard", "Joseph", "Thomas", "Christopher", 
+                      "Mary", "Patricia", "Jennifer", "Linda", "Elizabeth", "Barbara", "Susan", "Jessica", "Sarah", "Karen"];
+  const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez",
+                     "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin"];
+  const userTags = ["DRIVER", "MECHANIC", "SUPERVISOR", "OPERATOR", null];
+  
+  for (let locIdx = 0; locIdx < acmeLocations.length; locIdx++) {
+    const location = acmeLocations[locIdx];
+    for (let i = 0; i < 100; i++) {
+      const userNum = locIdx * 100 + i + 1;
+      const firstName = firstNames[i % firstNames.length];
+      const lastName = lastNames[Math.floor(i / 20) % lastNames.length];
+      acmeUsersData.push({
+        id: randomUUID(),
+        userId: `acme_user_${userNum.toString().padStart(3, '0')}`,
+        password: "$2b$10$1234567890123456789012uQIHhZxLq1mxhQPDyqvyj6kFGjxvU.W", // hashed "password123"
+        userFullName: `${firstName} ${lastName}`,
+        userTag: userTags[i % userTags.length],
+        status: (i < 95 ? "ACTIVE" : "INACTIVE") as "ACTIVE" | "INACTIVE", // 5% inactive
+        webAccess: i < 10, // First 10 per location have web access
+        customerAdminAccess: i === 0, // First user per location is admin
+        companyId: "ACME",
+        locationId: location.id,
+      });
+    }
+  }
+  await db.insert(users).values(acmeUsersData);
+  console.log(`   ✅ Created ${acmeUsersData.length} ACME users`);
+  
+  // Create 500 ACME assets (100 per location)
+  console.log("📦 Creating 500 ACME assets...");
+  const acmeAssetsData = [];
+  const assetPrefixes = ["TRK", "TRL", "VAN", "FLT", "PLT"];
+  const assetNames = ["Freightliner", "Peterbilt", "Kenworth", "Volvo", "International", "Mack", "Western Star", "Hino", "Isuzu", "Ford"];
+  
+  for (let locIdx = 0; locIdx < acmeLocations.length; locIdx++) {
+    const location = acmeLocations[locIdx];
+    for (let i = 0; i < 100; i++) {
+      const assetNum = locIdx * 100 + i + 1;
+      const layoutKey = acmeLayoutKeys[i % acmeLayoutKeys.length];
+      const prefix = assetPrefixes[i % assetPrefixes.length];
+      const layoutId = layoutMap.get(`ACME:${layoutKey}`);
+      
+      if (layoutId) {
+        acmeAssetsData.push({
+          assetId: `${prefix}-${assetNum.toString().padStart(4, '0')}`,
+          layout: layoutId,
+          assetName: `${assetNames[i % assetNames.length]} ${assetNum}`,
+          licensePlate: `ACME${assetNum.toString().padStart(4, '0')}`,
+          status: i < 90 ? "ACTIVE" as const : "INACTIVE" as const, // 10% inactive
+          companyId: "ACME",
+          locationId: location.id,
+        });
+      }
+    }
+  }
+  await db.insert(assets).values(acmeAssetsData);
+  console.log(`   ✅ Created ${acmeAssetsData.length} ACME assets`);
+  
+  // Build ACME asset location map for defects
+  const acmeAssetLocationMap = new Map<string, { locationId: string; locationName: string }>();
+  for (const asset of acmeAssetsData) {
+    const loc = acmeLocations.find(l => l.id === asset.locationId);
+    if (loc) {
+      acmeAssetLocationMap.set(asset.assetId, { locationId: loc.id, locationName: loc.name });
+    }
+  }
+  
+  // Create 10,000 ACME inspections (spread across 6 months)
+  console.log("📋 Creating 10,000 ACME inspections...");
+  const acmeInspectionTypes = ["pre-trip", "post-trip", "yard-check", "forklift-daily"];
+  const BATCH_SIZE = 500;
+  let acmeInspectionsCreated = 0;
+  const allAcmeInspections: Array<{ id: string; assetId: string; locationId: string; locationName: string }> = [];
+  
+  for (let batch = 0; batch < 20; batch++) { // 20 batches of 500 = 10,000
+    const inspectionBatch = [];
+    const inspectionAssetBatch = [];
+    
+    for (let i = 0; i < BATCH_SIZE; i++) {
+      const inspNum = batch * BATCH_SIZE + i;
+      // Spread across 6 months (180 days)
+      const dayOffset = inspNum % 180;
+      const startDate = new Date('2025-05-01');
+      const inspDate = new Date(startDate);
+      inspDate.setDate(inspDate.getDate() + dayOffset);
+      inspDate.setHours(6 + (inspNum % 16), (inspNum * 7) % 60, 0);
+      
+      const location = acmeLocations[inspNum % acmeLocations.length];
+      const userIdx = inspNum % acmeUsersData.length;
+      const user = acmeUsersData[userIdx];
+      const assetIdx = inspNum % acmeAssetsData.length;
+      const asset = acmeAssetsData[assetIdx];
+      
+      const inspId = randomUUID();
+      inspectionBatch.push({
+        id: inspId,
+        companyId: "ACME",
+        datetime: inspDate,
+        inspectionType: acmeInspectionTypes[inspNum % acmeInspectionTypes.length],
+        driverName: user.userFullName,
+        driverId: user.userId,
+        inspectionFormData: JSON.stringify({ odometer: 10000 + inspNum * 50, fuelLevel: 50 + (inspNum % 50) }),
+        locationId: location.id,
+        locationName: location.name,
+      });
+      
+      inspectionAssetBatch.push({
+        inspectionId: inspId,
+        assetId: asset.assetId,
+      });
+      
+      allAcmeInspections.push({
+        id: inspId,
+        assetId: asset.assetId,
+        locationId: location.id,
+        locationName: location.name,
+      });
+    }
+    
+    await db.insert(inspections).values(inspectionBatch);
+    await db.insert(inspectionAssets).values(inspectionAssetBatch);
+    acmeInspectionsCreated += BATCH_SIZE;
+    console.log(`   📋 Inserted batch ${batch + 1}/20 (${acmeInspectionsCreated} inspections)`);
+  }
+  console.log(`   ✅ Created ${acmeInspectionsCreated} ACME inspections`);
+  
+  // Create defects for ~40% of ACME inspections (4,000 inspections with 1-3 defects each)
+  console.log("🔧 Creating defects for ACME inspections...");
+  let acmeDefectsCreated = 0;
+  const defectBatchSize = 1000;
+  let defectBatch: any[] = [];
+  
+  for (let i = 0; i < allAcmeInspections.length; i++) {
+    // 40% chance of having defects
+    if (Math.random() < 0.4) {
+      const insp = allAcmeInspections[i];
+      const numDefects = Math.floor(Math.random() * 3) + 1; // 1-3 defects
+      const assetLoc = acmeAssetLocationMap.get(insp.assetId);
+      
+      for (let j = 0; j < numDefects; j++) {
+        const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
+        defectBatch.push({
+          inspectionId: insp.id,
+          assetId: insp.assetId,
+          zoneName: template.zoneName,
+          componentName: template.componentName,
+          defect: template.defect,
+          severity: template.severity,
+          driverNotes: template.driverNotes,
+          status: template.status,
+          repairNotes: template.repairNotes || null,
+          locationId: assetLoc?.locationId || null,
+          locationName: assetLoc?.locationName || null,
+        });
+        
+        // Insert in batches
+        if (defectBatch.length >= defectBatchSize) {
+          await db.insert(defects).values(defectBatch);
+          acmeDefectsCreated += defectBatch.length;
+          console.log(`   🔧 Inserted ${acmeDefectsCreated} defects...`);
+          defectBatch = [];
+        }
+      }
+    }
+  }
+  
+  // Insert remaining defects
+  if (defectBatch.length > 0) {
+    await db.insert(defects).values(defectBatch);
+    acmeDefectsCreated += defectBatch.length;
+  }
+  console.log(`   ✅ Created ${acmeDefectsCreated} ACME defects`);
+  
+  totalDefects += acmeDefectsCreated;
+
   console.log("🎉 Seeding completed successfully!");
   console.log("📊 Summary:");
-  console.log("   - 3 companies");
-  console.log("   - 7 users (1 superuser + 4 active company users + 2 inactive users)");
-  console.log("   - 30 assets (10 per company with varied types and statuses)");
-  console.log(`   - ${necInspections.length + walmartInspections.length + fedexInspections.length} inspections (${necInspections.length} per company)`);
+  console.log("   - 4 companies (NEC, WALMART, FEDEX, ACME)");
+  console.log(`   - ${7 + acmeUsersData.length} users (507 total)`);
+  console.log(`   - ${30 + acmeAssetsData.length} assets (530 total)`);
+  console.log(`   - ${necInspections.length + walmartInspections.length + fedexInspections.length + acmeInspectionsCreated} inspections (10,135+ total)`);
   console.log(`   - ${totalDefects} defects across different statuses`);
 }
