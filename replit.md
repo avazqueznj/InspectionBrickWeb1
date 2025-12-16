@@ -104,6 +104,13 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 - Inspections page: Location column displayed, location filter dropdown, defaults to user's location
 - Print reports include location information
 
+**Defects Location Capture:**
+- Defects table has nullable locationId (text) and locationName (text) fields - NO FK constraints (preserves historical data)
+- When defects are created during device upload, system looks up asset's locationId from assets table and denormalizes to defect
+- Defects page: Location column displayed after Date & Time column, location filter dropdown in filter bar
+- Filter values are derived from distinct locations in the defects table (historical data preserved)
+- Defects from non-catalogued assets (uploaded via device with unknown asset IDs) have null location
+
 ### Database Schema
 - **Multi-Tenant ID Architecture:** Uses UUID primary keys and human-readable business IDs unique per company.
 - **Business Key Naming Convention:** Noun-based (e.g., `inspectionTypeName`), immutable, and unique within company scope.

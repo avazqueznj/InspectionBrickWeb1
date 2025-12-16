@@ -944,10 +944,27 @@ export async function runSeed() {
   
   console.log(`✅ Created ${necMultiAssetInspections.length + walmartMultiAssetInspections.length + fedexMultiAssetInspections.length} multi-asset inspections with ${inspectionAssetsData.length} asset associations`);
   
+  // Create asset-to-location lookup maps for defect location data (used for both multi-asset and regular defects)
+  const locationNameMap = new Map(locationsData.map(loc => [loc.id, loc.locationName]));
+  const assetLocationMap = new Map<string, { locationId: string; locationName: string }>();
+  
+  [...necAssetData, ...walmartAssetData, ...fedexAssetData].forEach(asset => {
+    assetLocationMap.set(asset.assetId, {
+      locationId: asset.locationId,
+      locationName: locationNameMap.get(asset.locationId) || "Unknown Location"
+    });
+  });
+
+  // Helper function to get location from asset
+  const getAssetLocation = (assetId: string) => {
+    const loc = assetLocationMap.get(assetId);
+    return loc ? { locationId: loc.locationId, locationName: loc.locationName } : { locationId: null, locationName: null };
+  };
+
   // Create defects for multi-asset inspections with specific assetId values
   console.log("🔧 Creating defects for multi-asset inspections...");
   
-  const multiAssetDefects = [
+  const multiAssetDefectsBase = [
     // NEC Inspection 1: Tractor + Dolly + Trailer
     { inspectionId: necMultiAssetInspections[0].id, assetId: "127", zoneName: "Brakes", componentName: "Front Brake Pads", defect: "Worn brake pads", severity: 9, status: "open" as const, driverNotes: "Tractor brakes need attention" },
     { inspectionId: necMultiAssetInspections[0].id, assetId: "DOLLY-5", zoneName: "Tires", componentName: "Left Tire", defect: "Low tire pressure", severity: 5, status: "open" as const, driverNotes: "Dolly tire needs inflation" },
@@ -974,6 +991,12 @@ export async function runSeed() {
     { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRUCK-5503", zoneName: "Tires", componentName: "Front Tires", defect: "Uneven tire wear", severity: 7, status: "open" as const, driverNotes: "Truck tires need rotation" },
     { inspectionId: fedexMultiAssetInspections[1].id, assetId: "TRAILER-F11", zoneName: "Lights", componentName: "Marker Lights", defect: "Missing marker light cover", severity: 4, status: "repaired" as const, driverNotes: "Trailer light cover replaced", repairNotes: "New cover installed" },
   ];
+  
+  // Add location data from asset lookup
+  const multiAssetDefects = multiAssetDefectsBase.map(defect => ({
+    ...defect,
+    ...getAssetLocation(defect.assetId),
+  }));
   
   await db.insert(defects).values(multiAssetDefects);
   
@@ -1018,12 +1041,14 @@ export async function runSeed() {
     if (Math.random() < 0.7) {
       const numDefects = Math.floor(Math.random() * 4) + 1; // 1-4 defects per inspection
       const selectedDefects = [];
+      const assetId = necAssets[i % necAssets.length];
+      const assetLocation = assetLocationMap.get(assetId);
       
       for (let j = 0; j < numDefects; j++) {
         const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
         selectedDefects.push({
           inspectionId: necInspections[i].id,
-          assetId: necAssets[i % necAssets.length],
+          assetId: assetId,
           zoneName: template.zoneName,
           componentName: template.componentName,
           defect: template.defect,
@@ -1031,6 +1056,8 @@ export async function runSeed() {
           driverNotes: template.driverNotes,
           status: template.status,
           repairNotes: template.repairNotes || null,
+          locationId: assetLocation?.locationId || null,
+          locationName: assetLocation?.locationName || null,
         });
       }
       
@@ -1044,12 +1071,14 @@ export async function runSeed() {
     if (Math.random() < 0.7) {
       const numDefects = Math.floor(Math.random() * 4) + 1;
       const selectedDefects = [];
+      const assetId = walmartAssets[i % walmartAssets.length];
+      const assetLocation = assetLocationMap.get(assetId);
       
       for (let j = 0; j < numDefects; j++) {
         const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
         selectedDefects.push({
           inspectionId: walmartInspections[i].id,
-          assetId: walmartAssets[i % walmartAssets.length],
+          assetId: assetId,
           zoneName: template.zoneName,
           componentName: template.componentName,
           defect: template.defect,
@@ -1057,6 +1086,8 @@ export async function runSeed() {
           driverNotes: template.driverNotes,
           status: template.status,
           repairNotes: template.repairNotes || null,
+          locationId: assetLocation?.locationId || null,
+          locationName: assetLocation?.locationName || null,
         });
       }
       
@@ -1070,12 +1101,14 @@ export async function runSeed() {
     if (Math.random() < 0.7) {
       const numDefects = Math.floor(Math.random() * 4) + 1;
       const selectedDefects = [];
+      const assetId = fedexAssets[i % fedexAssets.length];
+      const assetLocation = assetLocationMap.get(assetId);
       
       for (let j = 0; j < numDefects; j++) {
         const template = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
         selectedDefects.push({
           inspectionId: fedexInspections[i].id,
-          assetId: fedexAssets[i % fedexAssets.length],
+          assetId: assetId,
           zoneName: template.zoneName,
           componentName: template.componentName,
           defect: template.defect,
@@ -1083,6 +1116,8 @@ export async function runSeed() {
           driverNotes: template.driverNotes,
           status: template.status,
           repairNotes: template.repairNotes || null,
+          locationId: assetLocation?.locationId || null,
+          locationName: assetLocation?.locationName || null,
         });
       }
       

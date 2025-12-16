@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type DefectWithInspection, type InspectionWithDefects } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Eye, Wrench } from "lucide-react";
@@ -33,6 +34,7 @@ interface Filters {
   componentName?: string;
   severityLevel?: "critical" | "high" | "medium" | "low";
   status?: "open" | "pending" | "repaired" | "not-needed";
+  locationId?: string;
 }
 
 interface FilterValues {
@@ -42,10 +44,12 @@ interface FilterValues {
   componentNames: string[];
   severityLevels: ("critical" | "high" | "medium" | "low")[];
   statuses: ("open" | "pending" | "repaired" | "not-needed")[];
+  locations: { id: string; locationName: string }[];
 }
 
 export default function Defects() {
   const { selectedCompany } = useCompany();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>("severity");
@@ -56,6 +60,23 @@ export default function Defects() {
   const [selectedDefectIds, setSelectedDefectIds] = useState<Set<string>>(new Set());
   const [isRepairDialogOpen, setIsRepairDialogOpen] = useState(false);
   const itemsPerPage = 10;
+  
+  // Track if we've initialized the location filter with user's location
+  const hasInitializedLocationRef = useRef(false);
+  
+  // Initialize location filter to user's location on first load
+  useEffect(() => {
+    if (user?.locationId && !hasInitializedLocationRef.current) {
+      setFilters(prev => ({ ...prev, locationId: user.locationId }));
+      hasInitializedLocationRef.current = true;
+    }
+  }, [user?.locationId]);
+  
+  // Reset filters when company changes
+  useEffect(() => {
+    hasInitializedLocationRef.current = false;
+    setFilters({ status: "open", locationId: user?.locationId });
+  }, [selectedCompany, user?.locationId]);
 
   // Reset to page 1 when search query, filters, or company changes
   useEffect(() => {
@@ -70,7 +91,8 @@ export default function Defects() {
     filters.zoneName,
     filters.componentName,
     filters.severityLevel,
-    filters.status
+    filters.status,
+    filters.locationId
   ]);
 
   // Fetch filter values
@@ -119,7 +141,8 @@ export default function Defects() {
       filters.zoneName,
       filters.componentName,
       filters.severityLevel,
-      filters.status
+      filters.status,
+      filters.locationId
     ],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
@@ -140,6 +163,7 @@ export default function Defects() {
       if (filters.componentName) queryParams.set("componentName", filters.componentName);
       if (filters.severityLevel) queryParams.set("severityLevel", filters.severityLevel);
       if (filters.status) queryParams.set("status", filters.status);
+      if (filters.locationId) queryParams.set("locationId", filters.locationId);
 
       const response = await fetch(`/api/defects?${queryParams.toString()}`);
       if (!response.ok) {
@@ -411,6 +435,26 @@ export default function Defects() {
             </Select>
           </div>
 
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Location:</label>
+            <Select
+              value={filters.locationId || "all"}
+              onValueChange={(value) => handleFilterChange("locationId", value === "all" ? undefined : value)}
+            >
+              <SelectTrigger className="w-44" data-testid="filter-location">
+                <SelectValue placeholder="All locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All locations</SelectItem>
+                {filterValues?.locations?.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.locationName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {hasActiveFilters && (
             <Button
               variant="ghost"
@@ -459,6 +503,9 @@ export default function Defects() {
                         </div>
                       </th>
                       <SortableHeader field="datetime">Date & Time</SortableHeader>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Location
+                      </th>
                       <SortableHeader field="assetId">Asset ID</SortableHeader>
                       <SortableHeader field="driverName">Driver Name</SortableHeader>
                       <SortableHeader field="zoneName">Zone</SortableHeader>
@@ -501,6 +548,9 @@ export default function Defects() {
                           <td className="px-4 py-3 text-sm" data-testid={`text-datetime-${defect.id}`}>
                             <div>{formattedDate}</div>
                             <div className="text-xs text-muted-foreground">{formattedTime}</div>
+                          </td>
+                          <td className="px-4 py-3 text-sm" data-testid={`text-location-${defect.id}`}>
+                            {defect.locationName || "-"}
                           </td>
                           <td className="px-4 py-3 text-sm font-medium" data-testid={`text-assetId-${defect.id}`}>
                             {defect.assetId}
