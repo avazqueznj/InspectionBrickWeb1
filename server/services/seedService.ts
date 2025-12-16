@@ -712,12 +712,20 @@ export async function runSeed() {
     { name: "Robert Wilson", id: "DRV-10778" },
   ];
   
+  // NEC locations for inspections
+  const necLocations = [
+    { id: "NEC-HQ", name: "NEC Headquarters" },
+    { id: "NEC-WAREHOUSE", name: "NEC Warehouse" },
+    { id: "NEC-YARD", name: "NEC Equipment Yard" },
+  ];
+  
   // Generate 45 NEC inspections across October 2025
   const necInspectionData = [];
   for (let i = 0; i < 45; i++) {
     const day = (i % 22) + 1; // Days 1-22
     const hour = 7 + (i % 10); // Hours 7-16
     const minute = (i * 15) % 60;
+    const location = necLocations[i % necLocations.length];
     
     necInspectionData.push({
       id: randomUUID(),
@@ -727,6 +735,8 @@ export async function runSeed() {
       driverName: necDrivers[i % necDrivers.length].name,
       driverId: necDrivers[i % necDrivers.length].id,
       inspectionFormData: `Inspection #${i + 1} - Routine check completed.`,
+      locationId: location.id,
+      locationName: location.name,
     });
   }
   
@@ -742,12 +752,20 @@ export async function runSeed() {
     { name: "David Martinez", id: "DRV-10556" },
   ];
   
+  // WALMART locations for inspections
+  const walmartLocations = [
+    { id: "WALMART-DC1", name: "Distribution Center 1" },
+    { id: "WALMART-DC2", name: "Distribution Center 2" },
+    { id: "WALMART-STORE1", name: "Store 1" },
+  ];
+  
   // Generate 45 WALMART inspections
   const walmartInspectionData = [];
   for (let i = 0; i < 45; i++) {
     const day = (i % 22) + 1;
     const hour = 8 + (i % 9);
     const minute = (i * 20) % 60;
+    const location = walmartLocations[i % walmartLocations.length];
     
     walmartInspectionData.push({
       id: randomUUID(),
@@ -757,6 +775,8 @@ export async function runSeed() {
       driverName: walmartDrivers[i % walmartDrivers.length].name,
       driverId: walmartDrivers[i % walmartDrivers.length].id,
       inspectionFormData: `Inspection #${i + 1} - Standard inspection protocol.`,
+      locationId: location.id,
+      locationName: location.name,
     });
   }
   
@@ -772,12 +792,20 @@ export async function runSeed() {
     { name: "Thomas Anderson", id: "DRV-20334" },
   ];
   
+  // FEDEX locations for inspections
+  const fedexLocations = [
+    { id: "FEDEX-HUB", name: "Memphis Hub" },
+    { id: "FEDEX-SORT", name: "Sortation Center" },
+    { id: "FEDEX-DEPOT", name: "Local Depot" },
+  ];
+  
   // Generate 45 FEDEX inspections
   const fedexInspectionData = [];
   for (let i = 0; i < 45; i++) {
     const day = (i % 22) + 1;
     const hour = 6 + (i % 11);
     const minute = (i * 13) % 60;
+    const location = fedexLocations[i % fedexLocations.length];
     
     fedexInspectionData.push({
       id: randomUUID(),
@@ -787,6 +815,8 @@ export async function runSeed() {
       driverName: fedexDrivers[i % fedexDrivers.length].name,
       driverId: fedexDrivers[i % fedexDrivers.length].id,
       inspectionFormData: `Inspection #${i + 1} - Operations check complete.`,
+      locationId: location.id,
+      locationName: location.name,
     });
   }
   
@@ -817,6 +847,8 @@ export async function runSeed() {
       driverName: "John Smith",
       driverId: "DRV-12345",
       inspectionFormData: "Multi-asset inspection: Tractor + Dolly + Trailer",
+      locationId: "NEC-HQ",
+      locationName: "NEC Headquarters",
     },
     {
       id: randomUUID(),
@@ -826,6 +858,8 @@ export async function runSeed() {
       driverName: "Sarah Johnson",
       driverId: "DRV-54321",
       inspectionFormData: "Multi-asset inspection: Tractor + Trailer",
+      locationId: "NEC-WAREHOUSE",
+      locationName: "NEC Warehouse",
     },
   ]).returning();
   
@@ -839,6 +873,8 @@ export async function runSeed() {
       driverName: "Michael Brown",
       driverId: "DRV-10892",
       inspectionFormData: "Multi-asset inspection: Truck + Trailer combo",
+      locationId: "WALMART-DC1",
+      locationName: "Distribution Center 1",
     },
     {
       id: randomUUID(),
@@ -848,6 +884,8 @@ export async function runSeed() {
       driverName: "Emily Davis",
       driverId: "DRV-10123",
       inspectionFormData: "Multi-asset inspection: Van with attached equipment",
+      locationId: "WALMART-DC2",
+      locationName: "Distribution Center 2",
     },
   ]).returning();
   
@@ -861,6 +899,8 @@ export async function runSeed() {
       driverName: "James Wilson",
       driverId: "DRV-20445",
       inspectionFormData: "Multi-asset inspection: Van + Dolly + Trailer",
+      locationId: "FEDEX-HUB",
+      locationName: "Memphis Hub",
     },
     {
       id: randomUUID(),
@@ -870,6 +910,8 @@ export async function runSeed() {
       driverName: "Maria Garcia",
       driverId: "DRV-20567",
       inspectionFormData: "Multi-asset inspection: Truck + Trailer",
+      locationId: "FEDEX-SORT",
+      locationName: "Sortation Center",
     },
   ]).returning();
   
