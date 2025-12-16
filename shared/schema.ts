@@ -121,6 +121,9 @@ export const defects = pgTable("defects", {
   repairNotes: text("repair_notes"),
   mechanicName: text("mechanic_name"),
   repairDate: timestamp("repair_date"),
+  // Location denormalization - captured from asset at upload time (no FK - preserves historical data)
+  locationId: varchar("location_id"),
+  locationName: text("location_name"),
 });
 
 // Inspection Types table

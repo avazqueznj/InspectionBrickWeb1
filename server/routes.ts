@@ -106,6 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     componentName: z.string().optional(),
     severityLevel: z.enum(["critical", "high", "medium", "low"]).optional(),
     status: z.enum(["open", "pending", "repaired", "not-needed"]).optional(),
+    locationId: z.string().optional(),
   });
 
   // Login schema - companyId can be empty string for superuser login
@@ -328,45 +329,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log(`✅ [Routes] All inspection-asset associations created`);
 
-      const allDefectsToCreate = [
+      // Build a cache of asset locations to avoid repeated lookups
+      const assetLocationCache: Map<string, { locationId: string | null; locationName: string | null }> = new Map();
+      
+      // Helper function to get asset location (caches results)
+      const getAssetLocation = async (assetId: string) => {
+        if (assetLocationCache.has(assetId)) {
+          return assetLocationCache.get(assetId)!;
+        }
+        
+        let assetLocationId: string | null = null;
+        let assetLocationName: string | null = null;
+        
+        try {
+          // Look up asset by assetId within company (includes inactive assets)
+          const asset = await storage.getAssetByAssetId(assetId, parsed.companyId);
+          if (asset && asset.locationId) {
+            assetLocationId = asset.locationId;
+            const location = await storage.getLocationById(asset.locationId);
+            if (location) {
+              assetLocationName = location.locationName;
+            }
+            console.log(`📍 [Routes] Asset ${assetId} location found: ${assetLocationName} (${assetLocationId})`);
+          } else {
+            console.log(`⚠️  [Routes] Asset ${assetId} has no location or not found in catalog`);
+          }
+        } catch (assetError) {
+          console.log(`⚠️  [Routes] Could not retrieve asset location for ${assetId}: ${assetError}`);
+        }
+        
+        const result = { locationId: assetLocationId, locationName: assetLocationName };
+        assetLocationCache.set(assetId, result);
+        return result;
+      };
+
+      const allDefectItems = [
         ...parsed.checks.map((check: any) => ({
-          inspectionId: inspection.id,
-          assetId: check.assetId,
-          zoneId: null,
-          zoneName: check.zoneName,
-          componentName: check.componentName,
-          defect: check.defectType,
-          severity: check.severity,
-          inspectedAtUtc: check.inspectedAtUtc,
-          driverNotes: check.notes,
-          status: "open" as const,
-          repairNotes: null,
+          source: check,
+          type: 'check'
         })),
         ...parsed.defects.map((defect: any) => ({
-          inspectionId: inspection.id,
-          assetId: defect.assetId,
-          zoneId: null,
-          zoneName: defect.zoneName,
-          componentName: defect.componentName,
-          defect: defect.defectType,
-          severity: defect.severity,
-          inspectedAtUtc: defect.inspectedAtUtc,
-          driverNotes: defect.notes,
-          status: "open" as const,
-          repairNotes: null,
+          source: defect,
+          type: 'defect'
         })),
       ];
 
-      console.log(`💾 [Routes] Creating ${allDefectsToCreate.length} defect/check records`);
-      for (const defectData of allDefectsToCreate) {
-        await storage.createDefect(defectData);
+      console.log(`💾 [Routes] Creating ${allDefectItems.length} defect/check records with asset locations`);
+      for (const item of allDefectItems) {
+        const { source } = item;
+        const { locationId: defectLocationId, locationName: defectLocationName } = await getAssetLocation(source.assetId);
+        
+        await storage.createDefect({
+          inspectionId: inspection.id,
+          assetId: source.assetId,
+          zoneId: null,
+          zoneName: source.zoneName,
+          componentName: source.componentName,
+          defect: source.defectType,
+          severity: source.severity,
+          inspectedAtUtc: source.inspectedAtUtc,
+          driverNotes: source.notes,
+          status: "open" as const,
+          repairNotes: null,
+          locationId: defectLocationId,
+          locationName: defectLocationName,
+        });
       }
-      console.log(`✅ [Routes] All defects/checks created`);
+      console.log(`✅ [Routes] All defects/checks created with location data`);
 
       res.status(201).json({
         success: true,
         inspectionId: inspection.id,
-        defectsCreated: allDefectsToCreate.length,
+        defectsCreated: allDefectItems.length,
       });
       console.log(`✅ [Routes] Device inspection upload complete: ${inspection.id}`);
     } catch (error) {
