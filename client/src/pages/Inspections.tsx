@@ -244,7 +244,7 @@ export default function Inspections() {
                         Driver ID
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Location
+                        Inspector Location
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Defects

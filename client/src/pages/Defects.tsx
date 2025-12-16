@@ -67,7 +67,7 @@ export default function Defects() {
   // Initialize location filter to user's location on first load
   useEffect(() => {
     if (user?.locationId && !hasInitializedLocationRef.current) {
-      setFilters(prev => ({ ...prev, locationId: user.locationId }));
+      setFilters(prev => ({ ...prev, locationId: user.locationId || undefined }));
       hasInitializedLocationRef.current = true;
     }
   }, [user?.locationId]);
@@ -75,7 +75,7 @@ export default function Defects() {
   // Reset filters when company changes
   useEffect(() => {
     hasInitializedLocationRef.current = false;
-    setFilters({ status: "open", locationId: user?.locationId });
+    setFilters({ status: "open", locationId: user?.locationId || undefined });
   }, [selectedCompany, user?.locationId]);
 
   // Reset to page 1 when search query, filters, or company changes
@@ -436,7 +436,7 @@ export default function Defects() {
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Location:</label>
+            <label className="text-sm font-medium">Asset's Location:</label>
             <Select
               value={filters.locationId || "all"}
               onValueChange={(value) => handleFilterChange("locationId", value === "all" ? undefined : value)}
@@ -504,7 +504,7 @@ export default function Defects() {
                       </th>
                       <SortableHeader field="datetime">Date & Time</SortableHeader>
                       <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Location
+                        Asset's Location
                       </th>
                       <SortableHeader field="assetId">Asset ID</SortableHeader>
                       <SortableHeader field="driverName">Driver Name</SortableHeader>

@@ -279,10 +279,10 @@ export function FilterBar({ companyId, initialLocationId, onFilterChange }: Filt
         </Select>
       </div>
 
-      {/* Location */}
+      {/* Inspector Location */}
       <div className="flex flex-col gap-1.5 min-w-[160px]">
         <Label htmlFor="location" className="text-xs font-medium">
-          Location
+          Inspector Location
         </Label>
         <Select 
           value={locationId || "__clear__"} 
