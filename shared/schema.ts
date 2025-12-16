@@ -35,6 +35,22 @@ export const companies = pgTable("companies", {
   settings: text("settings"),
 });
 
+// Locations table - divisions/sites within a company
+export const locations = pgTable("locations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationName: text("location_name").notNull(),
+  address: text("address"),
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+}, (table) => ({
+  // Unique constraint: same locationName cannot exist within same company
+  uniqueLocationPerCompany: unique().on(table.companyId, table.locationName),
+  // Check constraint: locationName cannot be empty string
+  locationNameNotEmpty: check("location_name_not_empty", sql`LENGTH(TRIM(${table.locationName})) > 0`),
+}));
+
 // Users table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -46,6 +62,7 @@ export const users = pgTable("users", {
   webAccess: boolean("web_access").notNull().default(false),
   customerAdminAccess: boolean("customer_admin_access").notNull().default(false),
   companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }),
+  locationId: varchar("location_id").references(() => locations.id, { onDelete: "set null" }),
 }, (table) => ({
   // Unique constraint: same userId can exist across companies, but not within same company
   uniqueUserPerCompany: unique().on(table.companyId, table.userId),
@@ -62,6 +79,7 @@ export const assets = pgTable("assets", {
   licensePlate: text("license_plate"),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  locationId: varchar("location_id").references(() => locations.id, { onDelete: "set null" }),
 }, (table) => ({
   // Unique constraint: same assetId can exist across companies, but not within same company
   uniqueAssetPerCompany: unique().on(table.companyId, table.assetId),

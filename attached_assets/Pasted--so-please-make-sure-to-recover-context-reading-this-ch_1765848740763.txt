@@ -1,0 +1,32 @@
+ so please make sure to recover context, reading this chat and :
+
+ 1) reading the replit.md
+2) checking DOT regulations on inspections
+3) look at the database schema
+4) look at the code
+5) and previous comments in this conversation  
+
+So we now have feedback: we cannot have just one overall company. We want to target large potential customers, and they have the assets in different divisions or locations within a company.
+So here is the plan: 
+
+1)we will add a locations table with:
+
+uuid,
+location_name
+address
+geographical coordinates
+status [ active inactive ]
+
+2) We will add a new FK to both users and assets to locations via the UUID, and in the edit modals, you will select the location via the location name, of course.
+
+3) Then, in the inspections table, we will add a new fields : location UUID and location name.  When the inspection is uploaded, you will retrieve the user ID from the inspection, find the user in users (even if it is inactive), grab the location UUID and name, and add them to the inspection table. You will NOT make an FK from inspections to nowhere. We trust what was uploaded, which may not be consistent with the current user location, as users move around, but the inspection data is authoritative.
+
+4) fnally in the defects screen similar but different: we will add a new fields to defects: location UUID and location name.  When the inspection defect is uploaded, you will retrieve the -Asset id-  from the defect, find the -asset- in assets (even if it is inactive), grab the location UUID and name, and add them to the inspection. You will NOT make an FK from inspections to nowhere. We trust what was uploaded, which may not be consistent with the current asset location, as assets also move around.
+
+5) Then in both inspections and defect screen we will add the location name column and filter.
+
+Does that make sense?
+
+Lets start with ONLY 1 and 2. Let us not change inspection list and defects until we check the locations and the changes in the user and asset modals.
+
+let me know if there is questions or any confusion--
