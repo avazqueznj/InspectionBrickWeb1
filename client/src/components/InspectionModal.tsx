@@ -1,9 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { type InspectionWithDefects } from "@shared/schema";
+import { type InspectionWithDefects, type Location } from "@shared/schema";
 import { StatusBadge } from "./StatusBadge";
 import { SeverityIndicator } from "./SeverityIndicator";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
 
 interface InspectionModalProps {
   inspection: InspectionWithDefects | null;
@@ -12,7 +13,24 @@ interface InspectionModalProps {
 }
 
 export function InspectionModal({ inspection, open, onOpenChange }: InspectionModalProps) {
+  // Fetch location data to get address
+  const { data: locations } = useQuery<Location[]>({
+    queryKey: ["/api/locations/simple", inspection?.companyId],
+    queryFn: async () => {
+      if (!inspection?.companyId) return [];
+      const response = await fetch(`/api/locations/simple?companyId=${inspection.companyId}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!inspection?.locationId && !!inspection?.companyId && open,
+    staleTime: 0,
+    gcTime: 0,
+  });
+
   if (!inspection) return null;
+
+  // Find the location by ID to get the address
+  const location = locations?.find(l => l.id === inspection.locationId);
 
   // Filter out severity 0 defects
   const significantDefects = inspection.defects?.filter(d => d.severity > 0) || [];
@@ -103,6 +121,21 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
                   {inspection.driverId}
                 </p>
               </div>
+              {inspection.locationName && (
+                <div className="col-span-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                    Inspector Location
+                  </p>
+                  <p className="text-sm font-medium" data-testid="text-location-name">
+                    {inspection.locationName}
+                  </p>
+                  {location?.address && (
+                    <p className="text-sm text-muted-foreground mt-0.5" data-testid="text-location-address">
+                      {location.address}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

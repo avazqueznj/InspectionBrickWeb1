@@ -2329,6 +2329,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit: 10000 
       });
       
+      // Get all locations for address lookup
+      const allLocations = params.companyId ? await storage.getLocationsByCompany(params.companyId) : [];
+      const locationMap = new Map(allLocations.map(loc => [loc.id, loc.address || '']));
+      
       // Generate simple HTML
       const html = `
 <!DOCTYPE html>
@@ -2365,6 +2369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const formattedTime = date.toLocaleTimeString();
     const primaryAssetId = inspection.assets && inspection.assets.length > 0 ? inspection.assets[0] : 'N/A';
     const asset = assetsResult.data.find(a => a.assetId === primaryAssetId);
+    const locationAddress = inspection.locationId ? locationMap.get(inspection.locationId) : '';
     
     // Parse inspection form data
     let formDataRows = '';
@@ -2382,6 +2387,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
+    const locationDisplay = inspection.locationName 
+      ? `${inspection.locationName}${locationAddress ? ` - ${locationAddress}` : ''}`
+      : '';
+    
     return `
   <div class="inspection">
     <h2>Inspection: ${primaryAssetId} - ${formattedDate}</h2>
@@ -2389,7 +2398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
     <div class="info-row"><span class="label">Asset ID${inspection.assets && inspection.assets.length > 1 ? 's' : ''}:</span> ${inspection.assets && inspection.assets.length > 0 ? inspection.assets.join(', ') : 'N/A'}</div>
     ${asset?.licensePlate ? `<div class="info-row"><span class="label">License Plate:</span> ${asset.licensePlate}</div>` : ''}
-    ${inspection.locationName ? `<div class="info-row"><span class="label">Location:</span> ${inspection.locationName}</div>` : ''}
+    ${locationDisplay ? `<div class="info-row"><span class="label">Location:</span> ${locationDisplay}</div>` : ''}
     <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName} (${inspection.driverId})</div>
     
     ${formDataRows ? `
@@ -2500,6 +2509,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit: 10000 
       });
       
+      // Look up location by UUID to get address
+      let locationAddress = '';
+      if (inspection.locationId) {
+        const location = await storage.getLocationById(inspection.locationId);
+        if (location?.address) {
+          locationAddress = location.address;
+        }
+      }
+      
       // Build asset info string
       const assetIds = inspection.assets && inspection.assets.length > 0 
         ? inspection.assets 
@@ -2532,6 +2550,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Build location display with address
+      const locationDisplay = inspection.locationName 
+        ? `<div class="info-row"><span class="label">Location:</span> ${inspection.locationName}${locationAddress ? ` - ${locationAddress}` : ''}</div>` 
+        : '';
+      
       // Generate simple HTML
       const html = `
 <!DOCTYPE html>
@@ -2561,7 +2584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <div class="info-row"><span class="label">Time:</span> ${formattedTime}</div>
   <div class="info-row"><span class="label">Type:</span> ${inspection.inspectionType}</div>
   <div class="info-row"><span class="label">Asset${assetIds.length > 1 ? 's' : ''}:</span> ${assetInfo}</div>
-  ${inspection.locationName ? `<div class="info-row"><span class="label">Location:</span> ${inspection.locationName}</div>` : ''}
+  ${locationDisplay}
   <div class="info-row"><span class="label">Driver:</span> ${inspection.driverName}</div>
   <div class="info-row"><span class="label">Driver ID:</span> ${inspection.driverId}</div>
   
