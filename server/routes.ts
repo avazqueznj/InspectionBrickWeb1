@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema, type Defect, type InspectionWithDefects } from "@shared/schema";
+import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertLocationSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema, type Defect, type InspectionWithDefects } from "@shared/schema";
 import { z } from "zod";
 import { parseBrickInspection } from "./brickParser";
 import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
@@ -906,6 +906,202 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("❌ [Routes] Error updating asset:", error);
       res.status(500).json({ error: "Failed to update asset" });
+    }
+  });
+
+  // === LOCATION ROUTES ===
+  // Location routes require customer admin access (superuser OR customerAdminAccess)
+
+  // Get filter values for locations (customer admin protected)
+  app.get("/api/locations/filter-values", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    console.log(`🔍 [Routes] GET /api/locations/filter-values - User: ${req.session.userId}`);
+    
+    try {
+      const companyId = req.auth?.isSuperuser
+        ? (req.query.companyId as string | undefined)
+        : (req.auth?.companyId || undefined);
+      
+      const filterValues = await storage.getLocationFilterValues(companyId);
+      console.log(`✅ [Routes] Returning location filter values`);
+      res.json(filterValues);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching location filter values:", error);
+      res.status(500).json({ error: "Failed to fetch filter values" });
+    }
+  });
+
+  // Get all locations (with pagination) (customer admin protected)
+  app.get("/api/locations", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    console.log(`📍 [Routes] GET /api/locations - User: ${req.session.userId}`);
+    
+    try {
+      const companyId = req.auth?.isSuperuser
+        ? (req.query.companyId as string | undefined)
+        : (req.auth?.companyId || undefined);
+      
+      if (!companyId && !req.auth?.isSuperuser) {
+        return res.status(403).json({ error: "Company scope required" });
+      }
+      
+      const params = {
+        companyId,
+        search: req.query.search as string | undefined,
+        sortField: req.query.sortField as string | undefined,
+        sortDirection: (req.query.sortDirection as "asc" | "desc") || "asc",
+        page: req.query.page ? parseInt(req.query.page as string) : 1,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+        status: req.query.status as "ACTIVE" | "INACTIVE" | undefined,
+      };
+      
+      const result = await storage.getLocations(params);
+      console.log(`✅ [Routes] Returning ${result.data.length} of ${result.total} locations`);
+      res.json(result);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching locations:", error);
+      res.status(500).json({ error: "Failed to fetch locations" });
+    }
+  });
+
+  // Get simple locations list for dropdowns (active only) (protected)
+  app.get("/api/locations/simple", requireAuth, async (req: AuthRequest, res) => {
+    console.log(`📍 [Routes] GET /api/locations/simple - User: ${req.session.userId}`);
+    
+    try {
+      const companyId = req.auth?.isSuperuser
+        ? (req.query.companyId as string | undefined)
+        : (req.auth?.companyId || undefined);
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "Company ID required" });
+      }
+      
+      const locations = await storage.getLocationsByCompany(companyId);
+      console.log(`✅ [Routes] Returning ${locations.length} locations for dropdown`);
+      res.json(locations);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching locations for dropdown:", error);
+      res.status(500).json({ error: "Failed to fetch locations" });
+    }
+  });
+
+  // Get location by ID (customer admin protected)
+  app.get("/api/locations/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    console.log(`🔍 [Routes] GET /api/locations/${id} - User: ${req.session.userId}`);
+    
+    try {
+      const location = await storage.getLocationById(id);
+      
+      if (!location) {
+        return res.status(404).json({ error: "Location not found" });
+      }
+      
+      // Check company access
+      if (!req.auth?.isSuperuser && req.auth?.companyId !== location.companyId) {
+        return res.status(403).json({ error: "Cannot access locations from other companies" });
+      }
+      
+      res.json(location);
+    } catch (error) {
+      console.error("❌ [Routes] Error fetching location:", error);
+      res.status(500).json({ error: "Failed to fetch location" });
+    }
+  });
+
+  // Create a location (customer admin protected)
+  app.post("/api/locations", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    console.log(`➕ [Routes] POST /api/locations - Creating location: ${req.body?.locationName || 'UNKNOWN'}`);
+    
+    try {
+      const locationData = insertLocationSchema.parse(req.body);
+      
+      // Enforce company scoping
+      if (req.auth?.companyId) {
+        locationData.companyId = req.auth?.companyId;
+      }
+      
+      if (!locationData.companyId) {
+        return res.status(400).json({ error: "Company ID is required" });
+      }
+      
+      const location = await storage.createLocation(locationData);
+      console.log(`✅ [Routes] Location created successfully: ${location.locationName}`);
+      
+      res.json(location);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.log(`❌ [Routes] Location validation error:`, error.errors);
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error creating location:", error);
+      res.status(500).json({ error: "Failed to create location" });
+    }
+  });
+
+  // Update a location (customer admin protected)
+  app.patch("/api/locations/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    console.log(`🔄 [Routes] PATCH /api/locations/${id} - Updating location`);
+    
+    try {
+      const updateData = insertLocationSchema.partial().parse(req.body);
+      
+      // Check existing location for authorization
+      const existingLocation = await storage.getLocationById(id);
+      
+      if (!existingLocation) {
+        return res.status(404).json({ error: "Location not found" });
+      }
+      
+      // Enforce company scoping
+      if (!req.auth?.isSuperuser && req.auth?.companyId !== existingLocation.companyId) {
+        return res.status(403).json({ error: "Cannot update locations from other companies" });
+      }
+      
+      const updatedLocation = await storage.updateLocation(id, updateData);
+      if (!updatedLocation) {
+        return res.status(404).json({ error: "Location not found" });
+      }
+      
+      console.log(`✅ [Routes] Location updated successfully: ${id}`);
+      res.json(updatedLocation);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("❌ [Routes] Error updating location:", error);
+      res.status(500).json({ error: "Failed to update location" });
+    }
+  });
+
+  // Delete a location (customer admin protected)
+  app.delete("/api/locations/:id", requireCustomerAdmin, async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    console.log(`🗑️ [Routes] DELETE /api/locations/${id} - Deleting location`);
+    
+    try {
+      // Check existing location for authorization
+      const existingLocation = await storage.getLocationById(id);
+      
+      if (!existingLocation) {
+        return res.status(404).json({ error: "Location not found" });
+      }
+      
+      // Enforce company scoping
+      if (!req.auth?.isSuperuser && req.auth?.companyId !== existingLocation.companyId) {
+        return res.status(403).json({ error: "Cannot delete locations from other companies" });
+      }
+      
+      const success = await storage.deleteLocation(id);
+      if (!success) {
+        return res.status(404).json({ error: "Location not found" });
+      }
+      
+      console.log(`✅ [Routes] Location deleted successfully: ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Routes] Error deleting location:", error);
+      res.status(500).json({ error: "Failed to delete location" });
     }
   });
 
