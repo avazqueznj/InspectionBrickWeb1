@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { CompanySelector } from "./CompanySelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, ChevronDown, Settings, Smartphone, FileText, Layers } from "lucide-react";
+import { LogOut, User, ChevronDown, Settings, Smartphone, FileText, Layers, MapPin } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +19,7 @@ const mainMenuItems = [
 ];
 
 const customerAdminItems = [
+  { path: "/locations", label: "Locations", icon: MapPin },
   { path: "/inspection-types", label: "Inspection Types", icon: FileText },
   { path: "/layouts", label: "Layouts", icon: Layers },
 ];

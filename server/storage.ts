@@ -378,7 +378,7 @@ export class DatabaseStorage implements IStorage {
       .where(whereConditions);
     const total = countResult[0]?.count || 0;
 
-    // Get paginated data (excluding password field)
+    // Get paginated data (excluding password field) with LEFT JOIN for locationName
     const offset = (page - 1) * limit;
     const data = await db
       .select({
@@ -391,8 +391,10 @@ export class DatabaseStorage implements IStorage {
         customerAdminAccess: users.customerAdminAccess,
         companyId: users.companyId,
         locationId: users.locationId,
+        locationName: locations.locationName,
       })
       .from(users)
+      .leftJoin(locations, eq(users.locationId, locations.id))
       .where(whereConditions)
       .orderBy(orderBy)
       .limit(limit)
@@ -516,7 +518,7 @@ export class DatabaseStorage implements IStorage {
       .where(whereConditions);
     const total = countResult[0]?.count || 0;
 
-    // Get paginated data with layout information
+    // Get paginated data with layout and location information
     const offset = (page - 1) * limit;
     const results = await db
       .select({
@@ -525,25 +527,32 @@ export class DatabaseStorage implements IStorage {
         layout: assets.layout,
         layoutName: layouts.layoutName,
         assetName: assets.assetName,
+        licensePlate: assets.licensePlate,
         status: assets.status,
         companyId: assets.companyId,
+        locationId: assets.locationId,
+        locationName: locations.locationName,
       })
       .from(assets)
       .innerJoin(layouts, eq(assets.layout, layouts.id))
+      .leftJoin(locations, eq(assets.locationId, locations.id))
       .where(whereConditions)
       .orderBy(orderBy)
       .limit(limit)
       .offset(offset);
 
-    // Map results to Asset type with layoutName added
+    // Map results to Asset type with layoutName and locationName added
     const data = results.map(r => ({
       id: r.id,
       assetId: r.assetId,
       layout: r.layout,
       assetName: r.assetName,
+      licensePlate: r.licensePlate,
       status: r.status,
       companyId: r.companyId,
+      locationId: r.locationId,
       layoutName: r.layoutName,
+      locationName: r.locationName,
     })) as any;
 
     console.log(`✅ [Storage] getAssets - Found ${results.length} of ${total} total assets`);
