@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema, type InsertUser, type UserWithoutPassword } from "@shared/schema";
 import { X } from "lucide-react";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 
 interface UserModalProps {
   user: UserWithoutPassword | null;
@@ -45,8 +46,42 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
       status: "ACTIVE",
       webAccess: false,
       companyId: currentCompanyId,
+      locationId: null,
     },
   });
+
+  // Watch the companyId to fetch locations for that company
+  const selectedCompanyId = form.watch("companyId");
+  
+  // Fetch locations for the selected company (inside modal for superuser company switching)
+  const { data: locations = [] } = useQuery<Array<{ id: string; locationName: string }>>({
+    queryKey: ["/api/locations/simple", selectedCompanyId],
+    queryFn: async () => {
+      if (!selectedCompanyId) return [];
+      const response = await fetch(`/api/locations/simple?companyId=${selectedCompanyId}`);
+      if (!response.ok) throw new Error("Failed to fetch locations");
+      return response.json();
+    },
+    enabled: !!selectedCompanyId && open,
+  });
+
+  // Track previous companyId to reset locationId when company changes (for superusers switching companies)
+  const prevCompanyIdRef = useRef<string | null | undefined>();
+  
+  useEffect(() => {
+    // Only reset if:
+    // 1. Modal is open
+    // 2. Previous company was set (not initial render)
+    // 3. Company has actually changed
+    if (open && 
+        prevCompanyIdRef.current !== undefined && 
+        prevCompanyIdRef.current !== selectedCompanyId) {
+      // Company has genuinely changed - reset locationId to prevent stale cross-tenant selection
+      form.setValue("locationId", null);
+    }
+    // Always update the ref
+    prevCompanyIdRef.current = selectedCompanyId;
+  }, [selectedCompanyId, open, form]);
 
   // Reset form when modal opens/closes or user changes
   useEffect(() => {
@@ -59,6 +94,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         status: user.status,
         webAccess: user.webAccess,
         companyId: currentCompanyId, // Always use current company context in edit mode
+        locationId: user.locationId || null,
       });
     } else if (!open) {
       form.reset({
@@ -69,6 +105,7 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
         status: "ACTIVE",
         webAccess: false,
         companyId: currentCompanyId, // Default to current company in create mode
+        locationId: null,
       });
     }
   }, [open, user, form, currentCompanyId]);
@@ -239,6 +276,35 @@ export function UserModal({ user, open, onOpenChange, onSubmit, isPending, compa
                         <SelectContent>
                           <SelectItem value="ACTIVE">Active</SelectItem>
                           <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="locationId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location (Optional)</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                        value={field.value || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-locationId">
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No Location</SelectItem>
+                          {locations.map((location) => (
+                            <SelectItem key={location.id} value={location.id}>
+                              {location.locationName}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />

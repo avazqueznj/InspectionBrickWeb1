@@ -21,8 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 
 type SortField = "assetId" | "assetConfig" | "assetName" | "status";
 
-// Extended asset type with layoutName for display
-type AssetWithLayout = Asset & { layoutName?: string };
+// Extended asset type with layoutName and locationName for display
+type AssetWithLayout = Asset & { layoutName?: string; locationName?: string };
 type SortDirection = "asc" | "desc";
 
 interface PaginatedResponse {
@@ -264,6 +264,9 @@ export default function Assets() {
                   <SortableHeader field="assetId">Asset ID</SortableHeader>
                   <SortableHeader field="assetConfig">Layout</SortableHeader>
                   <SortableHeader field="assetName">Name</SortableHeader>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Location
+                  </th>
                   <SortableHeader field="status">Status</SortableHeader>
                   <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Actions
@@ -274,14 +277,14 @@ export default function Assets() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      <td className="px-4 py-4" colSpan={5}>
+                      <td className="px-4 py-4" colSpan={6}>
                         <Skeleton className="h-8 w-full" />
                       </td>
                     </tr>
                   ))
                 ) : assets.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center">
+                    <td colSpan={6} className="px-4 py-12 text-center">
                       <div className="text-muted-foreground">
                         <p className="text-sm">No assets found</p>
                         <p className="text-xs mt-1">Try adjusting your search or filters</p>
@@ -308,6 +311,11 @@ export default function Assets() {
                       <td className="px-4 py-4">
                         <div className="text-sm font-medium" data-testid={`text-assetName-${asset.assetId}`}>
                           {asset.assetName}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-muted-foreground" data-testid={`text-location-${asset.assetId}`}>
+                          {asset.locationName || "—"}
                         </div>
                       </td>
                       <td className="px-4 py-4">

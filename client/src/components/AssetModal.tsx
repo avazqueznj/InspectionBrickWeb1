@@ -33,10 +33,11 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
       licensePlate: "",
       status: "ACTIVE",
       companyId: currentCompanyId || "",
+      locationId: null,
     },
   });
 
-  // Watch the selected companyId to fetch layouts for that company
+  // Watch the selected companyId to fetch layouts and locations for that company
   const selectedCompanyId = form.watch("companyId");
   
   // Track previous companyId to detect actual changes
@@ -55,7 +56,19 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
     enabled: !!selectedCompanyId && open,
   });
 
-  // Reset layout field when company actually changes to prevent cross-tenant layout selection
+  // Fetch locations for the selected company (inside modal for superuser company switching)
+  const { data: locations = [] } = useQuery<Array<{ id: string; locationName: string }>>({
+    queryKey: ["/api/locations/simple", selectedCompanyId],
+    queryFn: async () => {
+      if (!selectedCompanyId) return [];
+      const response = await fetch(`/api/locations/simple?companyId=${selectedCompanyId}`);
+      if (!response.ok) throw new Error("Failed to fetch locations");
+      return response.json();
+    },
+    enabled: !!selectedCompanyId && open,
+  });
+
+  // Reset layout and location fields when company actually changes to prevent cross-tenant selection
   useEffect(() => {
     // Only reset if:
     // 1. Modal is open
@@ -67,8 +80,9 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         prevCompanyIdRef.current !== "" &&
         selectedCompanyId !== "" &&
         prevCompanyIdRef.current !== selectedCompanyId) {
-      // Company has genuinely changed - reset layout to prevent stale cross-tenant selection
+      // Company has genuinely changed - reset layout and location to prevent stale cross-tenant selection
       form.setValue("layout", "");
+      form.setValue("locationId", null);
     }
     // Only update the ref if we have a meaningful value
     if (selectedCompanyId) {
@@ -87,6 +101,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         licensePlate: asset.licensePlate || "",
         status: asset.status,
         companyId: asset.companyId,
+        locationId: asset.locationId || null,
       });
       // Initialize the ref with the asset's company to prevent false change detection
       prevCompanyIdRef.current = asset.companyId;
@@ -99,6 +114,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         licensePlate: "",
         status: "ACTIVE",
         companyId: currentCompanyId || "",
+        locationId: null,
       });
       // Initialize the ref with the current company
       prevCompanyIdRef.current = currentCompanyId || "";
@@ -111,6 +127,7 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
         licensePlate: "",
         status: "ACTIVE",
         companyId: "",
+        locationId: null,
       });
       // Reset the ref when modal closes
       prevCompanyIdRef.current = undefined;
@@ -279,6 +296,35 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
                         <SelectContent>
                           <SelectItem value="ACTIVE">Active</SelectItem>
                           <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="locationId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location (Optional)</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                        value={field.value || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-locationId">
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No Location</SelectItem>
+                          {locations.map((location) => (
+                            <SelectItem key={location.id} value={location.id}>
+                              {location.locationName}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
