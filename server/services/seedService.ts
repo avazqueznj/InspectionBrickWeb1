@@ -1206,10 +1206,11 @@ export async function runSeed() {
       const userNum = locIdx * 100 + i + 1;
       const firstName = firstNames[i % firstNames.length];
       const lastName = lastNames[Math.floor(i / 20) % lastNames.length];
+      const randomPin = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit PIN
       acmeUsersData.push({
         id: randomUUID(),
         userId: `acme_user_${userNum.toString().padStart(3, '0')}`,
-        password: "$2b$10$1234567890123456789012uQIHhZxLq1mxhQPDyqvyj6kFGjxvU.W", // hashed "password123"
+        password: randomPin, // Plain text 6-digit PIN
         userFullName: `${firstName} ${lastName}`,
         userTag: userTags[i % userTags.length],
         status: (i < 95 ? "ACTIVE" : "INACTIVE") as "ACTIVE" | "INACTIVE", // 5% inactive
