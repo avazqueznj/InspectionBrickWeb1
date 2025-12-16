@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, zoneImages, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset, type ZoneImage } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, zoneImages, locations, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset, type ZoneImage, type Location, type InsertLocation } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and, inArray } from "drizzle-orm";
 
@@ -50,6 +50,21 @@ export interface InspectionTypeQueryParams {
   limit?: number;
   // Filter parameters
   status?: "ACTIVE" | "INACTIVE";
+}
+
+export interface LocationQueryParams {
+  companyId?: string;
+  search?: string;
+  sortField?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+  // Filter parameters
+  status?: "ACTIVE" | "INACTIVE";
+}
+
+export interface LocationFilterValues {
+  statuses: ("ACTIVE" | "INACTIVE")[];
 }
 
 export interface FilterValues {
@@ -156,6 +171,15 @@ export interface IStorage {
   createAsset(asset: InsertAsset): Promise<Asset>;
   updateAsset(assetId: string, asset: Partial<InsertAsset>): Promise<Asset | undefined>;
   getAssetFilterValues(companyId?: string): Promise<AssetFilterValues>;
+  
+  // Locations
+  getLocations(params?: LocationQueryParams): Promise<PaginatedResult<Location>>;
+  getLocationById(id: string): Promise<Location | undefined>;
+  getLocationsByCompany(companyId: string): Promise<Location[]>;
+  createLocation(location: InsertLocation): Promise<Location>;
+  updateLocation(id: string, location: Partial<InsertLocation>): Promise<Location | undefined>;
+  deleteLocation(id: string): Promise<boolean>;
+  getLocationFilterValues(companyId?: string): Promise<LocationFilterValues>;
   
   // Inspection Types
   getInspectionTypes(params?: InspectionTypeQueryParams): Promise<PaginatedResult<InspectionTypeWithFormFields>>;
@@ -366,6 +390,7 @@ export class DatabaseStorage implements IStorage {
         webAccess: users.webAccess,
         customerAdminAccess: users.customerAdminAccess,
         companyId: users.companyId,
+        locationId: users.locationId,
       })
       .from(users)
       .where(whereConditions)
@@ -570,6 +595,157 @@ export class DatabaseStorage implements IStorage {
     };
     
     console.log(`✅ [Storage] getAssetFilterValues - Found ${result.statuses.length} statuses`);
+    return result;
+  }
+
+  // Locations CRUD
+  async getLocations(params?: LocationQueryParams): Promise<PaginatedResult<Location>> {
+    const { 
+      companyId, 
+      search, 
+      sortField = "locationName", 
+      sortDirection = "asc", 
+      page = 1, 
+      limit = 10,
+      status
+    } = params || {};
+    
+    console.log(`📊 [Storage] getLocations - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}`);
+    
+    // Build where conditions array
+    const conditions = [];
+    
+    // Filter by company (if specified)
+    if (companyId) {
+      conditions.push(eq(locations.companyId, companyId));
+    }
+    
+    // Add search conditions
+    if (search) {
+      conditions.push(
+        or(
+          ilike(locations.locationName, `%${search}%`),
+          ilike(locations.address, `%${search}%`)
+        )
+      );
+    }
+    
+    // Add status filter
+    if (status) {
+      conditions.push(eq(locations.status, status));
+    }
+    
+    const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Determine sort order based on sortField
+    const sortColumnMap = {
+      locationName: locations.locationName,
+      status: locations.status,
+      address: locations.address,
+    };
+    
+    const sortColumn = sortColumnMap[sortField as keyof typeof sortColumnMap] || locations.locationName;
+    const orderBy = sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
+
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(locations)
+      .where(whereConditions);
+    const total = countResult[0]?.count || 0;
+
+    // Get paginated data
+    const offset = (page - 1) * limit;
+    const data = await db
+      .select()
+      .from(locations)
+      .where(whereConditions)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    console.log(`✅ [Storage] getLocations - Found ${data.length} of ${total} total locations`);
+    
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getLocationById(id: string): Promise<Location | undefined> {
+    console.log(`🔍 [Storage] Fetching location by ID: ${id}`);
+    const [location] = await db.select().from(locations).where(eq(locations.id, id));
+    if (location) {
+      console.log(`✅ [Storage] Location found: ${location.locationName}`);
+    } else {
+      console.log(`❌ [Storage] Location not found: ${id}`);
+    }
+    return location;
+  }
+
+  async getLocationsByCompany(companyId: string): Promise<Location[]> {
+    console.log(`🔍 [Storage] Fetching locations for company: ${companyId}`);
+    const result = await db
+      .select()
+      .from(locations)
+      .where(and(
+        eq(locations.companyId, companyId),
+        eq(locations.status, "ACTIVE")
+      ))
+      .orderBy(asc(locations.locationName));
+    console.log(`✅ [Storage] Found ${result.length} active locations for company ${companyId}`);
+    return result;
+  }
+
+  async createLocation(insertLocation: InsertLocation): Promise<Location> {
+    console.log(`➕ [Storage] Creating location: ${insertLocation.locationName}, companyId: ${insertLocation.companyId}`);
+    
+    const [location] = await db
+      .insert(locations)
+      .values(insertLocation)
+      .returning();
+    
+    console.log(`✅ [Storage] Location created successfully: ${insertLocation.locationName}`);
+    return location;
+  }
+
+  async updateLocation(id: string, updateData: Partial<InsertLocation>): Promise<Location | undefined> {
+    console.log(`🔄 [Storage] Updating location: ${id}`);
+    const [location] = await db
+      .update(locations)
+      .set(updateData)
+      .where(eq(locations.id, id))
+      .returning();
+    console.log(`${location ? '✅' : '❌'} [Storage] Location ${location ? 'updated' : 'not found'}`);
+    return location;
+  }
+
+  async deleteLocation(id: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting location: ${id}`);
+    const result = await db.delete(locations).where(eq(locations.id, id));
+    const success = (result.rowCount ?? 0) > 0;
+    console.log(`${success ? '✅' : '❌'} [Storage] Location ${success ? 'deleted' : 'not found'}`);
+    return success;
+  }
+
+  async getLocationFilterValues(companyId?: string): Promise<LocationFilterValues> {
+    console.log(`🔍 [Storage] getLocationFilterValues - companyId: ${companyId || 'ALL'}`);
+    
+    const whereCondition = companyId ? eq(locations.companyId, companyId) : undefined;
+    
+    // Get distinct status values
+    const statusesResult = await db.selectDistinct({ value: locations.status })
+      .from(locations)
+      .where(whereCondition)
+      .orderBy(asc(locations.status));
+    
+    const result = {
+      statuses: statusesResult.map(r => r.value).filter((v): v is "ACTIVE" | "INACTIVE" => v === "ACTIVE" || v === "INACTIVE"),
+    };
+    
+    console.log(`✅ [Storage] getLocationFilterValues - Found ${result.statuses.length} statuses`);
     return result;
   }
 
