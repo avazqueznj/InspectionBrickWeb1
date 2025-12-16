@@ -493,7 +493,7 @@ export default function Locations() {
             <AlertDialogTitle>Delete Location</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{selectedLocation?.locationName}"? This action cannot be undone.
-              Users and assets assigned to this location will have their location cleared.
+              Note: Locations with assigned users or assets cannot be deleted until they are reassigned.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

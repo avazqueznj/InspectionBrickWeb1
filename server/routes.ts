@@ -1109,8 +1109,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`✅ [Routes] Location deleted successfully: ${id}`);
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ [Routes] Error deleting location:", error);
+      
+      // Check for FK constraint violation (PostgreSQL error code 23503)
+      if (error?.code === '23503' || error?.message?.includes('violates foreign key constraint')) {
+        return res.status(409).json({ 
+          error: "Cannot delete location. Users or assets are still assigned to this location. Please reassign them first." 
+        });
+      }
+      
       res.status(500).json({ error: "Failed to delete location" });
     }
   });
