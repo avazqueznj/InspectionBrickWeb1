@@ -150,11 +150,18 @@ export async function generateBrickConfig(
     lines.push(`INSP*${inspTypeName}*${applicableLayouts}`);
     
     // Use form fields from fullInspType
-    for (const field of fullInspType.formFields) {
+    const formFields = fullInspType.formFields || [];
+    console.log(`📝 [BrickConfig] Inspection type "${inspTypeName}" has ${formFields.length} form fields`);
+    if (formFields.length === 0) {
+      console.log(`⚠️  [BrickConfig] WARNING: No form fields found for "${inspTypeName}" (fullInspType.formFields=${JSON.stringify(fullInspType.formFields)})`);
+    }
+    
+    for (const field of formFields) {
       const fieldName = sanitize(field.formFieldName, 'formFieldName');
       const fieldType = sanitize(field.formFieldType.toLowerCase(), 'formFieldType');
       const fieldLength = field.formFieldLength.toString();
       
+      console.log(`   📝 [BrickConfig] Adding form field: ${fieldName}*${fieldType}*${fieldLength}`);
       lines.push(`INSPFF*${fieldName}*${fieldType}*${fieldLength}`);
     }
     
