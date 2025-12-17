@@ -239,11 +239,15 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
   });
 
   // Fetch full inspection type details (including layoutIds) when editing
+  // Include companyId to ensure proper scoping (critical for superusers who can view multiple companies)
   const { data: fullInspectionType } = useQuery({
-    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeName],
+    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeName, currentCompanyId],
     queryFn: async () => {
       if (!inspectionType?.inspectionTypeName) return null;
-      const response = await fetch(`/api/inspection-types/${inspectionType.inspectionTypeName}`);
+      const params = new URLSearchParams();
+      if (currentCompanyId) params.set("companyId", currentCompanyId);
+      const url = `/api/inspection-types/${inspectionType.inspectionTypeName}${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Failed to fetch inspection type");
       }
@@ -253,10 +257,14 @@ export function InspectionTypeModal({ inspectionType, open, onOpenChange, onSubm
   });
 
   // Fetch form fields for this inspection type
+  // Include companyId to ensure proper scoping (critical for superusers who can view multiple companies)
   const { data: formFields = [], refetch: refetchFormFields } = useQuery<InspectionTypeFormField[]>({
-    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeName, "form-fields"],
+    queryKey: ["/api/inspection-types", inspectionType?.inspectionTypeName, "form-fields", currentCompanyId],
     queryFn: async () => {
-      const response = await fetch(`/api/inspection-types/${inspectionType?.inspectionTypeName}/form-fields`);
+      const params = new URLSearchParams();
+      if (currentCompanyId) params.set("companyId", currentCompanyId);
+      const url = `/api/inspection-types/${inspectionType?.inspectionTypeName}/form-fields${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Failed to fetch form fields");
       }

@@ -1956,11 +1956,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get a single inspection type with form fields (protected)
   app.get("/api/inspection-types/:inspectionTypeName", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { inspectionTypeName } = req.params;
-    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName} - User: ${req.session.userId}`);
+    const queryCompanyId = req.query.companyId as string | undefined;
+    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName} - User: ${req.session.userId}, QueryCompanyId: ${queryCompanyId || 'NONE'}`);
     
     try {
       // Pass companyId to ensure we get the right inspection type when business IDs are shared across companies
-      const companyId = req.auth?.companyId || undefined;
+      // For regular users, use their companyId from auth token
+      // For superusers, use the companyId from query params (required for proper scoping)
+      const companyId = req.auth?.companyId || queryCompanyId || undefined;
+      console.log(`🔍 [Routes] Using companyId for lookup: ${companyId || 'ANY'}`);
       const inspectionType = await storage.getInspectionTypeById(inspectionTypeName, companyId);
       
       if (!inspectionType) {
@@ -2072,11 +2076,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get form fields for an inspection type (protected)
   app.get("/api/inspection-types/:inspectionTypeName/form-fields", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { inspectionTypeName } = req.params;
-    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName}/form-fields - Fetching form fields`);
+    const queryCompanyId = req.query.companyId as string | undefined;
+    console.log(`🔍 [Routes] GET /api/inspection-types/${inspectionTypeName}/form-fields - Fetching form fields, QueryCompanyId: ${queryCompanyId || 'NONE'}`);
     
     try {
       // Verify the inspection type exists and user has access (use companyId for proper scoping)
-      const companyId = req.auth?.companyId || undefined;
+      // For regular users, use their companyId from auth token
+      // For superusers, use the companyId from query params (required for proper scoping)
+      const companyId = req.auth?.companyId || queryCompanyId || undefined;
+      console.log(`🔍 [Routes] Using companyId for form-fields lookup: ${companyId || 'ANY'}`);
       const inspectionType = await storage.getInspectionTypeById(inspectionTypeName, companyId);
       if (!inspectionType) {
         console.log(`❌ [Routes] Inspection type not found: ${inspectionTypeName}`);
