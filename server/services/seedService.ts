@@ -273,6 +273,26 @@ export async function runSeed() {
     { formFieldName: "belt-tension", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
     { formFieldName: "motor-temp", formFieldType: "NUM" as const, formFieldLength: 4, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
     { formFieldName: "alignment-check", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "FEDEX", businessInspectionTypeId: "conveyor-weekly" },
+    
+    // ACME Pre-trip fields (DOT-compliant)
+    { formFieldName: "odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "ACME", businessInspectionTypeId: "pre-trip" },
+    { formFieldName: "fuel-level", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "ACME", businessInspectionTypeId: "pre-trip" },
+    { formFieldName: "trailer-number", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "ACME", businessInspectionTypeId: "pre-trip" },
+    { formFieldName: "seal-number", formFieldType: "TEXT" as const, formFieldLength: 20, companyId: "ACME", businessInspectionTypeId: "pre-trip" },
+    
+    // ACME Post-trip fields
+    { formFieldName: "ending-odometer", formFieldType: "NUM" as const, formFieldLength: 10, companyId: "ACME", businessInspectionTypeId: "post-trip" },
+    { formFieldName: "fuel-remaining", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "ACME", businessInspectionTypeId: "post-trip" },
+    { formFieldName: "issues-noted", formFieldType: "TEXT" as const, formFieldLength: 64, companyId: "ACME", businessInspectionTypeId: "post-trip" },
+    
+    // ACME Yard-check fields
+    { formFieldName: "dock-number", formFieldType: "TEXT" as const, formFieldLength: 10, companyId: "ACME", businessInspectionTypeId: "yard-check" },
+    { formFieldName: "trailer-condition", formFieldType: "TEXT" as const, formFieldLength: 32, companyId: "ACME", businessInspectionTypeId: "yard-check" },
+    
+    // ACME Forklift daily fields
+    { formFieldName: "hours-meter", formFieldType: "NUM" as const, formFieldLength: 8, companyId: "ACME", businessInspectionTypeId: "forklift-daily" },
+    { formFieldName: "battery-charge", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "ACME", businessInspectionTypeId: "forklift-daily" },
+    { formFieldName: "propane-level", formFieldType: "NUM" as const, formFieldLength: 3, companyId: "ACME", businessInspectionTypeId: "forklift-daily" },
   ];
   
   // Map business IDs to UUID FKs using composite key (companyId:inspectionTypeName)
