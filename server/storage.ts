@@ -191,6 +191,7 @@ export interface IStorage {
   getInspectionTypeByUUID(id: string): Promise<InspectionTypeWithFormFields | undefined>;
   createInspectionType(inspectionType: InsertInspectionType): Promise<InspectionType>;
   updateInspectionType(inspectionTypeName: string, inspectionType: Partial<InsertInspectionType>): Promise<InspectionType | undefined>;
+  updateInspectionTypeByUUID(id: string, inspectionType: Partial<InsertInspectionType>): Promise<InspectionType | undefined>;
   getInspectionTypeFilterValues(companyId?: string): Promise<InspectionTypeFilterValues>;
   
   // Inspection Type Form Fields
@@ -939,6 +940,17 @@ export class DatabaseStorage implements IStorage {
       .update(inspectionTypes)
       .set(updateData)
       .where(eq(inspectionTypes.inspectionTypeName, inspectionTypeName))
+      .returning();
+    console.log(`${inspectionType ? '✅' : '❌'} [Storage] Inspection type ${inspectionType ? 'updated' : 'not found'}`);
+    return inspectionType;
+  }
+
+  async updateInspectionTypeByUUID(id: string, updateData: Partial<InsertInspectionType>): Promise<InspectionType | undefined> {
+    console.log(`🔄 [Storage] Updating inspection type by UUID: ${id}`);
+    const [inspectionType] = await db
+      .update(inspectionTypes)
+      .set(updateData)
+      .where(eq(inspectionTypes.id, id))
       .returning();
     console.log(`${inspectionType ? '✅' : '❌'} [Storage] Inspection type ${inspectionType ? 'updated' : 'not found'}`);
     return inspectionType;

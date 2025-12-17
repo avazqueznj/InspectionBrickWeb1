@@ -105,7 +105,11 @@ export default function InspectionTypes() {
   // Update inspection type mutation
   const updateMutation = useMutation({
     mutationFn: async (data: InsertInspectionType) => {
-      return await apiRequest("PATCH", `/api/inspection-types/${data.inspectionTypeName}`, data);
+      // Pass companyId as query param for proper scoping (critical for superusers)
+      const params = new URLSearchParams();
+      if (selectedCompany) params.set("companyId", selectedCompany);
+      const url = `/api/inspection-types/${data.inspectionTypeName}${params.toString() ? `?${params.toString()}` : ""}`;
+      return await apiRequest("PATCH", url, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inspection-types"] });

@@ -2029,14 +2029,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update an inspection type (protected)
   app.patch("/api/inspection-types/:inspectionTypeName", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { inspectionTypeName } = req.params;
-    console.log(`🔄 [Routes] PATCH /api/inspection-types/${inspectionTypeName} - Updating inspection type`);
+    const queryCompanyId = req.query.companyId as string | undefined;
+    console.log(`🔄 [Routes] PATCH /api/inspection-types/${inspectionTypeName} - Updating inspection type, QueryCompanyId: ${queryCompanyId || 'NONE'}`);
     
     try {
       const { layoutIds, ...inspectionTypeBody } = req.body;
       const updateData = insertInspectionTypeSchema.partial().parse(inspectionTypeBody);
       
       // Get the existing inspection type to check authorization (use companyId for proper scoping)
-      const companyId = req.auth?.companyId || undefined;
+      // For regular users, use their companyId from auth token
+      // For superusers, use the companyId from query params (required for proper scoping)
+      const companyId = req.auth?.companyId || queryCompanyId || undefined;
+      console.log(`🔍 [Routes] Using companyId for update lookup: ${companyId || 'ANY'}`);
       const existingInspectionType = await storage.getInspectionTypeById(inspectionTypeName, companyId);
       
       if (!existingInspectionType) {
@@ -2050,7 +2054,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Cannot update inspection types from other companies" });
       }
       
-      const updatedInspectionType = await storage.updateInspectionType(inspectionTypeName, updateData);
+      // Use UUID to update (not name) to ensure we update the correct company's record
+      const updatedInspectionType = await storage.updateInspectionTypeByUUID(existingInspectionType.id, updateData);
       if (!updatedInspectionType) {
         return res.status(404).json({ error: "Inspection type not found" });
       }
