@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { AssetModal } from "@/components/AssetModal";
 import { PageFooter } from "@/components/PageFooter";
-import { apiRequest, queryClient, getAuthHeaders } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type SortField = "assetId" | "assetConfig" | "assetName" | "status";
@@ -60,10 +60,7 @@ export default function Assets() {
       const queryParams = new URLSearchParams();
       if (selectedCompany) queryParams.set("companyId", selectedCompany);
       
-      const response = await fetch(`/api/assets/filter-values?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(`/api/assets/filter-values?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch filter values");
       }
@@ -154,10 +151,7 @@ export default function Assets() {
         queryParams.set("status", statusFilter);
       }
       
-      const response = await fetch(`/api/assets?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(`/api/assets?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch assets");
       }

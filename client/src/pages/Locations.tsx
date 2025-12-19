@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { PageFooter } from "@/components/PageFooter";
-import { apiRequest, queryClient, getAuthHeaders } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type SortField = "locationName" | "address" | "status";
@@ -81,10 +81,7 @@ export default function Locations() {
     queryFn: async () => {
       const queryParams = new URLSearchParams();
       if (selectedCompany) queryParams.set("companyId", selectedCompany);
-      const response = await fetch(`/api/locations/filter-values?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(`/api/locations/filter-values?${queryParams.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch filter values");
       return response.json();
     },
@@ -158,10 +155,7 @@ export default function Locations() {
       if (statusFilter && statusFilter !== "ALL") {
         queryParams.set("status", statusFilter);
       }
-      const response = await fetch(`/api/locations?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(`/api/locations?${queryParams.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch locations");
       return response.json();
     },

@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
-import { getAuthHeaders } from "@/lib/queryClient";
 
 interface FilterValues {
   inspectionTypes: string[];
@@ -51,10 +50,7 @@ export function FilterBar({ companyId, initialLocationId, onFilterChange }: Filt
     queryKey: ["/api/inspections/filter-values", companyId],
     queryFn: async () => {
       if (!companyId) return { inspectionTypes: [], assetIds: [], driverNames: [], driverIds: [] };
-      const response = await fetch(`/api/inspections/filter-values?companyId=${companyId}`, {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(`/api/inspections/filter-values?companyId=${companyId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch filter values");
       }
@@ -68,10 +64,7 @@ export function FilterBar({ companyId, initialLocationId, onFilterChange }: Filt
     queryKey: ["/api/locations/simple", companyId],
     queryFn: async () => {
       if (!companyId) return [];
-      const response = await fetch(`/api/locations/simple?companyId=${companyId}`, {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(`/api/locations/simple?companyId=${companyId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch locations");
       }

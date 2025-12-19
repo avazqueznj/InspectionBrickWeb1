@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { UserModal } from "@/components/UserModal";
 import { PageFooter } from "@/components/PageFooter";
-import { apiRequest, queryClient, getAuthHeaders } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type SortField = "userId" | "userFullName" | "status";
@@ -61,10 +61,7 @@ export default function Users() {
       const queryParams = new URLSearchParams();
       if (selectedCompany) queryParams.set("companyId", selectedCompany);
       
-      const response = await fetch(`/api/users/filter-values?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(`/api/users/filter-values?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch filter values");
       }
@@ -182,10 +179,7 @@ export default function Users() {
         queryParams.set("status", statusFilter);
       }
       
-      const response = await fetch(`/api/users?${queryParams.toString()}`, {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(`/api/users?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch users");
       }
