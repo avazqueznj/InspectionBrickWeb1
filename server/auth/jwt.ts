@@ -14,7 +14,7 @@ interface TokenPayload {
   locationId?: string | null;
 }
 
-interface VerifiedToken {
+export interface VerifiedToken {
   userId: string;
   companyId: string | null; // null for superusers
   isSuperuser: boolean;

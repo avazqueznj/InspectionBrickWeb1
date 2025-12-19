@@ -47,13 +47,14 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 ### Technical Implementations
 
 **Authentication & Authorization:**
-- JWT-based authentication with RS256 signing.
-- Access tokens expire in 24 hours (no refresh tokens).
-- Device tokens have a 10-year expiration for perpetual, company-scoped access.
-- Supports Company Code Login, allowing users to authenticate with `(userId, companyId, password)`. Superusers have `companyId = null`.
-- Web access control via a `webAccess` boolean flag on user accounts.
-- Three-tier permission system: Superusers, Customer Admins, and Regular Users, enforced both server-side and client-side.
-- Customer Admin toggle: Superusers can grant/revoke customerAdminAccess via a switch in the Users table.
+- **Pure JWT authentication** - NO sessions, NO session stores
+- Web clients: JWT stored in httpOnly cookie (24-hour expiration)
+- Device clients: JWT in Authorization Bearer header (10-year expiration)
+- JWT signing: RS256 algorithm with public/private key pair
+- Supports Company Code Login: `(userId, companyId, password)`. Superusers have `companyId = null`.
+- Web access control via `webAccess` boolean flag on user accounts.
+- Three-tier permission system: Superusers, Customer Admins, Regular Users
+- Middleware: `requireAuth` (cookie or header), `requireDeviceAuth` (header only), `requireSuperuser`, `requireCustomerAdmin`
 - Rate limiting and audit logging for failed login attempts.
 - All data access is company-scoped, verified via JWT payload.
 
