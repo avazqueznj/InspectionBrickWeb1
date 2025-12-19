@@ -64,19 +64,20 @@ export default function Defects() {
   // Track if we've initialized the location filter with user's location
   const hasInitializedLocationRef = useRef(false);
   
-  // Initialize location filter to user's location on first load
+  // Initialize location filter to user's location on first load (skip for superusers)
   useEffect(() => {
-    if (user?.locationId && !hasInitializedLocationRef.current) {
+    if (!user?.isSuperuser && user?.locationId && !hasInitializedLocationRef.current) {
       setFilters(prev => ({ ...prev, locationId: user.locationId || undefined }));
       hasInitializedLocationRef.current = true;
     }
-  }, [user?.locationId]);
+  }, [user?.locationId, user?.isSuperuser]);
   
-  // Reset filters when company changes
+  // Reset filters when company changes (superusers get "All Locations" by default)
   useEffect(() => {
     hasInitializedLocationRef.current = false;
-    setFilters({ status: "open", locationId: user?.locationId || undefined });
-  }, [selectedCompany, user?.locationId]);
+    const defaultLocationId = user?.isSuperuser ? undefined : (user?.locationId || undefined);
+    setFilters({ status: "open", locationId: defaultLocationId });
+  }, [selectedCompany, user?.locationId, user?.isSuperuser]);
 
   // Reset to page 1 when search query, filters, or company changes
   useEffect(() => {

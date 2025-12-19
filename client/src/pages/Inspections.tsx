@@ -209,7 +209,7 @@ export default function Inspections() {
         {/* Filter Bar */}
         <FilterBar 
           companyId={selectedCompany || undefined} 
-          initialLocationId={user?.locationId || undefined}
+          initialLocationId={user?.isSuperuser ? undefined : (user?.locationId || undefined)}
           onFilterChange={setFilters} 
         />
 
