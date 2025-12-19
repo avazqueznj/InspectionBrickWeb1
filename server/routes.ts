@@ -11,11 +11,21 @@ import { generateBrickConfig } from "./services/brickConfigService";
 import sharp from "sharp";
 
 // Dual-mode authentication middleware (supports both session and JWT during migration)
+// HACK: When JWT succeeds, regenerate session so session-based code paths never fail
 function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   // Try JWT first
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return requireJWTAuth(req, res, next);
+    // Use JWT auth, then regenerate session from JWT payload
+    return requireJWTAuth(req, res, () => {
+      // JWT auth succeeded - regenerate session from JWT payload so session never "expires"
+      if (req.auth) {
+        req.session.userId = req.auth.userId;
+        req.session.companyId = req.auth.companyId;
+        req.session.customerAdminAccess = req.auth.customerAdminAccess;
+      }
+      next();
+    });
   }
   
   // Fall back to session (legacy)
