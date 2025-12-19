@@ -19,6 +19,7 @@ declare module 'express-session' {
     userId?: string;
     companyId?: string | null;
     customerAdminAccess?: boolean;
+    locationId?: string | null;
   }
 }
 

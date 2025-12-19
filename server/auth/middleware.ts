@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     isSuperuser: boolean;
     customerAdminAccess: boolean;
     isDeviceToken: boolean;
+    locationId?: string | null;
   };
 }
 

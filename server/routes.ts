@@ -4,42 +4,23 @@ import { storage } from "./storage";
 import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertLocationSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema, type Defect, type InspectionWithDefects } from "@shared/schema";
 import { z } from "zod";
 import { parseBrickInspection } from "./brickParser";
-import { generateAccessToken, generateDeviceToken } from "./auth/jwt";
-import { requireAuth as requireJWTAuth, requireSuperuser, requireCustomerAdmin, rateLimitLogin, resetLoginRateLimit, logLoginFailure, type AuthRequest } from "./auth/middleware";
+import { generateDeviceToken } from "./auth/jwt";
+import { requireSuperuser, requireCustomerAdmin, rateLimitLogin, resetLoginRateLimit, logLoginFailure, type AuthRequest } from "./auth/middleware";
 import { runSeed } from "./services/seedService";
 import { generateBrickConfig } from "./services/brickConfigService";
 import sharp from "sharp";
 
-// Dual-mode authentication middleware (supports both session and JWT during migration)
-// HACK: When JWT succeeds, regenerate session so session-based code paths never fail
+// Session-only authentication middleware
 function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
-  // Try JWT first
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    // Use JWT auth, then regenerate session from JWT payload
-    return requireJWTAuth(req, res, () => {
-      // JWT auth succeeded - regenerate session from JWT payload so session never "expires"
-      if (req.auth) {
-        req.session.userId = req.auth.userId;
-        req.session.companyId = req.auth.companyId;
-        req.session.customerAdminAccess = req.auth.customerAdminAccess;
-      }
-      next();
-    });
-  }
-  
-  // Fall back to session (legacy)
   if (req.session.userId) {
-    console.log(`⚠️  [Auth] Using legacy session auth for user: ${req.session.userId}`);
-    // Populate req.auth from session for compatibility
-    // For legacy sessions, superusers (companyId === null) implicitly have customerAdminAccess
     const isSuperuser = req.session.companyId === null;
     req.auth = {
       userId: req.session.userId,
       companyId: req.session.companyId || null,
       isSuperuser,
-      customerAdminAccess: isSuperuser, // Superusers implicitly have customer admin access
+      customerAdminAccess: req.session.customerAdminAccess || isSuperuser,
       isDeviceToken: false,
+      locationId: req.session.locationId || null,
     };
     return next();
   }
@@ -126,13 +107,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     companyId: z.string(), // Allow empty string for superuser
   });
 
+  // Auth: Get current user from session
+  app.get("/api/auth/user", (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    const isSuperuser = req.session.companyId === null;
+    res.json({
+      userId: req.session.userId,
+      companyId: req.session.companyId || null,
+      isSuperuser,
+      customerAdminAccess: req.session.customerAdminAccess || isSuperuser,
+      locationId: req.session.locationId || null,
+    });
+  });
+
   // Auth: Login (with rate limiting)
   app.post("/api/auth/login", rateLimitLogin, async (req, res) => {
     console.log(`🔐 [Routes] POST /api/auth/login - Attempting login for user: ${req.body?.userId || 'UNKNOWN'}`);
     
     try {
       const { userId, password, companyId: rawCompanyId } = loginSchema.parse(req.body);
-      // Normalize companyId: treat undefined, null, empty string, or whitespace-only as empty string
       const companyId = (rawCompanyId || '').trim();
       console.log(`✅ [Routes] Login request validated - userId: ${userId}, companyId: ${companyId || 'SUPERUSER'}`);
       
@@ -144,35 +140,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
-      // Check web access flag
       if (!user.webAccess) {
         console.log(`❌ [Routes] Login failed - Web access denied for user: ${userId}`);
         logLoginFailure(req, userId);
         return res.status(403).json({ error: "Web access denied" });
       }
       
-      // Generate JWT token
-      const token = await generateAccessToken({
-        userId: user.userId,
-        companyId: user.companyId,
-        isSuperuser: user.companyId === null,
-        customerAdminAccess: user.customerAdminAccess || false,
-        locationId: user.locationId || null,
-      });
-      
-      // Also set session for dual-mode compatibility (legacy clients)
+      // Set session
       req.session.userId = user.userId;
       req.session.companyId = user.companyId;
       req.session.customerAdminAccess = user.customerAdminAccess || false;
+      req.session.locationId = user.locationId || null;
       
-      // Reset rate limit on successful login
       resetLoginRateLimit(req);
-      console.log(`✅ [Routes] JWT token generated - userId: ${user.userId}, companyId: ${user.companyId || 'null (superuser)'}, customerAdmin: ${user.customerAdminAccess}`);
-      console.log(`🔄 [Routes] Session also populated for legacy client compatibility`);
+      console.log(`✅ [Routes] Login successful for user: ${userId}`);
       
-      // Return token and user info
       res.json({
-        token,
         user: {
           userId: user.userId,
           companyId: user.companyId,
@@ -181,7 +164,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           locationId: user.locationId || null,
         },
       });
-      console.log(`✅ [Routes] Login successful for user: ${userId}`);
     } catch (error) {
       if (error instanceof z.ZodError) {
         console.log(`❌ [Routes] Login validation error:`, error.errors);

@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { setAuthToken, clearAuthToken, getAuthToken } from "@/lib/queryClient";
-import { jwtDecode } from "jwt-decode";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface AuthUser {
   userId: string;
@@ -18,61 +16,30 @@ interface AuthContextType {
   logout: () => void;
 }
 
-interface JWTPayload {
-  userId: string;
-  companyId: string | null;
-  isSuperuser: boolean;
-  customerAdminAccess: boolean;
-  locationId: string | null;
-  exp: number;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-function getUserFromToken(): AuthUser | null {
-  const token = getAuthToken();
-  if (!token) return null;
-  
-  try {
-    const decoded = jwtDecode<JWTPayload>(token);
-    
-    // Check if token is expired
-    if (decoded.exp * 1000 < Date.now()) {
-      clearAuthToken();
-      return null;
-    }
-    
-    return {
-      userId: decoded.userId,
-      companyId: decoded.companyId,
-      isSuperuser: decoded.isSuperuser,
-      customerAdminAccess: decoded.customerAdminAccess || false,
-      locationId: decoded.locationId || null,
-    };
-  } catch (error) {
-    console.error("Failed to decode token:", error);
-    clearAuthToken();
-    return null;
-  }
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<AuthUser | null>(getUserFromToken);
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
-  // Check token on mount and periodically
+  // Fetch current user from session
+  const { data: sessionUser, isLoading } = useQuery<AuthUser | null>({
+    queryKey: ["/api/auth/user"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/user", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Failed to fetch user");
+      return res.json();
+    },
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
+
+  // Sync user state with query result
   useEffect(() => {
-    const checkToken = () => {
-      const currentUser = getUserFromToken();
-      setUser(currentUser);
-    };
-    
-    // Check every minute for token expiration
-    const interval = setInterval(checkToken, 60000);
-    
-    return () => clearInterval(interval);
-  }, []);
+    setUser(sessionUser ?? null);
+  }, [sessionUser]);
 
   const loginMutation = useMutation({
     mutationFn: async ({ userId, companyId, password }: { userId: string; companyId: string; password: string }) => {
@@ -80,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, companyId, password }),
+        credentials: "include",
       });
       
       if (!response.ok) {
@@ -89,10 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       return response.json();
     },
-    onSuccess: (data: { token: string; user: AuthUser }) => {
-      setAuthToken(data.token);
+    onSuccess: (data: { user: AuthUser }) => {
       setUser(data.user);
-      queryClient.clear(); // Clear any cached data from previous user
+      queryClient.clear();
     },
   });
 
@@ -100,8 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await loginMutation.mutateAsync({ userId, companyId, password });
   };
 
-  const logout = () => {
-    clearAuthToken();
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     setUser(null);
     queryClient.clear();
   };

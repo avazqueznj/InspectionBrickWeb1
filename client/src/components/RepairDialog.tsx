@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiRequest, getAuthToken } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { type User } from "@shared/schema";
 
 interface RepairDialogProps {
@@ -38,14 +38,7 @@ export function RepairDialog({ open, onOpenChange, defectIds, companyId }: Repai
       queryParams.set("companyId", effectiveCompanyId);
       queryParams.set("limit", "1000");
       
-      const token = getAuthToken();
-      const headers: HeadersInit = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      
       const response = await fetch(`/api/users?${queryParams.toString()}`, {
-        headers,
         credentials: "include",
       });
       if (!response.ok) {
