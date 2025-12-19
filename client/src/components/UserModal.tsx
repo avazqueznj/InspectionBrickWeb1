@@ -11,6 +11,7 @@ import { insertUserSchema, type InsertUser, type UserWithoutPassword } from "@sh
 import { X } from "lucide-react";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
+import { getAuthHeaders } from "@/lib/queryClient";
 
 interface UserModalProps {
   user: UserWithoutPassword | null;

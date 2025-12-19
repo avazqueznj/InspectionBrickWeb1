@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertAssetSchema, type InsertAsset, type Asset, type Layout } from "@shared/schema";
 import { X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { getAuthHeaders } from "@/lib/queryClient";
 
 interface AssetModalProps {
   asset: Asset | null;
@@ -47,7 +48,10 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
   const { data: layouts = [] } = useQuery<Layout[]>({
     queryKey: ["/api/layouts", selectedCompanyId],
     queryFn: async () => {
-      const response = await fetch(`/api/layouts?companyId=${selectedCompanyId}`);
+      const response = await fetch(`/api/layouts?companyId=${selectedCompanyId}`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch layouts");
       }
@@ -61,7 +65,10 @@ export function AssetModal({ asset, open, onOpenChange, onSubmit, isPending, com
     queryKey: ["/api/locations/simple", selectedCompanyId],
     queryFn: async () => {
       if (!selectedCompanyId) return [];
-      const response = await fetch(`/api/locations/simple?companyId=${selectedCompanyId}`);
+      const response = await fetch(`/api/locations/simple?companyId=${selectedCompanyId}`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
       if (!response.ok) throw new Error("Failed to fetch locations");
       return response.json();
     },

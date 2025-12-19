@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type InspectionWithDefects } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAuthHeaders } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InspectionModal } from "@/components/InspectionModal";
@@ -99,7 +100,10 @@ export default function Inspections() {
       if (filters.driverId) queryParams.set("driverId", filters.driverId);
       if (filters.locationId) queryParams.set("locationId", filters.locationId);
       
-      const response = await fetch(`/api/inspections?${queryParams.toString()}`);
+      const response = await fetch(`/api/inspections?${queryParams.toString()}`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch inspections");
       }

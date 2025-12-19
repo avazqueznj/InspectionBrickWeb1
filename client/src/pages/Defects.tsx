@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type DefectWithInspection, type InspectionWithDefects } from "@shared/schema";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAuthHeaders } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Eye, Wrench } from "lucide-react";
@@ -103,7 +104,10 @@ export default function Defects() {
       const queryParams = new URLSearchParams();
       if (selectedCompany) queryParams.set("companyId", selectedCompany);
       
-      const response = await fetch(`/api/defects/filter-values?${queryParams.toString()}`);
+      const response = await fetch(`/api/defects/filter-values?${queryParams.toString()}`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch filter values");
       }
@@ -116,7 +120,10 @@ export default function Defects() {
   const { data: selectedInspection } = useQuery<InspectionWithDefects>({
     queryKey: ["/api/inspections", selectedInspectionId],
     queryFn: async () => {
-      const response = await fetch(`/api/inspections/${selectedInspectionId}`);
+      const response = await fetch(`/api/inspections/${selectedInspectionId}`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch inspection");
       }
@@ -166,7 +173,10 @@ export default function Defects() {
       if (filters.status) queryParams.set("status", filters.status);
       if (filters.locationId) queryParams.set("locationId", filters.locationId);
 
-      const response = await fetch(`/api/defects?${queryParams.toString()}`);
+      const response = await fetch(`/api/defects?${queryParams.toString()}`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch defects");
       }

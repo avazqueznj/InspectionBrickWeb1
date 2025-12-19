@@ -5,6 +5,7 @@ import { SeverityIndicator } from "./SeverityIndicator";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { getAuthHeaders } from "@/lib/queryClient";
 
 interface InspectionModalProps {
   inspection: InspectionWithDefects | null;
@@ -18,7 +19,10 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
     queryKey: ["/api/locations/simple", inspection?.companyId],
     queryFn: async () => {
       if (!inspection?.companyId) return [];
-      const response = await fetch(`/api/locations/simple?companyId=${inspection.companyId}`);
+      const response = await fetch(`/api/locations/simple?companyId=${inspection.companyId}`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
       if (!response.ok) return [];
       return response.json();
     },
