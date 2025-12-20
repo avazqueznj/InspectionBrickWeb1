@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify, importSPKI, importPKCS8 } from 'jose';
 
 // JWT Configuration
 const JWT_ALGORITHM = 'RS256';
-const ACCESS_TOKEN_EXPIRATION = '24h'; // 24 hours for web access
+const ACCESS_TOKEN_EXPIRATION = '8h'; // 8 hours for web access
 const DEVICE_TOKEN_EXPIRATION = '87600h'; // 10 years for device tokens
 
 interface TokenPayload {
