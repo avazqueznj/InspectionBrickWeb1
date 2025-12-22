@@ -29,6 +29,7 @@ export interface UserQueryParams {
   limit?: number;
   // Filter parameters
   status?: "ACTIVE" | "INACTIVE";
+  locationId?: string;
 }
 
 export interface AssetQueryParams {
@@ -40,6 +41,7 @@ export interface AssetQueryParams {
   limit?: number;
   // Filter parameters
   status?: "ACTIVE" | "INACTIVE";
+  locationId?: string;
 }
 
 export interface InspectionTypeQueryParams {
@@ -336,10 +338,11 @@ export class DatabaseStorage implements IStorage {
       sortDirection = "asc", 
       page = 1, 
       limit = 10,
-      status
+      status,
+      locationId
     } = params || {};
     
-    console.log(`📊 [Storage] getUsers - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}`);
+    console.log(`📊 [Storage] getUsers - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}, locationId: ${locationId || 'ALL'}`);
     
     // Build where conditions array
     const conditions = [];
@@ -362,6 +365,11 @@ export class DatabaseStorage implements IStorage {
     // Add status filter
     if (status) {
       conditions.push(eq(users.status, status));
+    }
+    
+    // Add location filter
+    if (locationId) {
+      conditions.push(eq(users.locationId, locationId));
     }
     
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;
@@ -473,10 +481,11 @@ export class DatabaseStorage implements IStorage {
       sortDirection = "asc", 
       page = 1, 
       limit = 10,
-      status
+      status,
+      locationId
     } = params || {};
     
-    console.log(`📊 [Storage] getAssets - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}`);
+    console.log(`📊 [Storage] getAssets - companyId: ${companyId || 'ALL'}, search: "${search || ''}", sort: ${sortField} ${sortDirection}, page: ${page}, limit: ${limit}, status: ${status || 'ALL'}, locationId: ${locationId || 'ALL'}`);
     
     // Build where conditions array
     const conditions = [];
@@ -500,6 +509,11 @@ export class DatabaseStorage implements IStorage {
     // Add status filter
     if (status) {
       conditions.push(eq(assets.status, status));
+    }
+    
+    // Add location filter
+    if (locationId) {
+      conditions.push(eq(assets.locationId, locationId));
     }
     
     const whereConditions = conditions.length > 0 ? and(...conditions) : undefined;

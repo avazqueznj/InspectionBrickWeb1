@@ -410,6 +410,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Device: Download configuration (requires device token in Authorization header)
+  // Optional location param: GET /api/device/config?company=NEC&location=NEC%20Headquarters
+  // If location is provided, only assets and users from that location are returned
+  // If location is missing or blank, all assets and users are returned (backward compatible)
   app.get("/api/device/config", requireDeviceAuth, async (req: AuthRequest, res) => {
     console.log(`📱 [Routes] GET /api/device/config - Downloading config for device`);
     
@@ -419,8 +422,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     const tokenCompanyId = req.auth.companyId;
     const requestedCompanyId = req.query.company as string | undefined;
+    const requestedLocation = req.query.location as string | undefined;
     
-    console.log(`🔍 [Routes] Device token company: ${tokenCompanyId}, Requested company: ${requestedCompanyId || 'NONE'}`);
+    console.log(`🔍 [Routes] Device token company: ${tokenCompanyId}, Requested company: ${requestedCompanyId || 'NONE'}, Location: ${requestedLocation || 'ALL'}`);
     
     // Validate company ID matches token
     if (requestedCompanyId && requestedCompanyId !== tokenCompanyId) {
@@ -442,7 +446,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`✅ [Routes] Company ID verified - generating config for: ${companyId}`);
     
     try {
-      const configData = await generateBrickConfig(storage, companyId);
+      // Look up location by name if provided (case-insensitive match, trimmed)
+      let locationId: string | undefined;
+      const trimmedLocation = requestedLocation?.trim();
+      if (trimmedLocation && trimmedLocation !== '') {
+        const companyLocations = await storage.getLocationsByCompany(companyId);
+        const normalizedRequest = trimmedLocation.toLowerCase();
+        const matchingLocation = companyLocations.find(
+          loc => loc.locationName.toLowerCase() === normalizedRequest
+        );
+        
+        if (!matchingLocation) {
+          console.log(`❌ [Routes] Location not found: "${trimmedLocation}" in company ${companyId}`);
+          return res.status(400).json({ 
+            error: "Location not found",
+            message: `Location "${trimmedLocation}" does not exist for this company`
+          });
+        }
+        
+        locationId = matchingLocation.id;
+        console.log(`✅ [Routes] Location found: ${matchingLocation.locationName} (ID: ${locationId})`);
+      }
+      
+      const configData = await generateBrickConfig(storage, companyId, locationId);
       
       console.log(`✅ [Routes] Config generated successfully - ${configData.length} bytes`);
       

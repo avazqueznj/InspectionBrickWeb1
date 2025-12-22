@@ -48,7 +48,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 
 **Authentication & Authorization:**
 - **Pure JWT authentication** - NO sessions, NO session stores
-- Web clients: JWT stored in httpOnly cookie (24-hour expiration)
+- Web clients: JWT stored in httpOnly cookie (8-hour expiration)
 - Device clients: JWT in Authorization Bearer header (10-year expiration)
 - JWT signing: RS256 algorithm with public/private key pair
 - Supports Company Code Login: `(userId, companyId, password)`. Superusers have `companyId = null`.
@@ -70,6 +70,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 **Device Integration:**
 - Dedicated `POST /api/device/inspections` endpoint for BRICKINSPECTION EDI format uploads using device tokens.
 - `GET /api/device/config` endpoint provides BRICKCONFIG EDI format for device initialization, including company-scoped assets, layouts, inspection types, and users.
+- **Location filtering**: Config endpoint accepts optional `location` query param (e.g., `GET /api/device/config?company=NEC&location=NEC%20Headquarters`). When provided, only assets and users from that location are returned. If missing or blank, all assets/users returned (backward compatible). Returns 400 error if location name not found.
 - Device tokens are 10-year JWTs.
 - Company ID validation prevents cross-tenant data injection.
 - BRICKCONFIG format includes ASSETS, LAYOUTS (with zones/components/defects), INSPTYPES, and USERS.
