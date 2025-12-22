@@ -18,12 +18,17 @@ function sanitize(value: string | null | undefined, fieldName: string): string {
 /**
  * Generates BRICKCONFIG EDI format for device download
  * Format sections: ASSETS, LAYOUTS, INSPTYPES, USERS
+ * 
+ * @param storage - Storage interface
+ * @param companyId - Company ID to generate config for
+ * @param locationId - Optional location ID to filter assets and users (backward compatible: if undefined, returns all)
  */
 export async function generateBrickConfig(
   storage: IStorage,
-  companyId: string
+  companyId: string,
+  locationId?: string
 ): Promise<string> {
-  console.log(`🔧 [BrickConfig] Generating config for company: ${companyId}`);
+  console.log(`🔧 [BrickConfig] Generating config for company: ${companyId}, location: ${locationId || 'ALL'}`);
   
   const lines: string[] = [];
   
@@ -34,14 +39,15 @@ export async function generateBrickConfig(
   // === ASSETS SECTION ===
   lines.push('ASSETS');
   
-  // Get all assets for this company (no pagination)
+  // Get assets for this company (filtered by location if provided)
   const assetsResult = await storage.getAssets({ 
     companyId, 
     limit: 10000,
-    status: 'ACTIVE'
+    status: 'ACTIVE',
+    ...(locationId && { locationId })
   });
   
-  console.log(`📦 [BrickConfig] Found ${assetsResult.data.length} assets`);
+  console.log(`📦 [BrickConfig] Found ${assetsResult.data.length} assets${locationId ? ` for location ${locationId}` : ''}`);
   
   for (const asset of assetsResult.data) {
     // Get layout name from layout UUID
@@ -172,13 +178,15 @@ export async function generateBrickConfig(
   lines.push('USERS');
   lines.push('');
   
+  // Get users for this company (filtered by location if provided)
   const usersResult = await storage.getUsers({ 
     companyId, 
     limit: 10000,
-    status: 'ACTIVE'
+    status: 'ACTIVE',
+    ...(locationId && { locationId })
   });
   
-  console.log(`👥 [BrickConfig] Found ${usersResult.data.length} users`);
+  console.log(`👥 [BrickConfig] Found ${usersResult.data.length} users${locationId ? ` for location ${locationId}` : ''}`);
   
   for (const user of usersResult.data) {
     // Note: We need to get the user with password for device sync
