@@ -90,7 +90,7 @@ export const assets = pgTable("assets", {
 // Inspections table
 export const inspections = pgTable("inspections", {
   id: varchar("id").primaryKey(),
-  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "restrict" }),
   datetime: timestamp("datetime").notNull().defaultNow(),
   inspectionType: text("inspection_type").notNull(),
   driverName: text("driver_name").notNull(),
