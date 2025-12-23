@@ -311,6 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assetLocationCache: Map<string, { locationId: string | null; locationName: string | null }> = new Map();
       
       // Helper function to get asset location (caches results)
+      // For temporary assets (not in catalog), falls back to driver's location
       const getAssetLocation = async (assetId: string) => {
         if (assetLocationCache.has(assetId)) {
           return assetLocationCache.get(assetId)!;
@@ -330,10 +331,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             console.log(`📍 [Routes] Asset ${assetId} location found: ${assetLocationName} (${assetLocationId})`);
           } else {
-            console.log(`⚠️  [Routes] Asset ${assetId} has no location or not found in catalog`);
+            // Temporary asset not in catalog - fallback to driver's location
+            if (locationId && locationName) {
+              assetLocationId = locationId;
+              assetLocationName = locationName;
+              console.log(`📍 [Routes] Temp asset ${assetId} using driver's location: ${locationName} (${locationId})`);
+            } else {
+              console.log(`⚠️  [Routes] Asset ${assetId} not in catalog and driver has no location`);
+            }
           }
         } catch (assetError) {
-          console.log(`⚠️  [Routes] Could not retrieve asset location for ${assetId}: ${assetError}`);
+          // On error, also fallback to driver's location
+          if (locationId && locationName) {
+            assetLocationId = locationId;
+            assetLocationName = locationName;
+            console.log(`📍 [Routes] Asset lookup failed for ${assetId}, using driver's location: ${locationName}`);
+          } else {
+            console.log(`⚠️  [Routes] Could not retrieve asset location for ${assetId}: ${assetError}`);
+          }
         }
         
         const result = { locationId: assetLocationId, locationName: assetLocationName };

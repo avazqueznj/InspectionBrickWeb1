@@ -111,7 +111,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 - When defects are created during device upload, system looks up asset's locationId from assets table and denormalizes to defect
 - Defects page: Location column displayed after Date & Time column, location filter dropdown in filter bar
 - Filter values are derived from distinct locations in the defects table (historical data preserved)
-- Defects from non-catalogued assets (uploaded via device with unknown asset IDs) have null location
+- **Temporary asset location fallback**: For assets not found in the catalog (temporary/transient assets created on device), the system falls back to using the driver's location instead of leaving it null
 
 ### Database Schema
 - **Multi-Tenant ID Architecture:** Uses UUID primary keys and human-readable business IDs unique per company.
