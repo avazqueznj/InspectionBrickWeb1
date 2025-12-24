@@ -60,7 +60,6 @@ interface LayoutZone {
   zoneName: string;
   zoneTag: string | null;
   layoutId: string;
-  imageId: string | null;
 }
 
 interface LayoutZoneComponent {
@@ -592,6 +591,10 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
   const [editZoneName, setEditZoneName] = useState(zone.zoneName);
   const [editZoneTag, setEditZoneTag] = useState(zone.zoneTag || "");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  // Track image state: null = unknown, true = has image, false = no image
+  const [hasImage, setHasImage] = useState<boolean | null>(null);
+  // Version counter for cache busting when images are uploaded
+  const [imageVersion, setImageVersion] = useState(0);
 
   // Sync edit state when dialog opens or zone props change
   useEffect(() => {
@@ -663,6 +666,8 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
         description: "Zone image uploaded successfully",
       });
       setIsUploadingImage(false);
+      setHasImage(true);
+      setImageVersion(v => v + 1); // Bust cache for new image
     },
     onError: (error: any) => {
       toast({
@@ -685,6 +690,7 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
         title: "Success",
         description: "Zone image deleted",
       });
+      setHasImage(false);
     },
     onError: (error: any) => {
       toast({

@@ -268,10 +268,11 @@ export interface IStorage {
   getInspectionTypeLayouts(inspectionTypeId: string): Promise<string[]>;
   setInspectionTypeLayouts(inspectionTypeId: string, layoutIds: string[]): Promise<void>;
   
-  // Zone Images
-  getZoneImage(id: string): Promise<ZoneImage | undefined>;
-  createZoneImage(imageData: Buffer): Promise<string>;
-  deleteZoneImage(id: string): Promise<boolean>;
+  // Zone Images - keyed by zoneId (FK with cascade delete)
+  getZoneImageById(id: string): Promise<ZoneImage | undefined>;
+  getZoneImageByZoneId(zoneId: string): Promise<ZoneImage | undefined>;
+  createZoneImage(zoneId: string, imageData: Buffer): Promise<string>;
+  deleteZoneImageByZoneId(zoneId: string): Promise<boolean>;
   
   // Analytics
   getInspectionAnalytics(companyId: string): Promise<InspectionAnalytics>;
@@ -1841,21 +1842,13 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
     
-    // Store imageId before deletion for cleanup
-    const imageIdToDelete = zone.imageId;
-    
+    // Zone images are automatically deleted via FK cascade (zoneImages.zoneId -> layoutZones.id)
     const result = await db
       .delete(layoutZones)
       .where(eq(layoutZones.id, id))
       .returning();
     
-    // Cascade delete the associated image if it exists
-    if (result.length > 0 && imageIdToDelete) {
-      console.log(`🗑️ [Storage] Cascade deleting zone image: ${imageIdToDelete}`);
-      await this.deleteZoneImage(imageIdToDelete);
-    }
-    
-    console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Zone ${result.length > 0 ? 'deleted' : 'not found'}`);
+    console.log(`${result.length > 0 ? '✅' : '❌'} [Storage] Zone ${result.length > 0 ? 'deleted (with cascaded images)' : 'not found'}`);
     return result.length > 0;
   }
 
@@ -2134,8 +2127,8 @@ export class DatabaseStorage implements IStorage {
     console.log(`✅ [Storage] Upload error logged to database`);
   }
 
-  async getZoneImage(id: string): Promise<ZoneImage | undefined> {
-    console.log(`🖼️ [Storage] Fetching zone image: ${id}`);
+  async getZoneImageById(id: string): Promise<ZoneImage | undefined> {
+    console.log(`🖼️ [Storage] Fetching zone image by ID: ${id}`);
     
     const results = await db
       .select()
@@ -2144,7 +2137,7 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     if (results.length === 0) {
-      console.log(`❌ [Storage] Zone image not found: ${id}`);
+      console.log(`❌ [Storage] Zone image not found by ID: ${id}`);
       return undefined;
     }
     
@@ -2152,33 +2145,55 @@ export class DatabaseStorage implements IStorage {
     return results[0];
   }
 
-  async createZoneImage(imageData: Buffer): Promise<string> {
+  async getZoneImageByZoneId(zoneId: string): Promise<ZoneImage | undefined> {
+    console.log(`🖼️ [Storage] Fetching zone image for zone: ${zoneId}`);
+    
+    const results = await db
+      .select()
+      .from(zoneImages)
+      .where(eq(zoneImages.zoneId, zoneId))
+      .limit(1);
+    
+    if (results.length === 0) {
+      console.log(`❌ [Storage] Zone image not found for zone: ${zoneId}`);
+      return undefined;
+    }
+    
+    console.log(`✅ [Storage] Zone image found for zone: ${zoneId} (${results[0].imageData.length} bytes)`);
+    return results[0];
+  }
+
+  async createZoneImage(zoneId: string, imageData: Buffer): Promise<string> {
     const id = crypto.randomUUID();
-    console.log(`🖼️ [Storage] Creating zone image with UUID: ${id} (${imageData.length} bytes)`);
+    console.log(`🖼️ [Storage] Creating zone image for zone: ${zoneId} with UUID: ${id} (${imageData.length} bytes)`);
+    
+    // Delete any existing image for this zone first (one image per zone)
+    await db.delete(zoneImages).where(eq(zoneImages.zoneId, zoneId));
     
     await db.insert(zoneImages).values({
       id,
+      zoneId,
       imageData,
     });
     
-    console.log(`✅ [Storage] Zone image created: ${id}`);
+    console.log(`✅ [Storage] Zone image created: ${id} for zone: ${zoneId}`);
     return id;
   }
 
-  async deleteZoneImage(id: string): Promise<boolean> {
-    console.log(`🗑️ [Storage] Deleting zone image: ${id}`);
+  async deleteZoneImageByZoneId(zoneId: string): Promise<boolean> {
+    console.log(`🗑️ [Storage] Deleting zone image for zone: ${zoneId}`);
     
     const result = await db
       .delete(zoneImages)
-      .where(eq(zoneImages.id, id))
+      .where(eq(zoneImages.zoneId, zoneId))
       .returning({ id: zoneImages.id });
     
     if (result.length === 0) {
-      console.log(`❌ [Storage] Zone image not found for deletion: ${id}`);
+      console.log(`❌ [Storage] Zone image not found for deletion, zone: ${zoneId}`);
       return false;
     }
     
-    console.log(`✅ [Storage] Zone image deleted: ${id}`);
+    console.log(`✅ [Storage] Zone image deleted for zone: ${zoneId}`);
     return true;
   }
 

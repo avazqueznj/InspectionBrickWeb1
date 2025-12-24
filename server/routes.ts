@@ -518,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      const image = await storage.getZoneImage(uuid);
+      const image = await storage.getZoneImageById(uuid);
       
       if (!image) {
         console.log(`❌ [Routes] Image not found: ${uuid}`);
@@ -579,15 +579,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Upload zone image (superuser only)
+  // Admin: Upload zone image (superuser only) - requires zoneId
   app.post("/api/admin/zone-images", requireSuperuser, async (req: AuthRequest, res) => {
     console.log(`🖼️ [Routes] POST /api/admin/zone-images - Superuser: ${req.auth?.userId}`);
     
     try {
-      const { imageData } = req.body;
+      const { zoneId, imageData } = req.body;
+      
+      if (!zoneId || typeof zoneId !== 'string') {
+        return res.status(400).json({ error: "Missing zoneId" });
+      }
       
       if (!imageData || typeof imageData !== 'string') {
         return res.status(400).json({ error: "Missing imageData (base64 encoded JPEG)" });
+      }
+      
+      // Verify zone exists
+      const zone = await storage.getLayoutZoneById(zoneId);
+      if (!zone) {
+        return res.status(404).json({ error: "Zone not found" });
       }
       
       // Validate base64 and decode
@@ -610,14 +620,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid JPEG image data" });
       }
       
-      console.log(`📦 [Routes] Decoded image: ${buffer.length} bytes`);
+      console.log(`📦 [Routes] Decoded image: ${buffer.length} bytes for zone: ${zoneId}`);
       
-      const uuid = await storage.createZoneImage(buffer);
+      const uuid = await storage.createZoneImage(zoneId, buffer);
       
       console.log(`✅ [Routes] Zone image uploaded: ${uuid}`);
       res.status(201).json({ 
         success: true,
         uuid,
+        zoneId,
         size: buffer.length
       });
     } catch (error) {
@@ -1627,30 +1638,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`📦 [Routes] Decoded image: ${buffer.length} bytes, ${actualWidth}x${actualHeight}`);
       
-      // Get the current zone to check for existing image
+      // Verify zone exists and user has access
       const currentZone = await storage.getLayoutZoneById(id, req.auth?.companyId || undefined);
       if (!currentZone) {
         console.log(`❌ [Routes] Zone not found or unauthorized`);
         return res.status(404).json({ error: "Zone not found" });
       }
       
-      const oldImageId = currentZone.imageId;
-      
-      // Create new image
-      const imageId = await storage.createZoneImage(buffer);
-      
-      // Update zone with new image reference
-      const updatedZone = await storage.updateLayoutZone(id, { imageId }, req.auth?.companyId || undefined);
-      
-      if (!updatedZone) {
-        return res.status(500).json({ error: "Failed to update zone with image" });
-      }
-      
-      // Delete old image if exists (cleanup)
-      if (oldImageId) {
-        await storage.deleteZoneImage(oldImageId);
-        console.log(`🗑️ [Routes] Deleted old zone image: ${oldImageId}`);
-      }
+      // Create new image (automatically replaces existing image for this zone)
+      const imageId = await storage.createZoneImage(id, buffer);
       
       console.log(`✅ [Routes] Zone image uploaded: ${imageId}`);
       res.status(201).json({ 
@@ -1675,26 +1671,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🗑️ [Routes] DELETE /api/zones/${id}/image - Deleting zone image`);
     
     try {
-      // Get the current zone
+      // Verify zone exists and user has access
       const zone = await storage.getLayoutZoneById(id, req.auth?.companyId || undefined);
       if (!zone) {
         console.log(`❌ [Routes] Zone not found or unauthorized`);
         return res.status(404).json({ error: "Zone not found" });
       }
       
-      if (!zone.imageId) {
+      // Check if zone has an image
+      const existingImage = await storage.getZoneImageByZoneId(id);
+      if (!existingImage) {
         return res.status(404).json({ error: "Zone has no image" });
       }
       
-      const imageId = zone.imageId;
+      // Delete the image by zone ID
+      await storage.deleteZoneImageByZoneId(id);
       
-      // Clear the image reference from zone
-      await storage.updateLayoutZone(id, { imageId: null }, req.auth?.companyId || undefined);
-      
-      // Delete the image from zone_images
-      await storage.deleteZoneImage(imageId);
-      
-      console.log(`✅ [Routes] Zone image deleted: ${imageId}`);
+      console.log(`✅ [Routes] Zone image deleted for zone: ${id}`);
       res.json({ success: true });
     } catch (error) {
       console.error("❌ [Routes] Error deleting zone image:", error);
@@ -1708,21 +1701,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`🖼️ [Routes] GET /api/zones/${id}/image - Fetching zone image`);
     
     try {
-      // Get the zone
+      // Verify zone exists and user has access
       const zone = await storage.getLayoutZoneById(id, req.auth?.companyId || undefined);
       if (!zone) {
         console.log(`❌ [Routes] Zone not found or unauthorized`);
         return res.status(404).json({ error: "Zone not found" });
       }
       
-      if (!zone.imageId) {
-        return res.status(404).json({ error: "Zone has no image" });
-      }
-      
-      // Get the image
-      const image = await storage.getZoneImage(zone.imageId);
+      // Get the image by zone ID
+      const image = await storage.getZoneImageByZoneId(id);
       if (!image) {
-        return res.status(404).json({ error: "Image not found" });
+        return res.status(404).json({ error: "Zone has no image" });
       }
       
       res.setHeader('Content-Type', 'image/jpeg');
