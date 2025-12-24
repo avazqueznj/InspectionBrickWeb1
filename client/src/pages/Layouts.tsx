@@ -830,14 +830,22 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
             {/* Zone Image Section */}
             <div className="flex items-start gap-4 p-3 bg-muted/30 rounded-lg">
               <div className="flex-shrink-0">
-                {zone.imageId ? (
+                {hasImage !== false ? (
                   <div className="relative group">
                     <img
-                      src={`/api/zones/${zone.id}/image?v=${zone.imageId}`}
+                      src={`/api/zones/${zone.id}/image?v=${imageVersion}`}
                       alt={`${zone.zoneName} reference`}
                       className="w-24 h-16 object-cover rounded border border-border"
                       data-testid={`img-zone-${zone.id}`}
+                      onLoad={() => setHasImage(true)}
+                      onError={() => setHasImage(false)}
+                      style={{ display: hasImage === true ? 'block' : 'none' }}
                     />
+                    {hasImage === null && (
+                      <div className="w-24 h-16 bg-muted/50 rounded border border-dashed border-muted-foreground/30 flex items-center justify-center">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground/50 animate-pulse" />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="w-24 h-16 bg-muted/50 rounded border border-dashed border-muted-foreground/30 flex items-center justify-center">
@@ -848,7 +856,7 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium mb-1">Zone Reference Image</p>
                 <p className="text-xs text-muted-foreground mb-2">
-                  {zone.imageId 
+                  {hasImage 
                     ? "Image helps drivers identify this inspection zone"
                     : "Add an image to help drivers identify this zone (max 800x400 JPEG)"
                   }
@@ -865,7 +873,7 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
                   />
                   <Button
                     size="sm"
-                    variant={zone.imageId ? "outline" : "default"}
+                    variant={hasImage ? "outline" : "default"}
                     onClick={() => document.getElementById(`zone-image-${zone.id}`)?.click()}
                     disabled={isUploadingImage || uploadImageMutation.isPending}
                     data-testid={`button-upload-zone-image-${zone.id}`}
@@ -873,10 +881,10 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
                     <Upload className="h-3.5 w-3.5 mr-1.5" />
                     {isUploadingImage || uploadImageMutation.isPending 
                       ? "Uploading..." 
-                      : zone.imageId ? "Replace" : "Upload"
+                      : hasImage ? "Replace" : "Upload"
                     }
                   </Button>
-                  {zone.imageId && (
+                  {hasImage && (
                     <Button
                       size="sm"
                       variant="ghost"
