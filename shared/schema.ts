@@ -43,7 +43,7 @@ export const locations = pgTable("locations", {
   latitude: text("latitude"),
   longitude: text("longitude"),
   status: text("status").notNull().$type<"ACTIVE" | "INACTIVE">().default("ACTIVE"),
-  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "restrict" }),
 }, (table) => ({
   // Unique constraint: same locationName cannot exist within same company
   uniqueLocationPerCompany: unique().on(table.companyId, table.locationName),
