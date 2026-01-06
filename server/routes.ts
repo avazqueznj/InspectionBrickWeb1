@@ -1581,7 +1581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload zone image (protected) - max 800x400 pixels for TJpg_Decoder compatibility
+  // Upload zone image (protected) - max 640x480 pixels for embedded device compatibility
   app.post("/api/zones/:id/image", requireCustomerAdmin, async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`🖼️ [Routes] POST /api/zones/${id}/image - Uploading zone image`);
@@ -1623,12 +1623,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const actualWidth = metadata.width || 0;
       const actualHeight = metadata.height || 0;
       
-      // Validate dimensions server-side (max 800x400 for TJpg_Decoder on embedded devices)
-      if (actualWidth > 800 || actualHeight > 400) {
+      // Validate dimensions server-side (max 640x480 for embedded devices)
+      if (actualWidth > 640 || actualHeight > 480) {
         console.log(`❌ [Routes] Image too large: ${actualWidth}x${actualHeight}`);
         return res.status(400).json({ 
           error: "Image too large", 
-          message: `Maximum dimensions are 800x400 pixels. Your image is ${actualWidth}x${actualHeight}.` 
+          message: `Maximum dimensions are 640x480 pixels. Your image is ${actualWidth}x${actualHeight}.` 
         });
       }
       

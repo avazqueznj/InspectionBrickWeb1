@@ -727,10 +727,10 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
 
     img.onload = () => {
       // Client-side pre-validation for UX (server validates authoritatively)
-      if (img.width > 800 || img.height > 400) {
+      if (img.width > 640 || img.height > 480) {
         toast({
           title: "Image Too Large",
-          description: `Maximum dimensions are 800x400 pixels. Your image is ${img.width}x${img.height}.`,
+          description: `Maximum dimensions are 640x480 pixels. Your image is ${img.width}x${img.height}.`,
           variant: "destructive",
         });
         setIsUploadingImage(false);
@@ -855,11 +855,14 @@ function ZoneItem({ zone, layoutId }: { zone: LayoutZone; layoutId: string }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium mb-1">Zone Reference Image</p>
-                <p className="text-xs text-muted-foreground mb-2">
+                <p className="text-xs text-muted-foreground mb-1">
                   {hasImage 
                     ? "Image helps drivers identify this inspection zone"
-                    : "Add an image to help drivers identify this zone (max 800x400 JPEG)"
+                    : "Add an image to help drivers identify this zone (max 640x480 JPEG)"
                   }
+                </p>
+                <p className="text-xs text-muted-foreground/70 mb-2">
+                  Baseline JPEG only (no progressive). Standard Huffman coding. YCbCr color space.
                 </p>
                 <div className="flex items-center gap-2">
                   <input
