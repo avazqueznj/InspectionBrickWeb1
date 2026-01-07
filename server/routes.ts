@@ -600,7 +600,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createInspectionPhoto(photoUuid, photoType, imageData, companyId);
       
       console.log(`✅ [Routes] Photo saved: ${photoUuid}`);
-      res.status(200).json({ success: true, id: photoUuid });
+      
+      // Explicit response for device clients - ensure proper flush
+      const responseBody = JSON.stringify({ success: true, id: photoUuid });
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Length', Buffer.byteLength(responseBody));
+      res.setHeader('Connection', 'close');
+      res.status(200);
+      res.write(responseBody);
+      res.end();
+      return;
     } catch (error) {
       console.error(`❌ [Routes] Error saving photo ${photoUuid}:`, error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -608,13 +617,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for duplicate key error
       if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
         console.log(`⚠️ [Routes] Photo already exists: ${photoUuid}`);
-        return res.status(409).json({ error: "Photo already exists", id: photoUuid });
+        const dupBody = JSON.stringify({ error: "Photo already exists", id: photoUuid });
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Length', Buffer.byteLength(dupBody));
+        res.setHeader('Connection', 'close');
+        res.status(409);
+        res.write(dupBody);
+        res.end();
+        return;
       }
       
-      return res.status(500).json({ 
-        error: "Failed to save photo",
-        message: errorMessage
-      });
+      const errBody = JSON.stringify({ error: "Failed to save photo", message: errorMessage });
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Length', Buffer.byteLength(errBody));
+      res.setHeader('Connection', 'close');
+      res.status(500);
+      res.write(errBody);
+      res.end();
+      return;
     }
   });
 
