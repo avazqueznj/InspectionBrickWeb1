@@ -22,9 +22,9 @@ function InspectionPhoto({ photoId, index }: { photoId: string; index: number })
         </div>
       )}
       {imageStatus === 'error' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-muted-foreground/30 rounded-lg">
           <ImageOff className="h-8 w-8 mb-2" />
-          <p className="text-xs text-center px-2">Photo not uploaded yet</p>
+          <p className="text-xs text-center px-2">Pending Upload</p>
         </div>
       )}
       {imageStatus === 'loaded' ? (

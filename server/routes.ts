@@ -2697,7 +2697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (result.status === 'fulfilled' && result.value) {
             return result.value;
           }
-          return `<div class="photo-placeholder">Photo not available</div>`;
+          return `<div class="photo-placeholder">Pending Upload</div>`;
         });
         
         // Always show photos section if photoIds exist - shows placeholders for missing photos
