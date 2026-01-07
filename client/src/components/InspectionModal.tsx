@@ -9,6 +9,7 @@ import { useState } from "react";
 
 function InspectionPhoto({ photoId, index }: { photoId: string; index: number }) {
   const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const photoUrl = `/api/photos/${photoId}`;
 
   return (
     <div 
@@ -26,14 +27,31 @@ function InspectionPhoto({ photoId, index }: { photoId: string; index: number })
           <p className="text-xs text-center px-2">Photo not uploaded yet</p>
         </div>
       )}
-      <img
-        src={`/api/photos/${photoId}`}
-        alt={`Inspection photo ${index + 1}`}
-        className={`w-full h-full object-cover ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
-        onLoad={() => setImageStatus('loaded')}
-        onError={() => setImageStatus('error')}
-        data-testid={`img-photo-${index}`}
-      />
+      {imageStatus === 'loaded' ? (
+        <a 
+          href={photoUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="block w-full h-full cursor-pointer"
+          data-testid={`link-photo-${index}`}
+        >
+          <img
+            src={photoUrl}
+            alt={`Inspection photo ${index + 1}`}
+            className="w-full h-full object-cover"
+            data-testid={`img-photo-${index}`}
+          />
+        </a>
+      ) : (
+        <img
+          src={photoUrl}
+          alt={`Inspection photo ${index + 1}`}
+          className="w-full h-full object-cover opacity-0"
+          onLoad={() => setImageStatus('loaded')}
+          onError={() => setImageStatus('error')}
+          data-testid={`img-photo-${index}`}
+        />
+      )}
     </div>
   );
 }
