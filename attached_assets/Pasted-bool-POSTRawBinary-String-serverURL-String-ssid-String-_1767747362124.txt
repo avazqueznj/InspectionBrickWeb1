@@ -1,0 +1,86 @@
+bool POSTRawBinary(
+        String serverURL, String ssid, String pass,
+        const String& uuid, 
+        uint8_t type, 
+        uint8_t* data, 
+        size_t len  
+    ) {
+        if (data == nullptr || len == 0) {
+            throw std::runtime_error("POST_FATAL: Attempted to upload NULL or empty buffer for PK: " + std::string(uuid.c_str()));
+        }
+
+        // RAII: SSLClient connects in constructor, cleans hardware in destructor
+        SSLClient client;
+        
+        try {
+            client.connect(serverURL, ssid, pass);
+            spinnerContinue();
+
+            Serial.println("==============================");
+            Serial.println("[UPLOAD] Starting Binary POST");
+            Serial.print("[UPLOAD] PK: "); Serial.println(uuid);
+            Serial.print("[UPLOAD] Size: "); Serial.print(len); Serial.println(" bytes");
+            Serial.println("==============================");
+
+            // 1. Send Request Line
+            client.print("POST /api/device/upload_photo HTTP/1.1\r\n");
+            
+            // 2. Send Headers
+            client.print("Host: " + serverURL + "\r\n");
+            client.print("Authorization: Bearer " + BEARER_TOKEN + "\r\n");
+            client.print("x-uuid: " + uuid + "\r\n");
+            client.print("x-type: " + String(type) + "\r\n");
+            client.print("Content-Type: image/jpeg\r\n");
+            client.print("Content-Length: " + String(len) + "\r\n");
+            client.print("Connection: close\r\n");
+            client.print("\r\n");
+
+            // 3. Send Payload from SDRAM
+            // Note: SSLClient uses the underlying WiFiSSLClient's write
+            size_t written = client.client.write(data, len);
+            
+            Serial.print("[UPLOAD] Bytes sent to socket: "); Serial.println(written);
+
+            if (written != len) {
+                throw std::runtime_error("Socket write mismatch. Sent " + std::to_string(written) + "/" + std::to_string(len));
+            }
+
+            // 4. Read Response (Pessimistic)
+            unsigned long startTime = millis();
+            String statusLine = "";
+            
+            // Wait for data with timeout
+            while (client.connected() && (millis() - startTime < BRICK_HTTP_READ_TIMEOUT)) {
+                if (client.available()) {
+                    statusLine = client.readStringUntil('\n');
+                    statusLine.trim();
+                    
+                    Serial.print("[SERVER RCV] "); Serial.println(statusLine);
+
+                    if (statusLine.indexOf("200 OK") != -1) {
+                        Serial.println("[UPLOAD] Success confirmed by server.");
+                        return true;
+                    }
+                    
+                    // If we get here, it's a response, but not 200 OK
+                    if (statusLine.startsWith("HTTP/1.1 ")) {
+                        throw std::runtime_error("Server rejected upload: " + std::string(statusLine.c_str()));
+                    }
+                }
+                delay(10);
+                Serial.print(".");
+            }
+
+            throw std::runtime_error("Timeout waiting for server ACK (200 OK)");
+
+        } catch (const std::exception& e) {
+            // NJ Style: Log the specific failure and the PK, then re-throw
+            String chainMsg = "SYNC_EXCEPTION [" + uuid + "] -> " + String(e.what());
+            Serial.print("[CRITICAL] "); Serial.println(chainMsg);
+            
+            // We don't need to call client.stop() because SSLClient destructor handles it.
+            throw std::runtime_error(chainMsg.c_str());
+        } catch (...) {
+            throw std::runtime_error("SYNC_EXCEPTION [" + std::string(uuid.c_str()) + "] -> Unknown non-standard exception");
+        }
+    }
