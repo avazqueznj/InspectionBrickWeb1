@@ -2,9 +2,41 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { type InspectionWithDefects, type Location } from "@shared/schema";
 import { StatusBadge } from "./StatusBadge";
 import { SeverityIndicator } from "./SeverityIndicator";
-import { X } from "lucide-react";
+import { X, ImageOff, Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+
+function InspectionPhoto({ photoId, index }: { photoId: string; index: number }) {
+  const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+
+  return (
+    <div 
+      className="relative aspect-[4/3] bg-muted/30 rounded-lg overflow-hidden border"
+      data-testid={`photo-container-${index}`}
+    >
+      {imageStatus === 'loading' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      {imageStatus === 'error' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+          <ImageOff className="h-8 w-8 mb-2" />
+          <p className="text-xs text-center px-2">Photo not uploaded yet</p>
+        </div>
+      )}
+      <img
+        src={`/api/photos/${photoId}`}
+        alt={`Inspection photo ${index + 1}`}
+        className={`w-full h-full object-cover ${imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setImageStatus('loaded')}
+        onError={() => setImageStatus('error')}
+        data-testid={`img-photo-${index}`}
+      />
+    </div>
+  );
+}
 
 interface InspectionModalProps {
   inspection: InspectionWithDefects | null;
@@ -166,6 +198,25 @@ export function InspectionModal({ inspection, open, onOpenChange }: InspectionMo
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Inspection Photos Section */}
+          {inspection.photoIds && inspection.photoIds.length > 0 && (
+            <div>
+              <h3 className="text-lg font-medium mb-4">
+                <Camera className="inline h-5 w-5 mr-2" />
+                Photos ({inspection.photoIds.length})
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {inspection.photoIds.map((photoId, index) => (
+                  <InspectionPhoto 
+                    key={photoId} 
+                    photoId={photoId} 
+                    index={index}
+                  />
+                ))}
               </div>
             </div>
           )}

@@ -2679,6 +2679,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `<div class="info-row"><span class="label">Location:</span> ${inspection.locationName}${locationAddress ? ` - ${locationAddress}` : ''}</div>` 
         : '';
       
+      // Fetch photos as base64 for embedding in print view (use allSettled for graceful error handling)
+      let photosHtml = '';
+      if (inspection.photoIds && inspection.photoIds.length > 0) {
+        const photoResults = await Promise.allSettled(
+          inspection.photoIds.map(async (photoId) => {
+            const photo = await storage.getInspectionPhoto(photoId);
+            if (photo) {
+              const base64 = photo.imageData.toString('base64');
+              return `<div class="photo-item"><img src="data:image/jpeg;base64,${base64}" alt="Inspection photo" /></div>`;
+            }
+            return null; // Photo not found
+          })
+        );
+        
+        const photoElements = photoResults.map(result => {
+          if (result.status === 'fulfilled' && result.value) {
+            return result.value;
+          }
+          return `<div class="photo-placeholder">Photo not available</div>`;
+        });
+        
+        // Always show photos section if photoIds exist - shows placeholders for missing photos
+        photosHtml = `
+  <h2>Photos (${inspection.photoIds.length})</h2>
+  <div class="photos-grid">
+    ${photoElements.join('')}
+  </div>`;
+      }
+      
       // Generate simple HTML
       const html = `
 <!DOCTYPE html>
@@ -2695,6 +2724,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     th { background-color: #f5f5f5; font-weight: bold; }
     .info-row { margin-bottom: 8px; }
     .label { font-weight: bold; display: inline-block; width: 150px; }
+    .photos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px; }
+    .photo-item img { width: 100%; max-width: 300px; height: auto; border: 1px solid #ddd; border-radius: 4px; }
+    .photo-placeholder { width: 100%; max-width: 300px; height: 150px; background: #f5f5f5; border: 1px dashed #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 14px; }
+    @media print { .photos-grid { page-break-inside: avoid; } }
   </style>
 </head>
 <body>
@@ -2726,6 +2759,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     </tbody>
   </table>
   ` : ''}
+  
+  ${photosHtml}
   
   <h2>Defects</h2>
   ${inspection.defects && inspection.defects.length > 0 ? `
