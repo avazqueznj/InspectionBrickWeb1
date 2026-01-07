@@ -618,6 +618,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Serve inspection photo by UUID (protected for web, also works for devices)
+  app.get("/api/photos/:uuid", requireAuth, async (req: AuthRequest, res) => {
+    const { uuid } = req.params;
+    console.log(`📸 [Routes] GET /api/photos/${uuid} - Fetching inspection photo`);
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(uuid)) {
+      console.log(`❌ [Routes] Invalid UUID format: ${uuid}`);
+      return res.status(400).json({ error: "Invalid UUID format" });
+    }
+    
+    try {
+      // Get photo - company scoping optional (photos can be viewed if you have the UUID)
+      const photo = await storage.getInspectionPhoto(uuid, req.auth?.companyId || undefined);
+      
+      if (!photo) {
+        console.log(`❌ [Routes] Photo not found: ${uuid}`);
+        return res.status(404).json({ error: "Photo not found" });
+      }
+      
+      // Serve the JPEG image
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Content-Length', photo.imageData.length.toString());
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year (immutable)
+      res.send(photo.imageData);
+    } catch (error) {
+      console.error(`❌ [Routes] Error fetching photo ${uuid}:`, error);
+      res.status(500).json({ error: "Failed to fetch photo" });
+    }
+  });
+
   // Auth: Logout - clears JWT cookie
   app.post("/api/auth/logout", (req, res) => {
     console.log(`🚪 [Routes] POST /api/auth/logout`);
