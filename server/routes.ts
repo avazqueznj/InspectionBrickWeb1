@@ -594,10 +594,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageData = req.body as Buffer;
       console.log(`📸 Bytes Received: ${imageData.length}`);
 
-      // 2. Storage Logic (NJ Style: Log the DB attempt)
+      // 2. Storage Logic
       try {
         console.log(`💾 Attempting DB Write for ${photoUuid}...`);
-
         await storage.createInspectionPhoto(photoUuid, photoType, imageData, companyId);
 
         console.log(`✅ [SUCCESS] Photo saved to storage: ${photoUuid}`);
