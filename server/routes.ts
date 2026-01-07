@@ -598,17 +598,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       await storage.createInspectionPhoto(photoUuid, photoType, imageData, companyId);
-      
       console.log(`✅ [Routes] Photo saved: ${photoUuid}`);
       
-      // Explicit response for device clients - ensure proper flush
       const responseBody = JSON.stringify({ success: true, id: photoUuid });
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Length', Buffer.byteLength(responseBody));
-      res.setHeader('Connection', 'close');
-      res.status(200);
-      res.write(responseBody);
-      res.end();
+      
+      // NJ STYLE: Keep connection alive so slow SSL stack can read the response
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(responseBody),
+        'Connection': 'keep-alive',
+        'Keep-Alive': 'timeout=5, max=100'
+      });
+      
+      res.end(responseBody);
       return;
     } catch (error) {
       console.error(`❌ [Routes] Error saving photo ${photoUuid}:`, error);
@@ -618,22 +620,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
         console.log(`⚠️ [Routes] Photo already exists: ${photoUuid}`);
         const dupBody = JSON.stringify({ error: "Photo already exists", id: photoUuid });
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Length', Buffer.byteLength(dupBody));
-        res.setHeader('Connection', 'close');
-        res.status(409);
-        res.write(dupBody);
-        res.end();
+        res.writeHead(409, {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(dupBody),
+          'Connection': 'keep-alive',
+          'Keep-Alive': 'timeout=5, max=100'
+        });
+        res.end(dupBody);
         return;
       }
       
       const errBody = JSON.stringify({ error: "Failed to save photo", message: errorMessage });
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Length', Buffer.byteLength(errBody));
-      res.setHeader('Connection', 'close');
-      res.status(500);
-      res.write(errBody);
-      res.end();
+      res.writeHead(500, {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(errBody),
+        'Connection': 'keep-alive',
+        'Keep-Alive': 'timeout=5, max=100'
+      });
+      res.end(errBody);
       return;
     }
   });
