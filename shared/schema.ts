@@ -217,6 +217,16 @@ export const inspectionAssets = pgTable("inspection_assets", {
   },
 }));
 
+// Inspection Photos table - stores photos uploaded from devices
+// UUID is provided by device as primary key; inspections reference photo UUIDs
+export const inspectionPhotos = pgTable("inspection_photos", {
+  id: varchar("id").primaryKey(), // UUID provided by device in x-uuid header
+  type: integer("type").notNull(), // Photo type from x-type header
+  imageData: bytea("image_data").notNull(),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+});
+
 // Upload Errors table - logs failed device upload attempts for debugging
 export const uploadErrors = pgTable("upload_errors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -482,6 +492,7 @@ export type ComponentDefect = typeof componentDefects.$inferSelect;
 export type InsertComponentDefect = z.infer<typeof insertComponentDefectSchema>;
 export type ZoneImage = typeof zoneImages.$inferSelect;
 export type InsertZoneImage = z.infer<typeof insertZoneImageSchema>;
+export type InspectionPhoto = typeof inspectionPhotos.$inferSelect;
 
 // Extended type for inspection with defects and assets
 export type InspectionWithDefects = Inspection & {

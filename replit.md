@@ -78,6 +78,15 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 - Raw BRICKINSPECTION EDI data is stored for debugging.
 - Comprehensive error logging and duplicate detection for inspection uploads.
 
+**Inspection Photos:**
+- `POST /api/device/upload_photo` endpoint receives raw JPEG binary from devices
+- Headers: `x-uuid` (photo PK provided by device), `x-type` (integer photo type), `Authorization: Bearer <token>`
+- Photos stored independently in `inspection_photos` table with device-provided UUID as primary key
+- Inspections will later reference photo UUIDs (photos uploaded before/during inspection submission)
+- Photo queries only by PK for efficiency - no scanning on every inspection list
+- Constraints: 640x480 baseline JPEG, no progressive, standard Huffman coding, YCbCr color space
+- Duplicate uploads return 409 Conflict
+
 **Analytics Dashboards:**
 - Collapsible statistics panels on Inspections and Defects pages showing key metrics
 - Inspections page: Top assets with defects, users by inspection count, components with most defects, defects by severity
@@ -88,7 +97,7 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 
 **Core Concepts:**
 - **Defects Table:** Records represent inspection checks. Severity 0 means no defect (audit trail), 1-10 are actual defects (needs repair). Defects are sorted by severity (DESC) then time (DESC) for real-time monitoring.
-- **Layout Builder:** A visual UI for configuring inspection layouts with a hierarchical structure (Layout → Zone → Component → Defect). Supports full CRUD operations, inline editing, and severity configuration. Includes optional zone images (JPEG, max 800x400px) and seed data for common vehicle types. Zone deletion triggers cascade cleanup of associated images in application layer.
+- **Layout Builder:** A visual UI for configuring inspection layouts with a hierarchical structure (Layout → Zone → Component → Defect). Supports full CRUD operations, inline editing, and severity configuration. Includes optional zone images (JPEG, max 640x480px, baseline only, standard Huffman, YCbCr) and seed data for common vehicle types. Zone deletion triggers cascade cleanup of associated images in application layer.
 - **Layout Activation:** Layouts have an `isActive` boolean field (default: false). Only active layouts are sent to devices via the config endpoint. Activation requires validation: layout must have at least one zone, each zone must have at least one component, and each component must have at least one defect. All names must be non-empty. Toggle UI shows green power icon for active layouts with validation feedback on errors.
 - **Admin Tools:** Superuser-only features including database reseed functionality and a device config preview tool.
 

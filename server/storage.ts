@@ -1,5 +1,5 @@
 // Referenced from blueprint:javascript_database
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, zoneImages, locations, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type AssetWithLocation, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset, type ZoneImage, type Location, type InsertLocation } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, layouts, layoutZones, layoutZoneComponents, componentDefects, inspectionTypeLayouts, inspectionAssets, uploadErrors, zoneImages, inspectionPhotos, locations, type Company, type Inspection, type InsertInspection, type Defect, type InsertDefect, type InspectionWithDefects, type User, type InsertUser, type UserWithoutPassword, type Asset, type InsertAsset, type AssetWithLocation, type InspectionType, type InsertInspectionType, type InspectionTypeFormField, type InsertInspectionTypeFormField, type InspectionTypeWithFormFields, type Layout, type InsertLayout, type LayoutZone, type InsertLayoutZone, type LayoutZoneComponent, type InsertLayoutZoneComponent, type ComponentDefect, type InsertComponentDefect, type InsertInspectionAsset, type ZoneImage, type InspectionPhoto, type Location, type InsertLocation } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, ilike, or, sql, and, inArray } from "drizzle-orm";
 
@@ -2418,6 +2418,43 @@ export class DatabaseStorage implements IStorage {
       totalOpen: totalOpenResult[0]?.count || 0,
       totalRepaired: totalRepairedResult[0]?.count || 0,
     };
+  }
+
+  // Inspection Photos methods
+  async createInspectionPhoto(id: string, type: number, imageData: Buffer, companyId: string): Promise<void> {
+    console.log(`📸 [Storage] Saving inspection photo: ${id}, type: ${type}, size: ${imageData.length} bytes, company: ${companyId}`);
+    
+    await db.insert(inspectionPhotos).values({
+      id,
+      type,
+      imageData,
+      companyId,
+    });
+    
+    console.log(`✅ [Storage] Inspection photo saved: ${id}`);
+  }
+
+  async getInspectionPhoto(id: string, companyId?: string): Promise<InspectionPhoto | undefined> {
+    console.log(`📸 [Storage] Fetching inspection photo: ${id}`);
+    
+    const conditions = [eq(inspectionPhotos.id, id)];
+    if (companyId) {
+      conditions.push(eq(inspectionPhotos.companyId, companyId));
+    }
+    
+    const results = await db
+      .select()
+      .from(inspectionPhotos)
+      .where(and(...conditions))
+      .limit(1);
+    
+    if (results.length === 0) {
+      console.log(`❌ [Storage] Inspection photo not found: ${id}`);
+      return undefined;
+    }
+    
+    console.log(`✅ [Storage] Inspection photo found: ${id} (${results[0].imageData.length} bytes)`);
+    return results[0];
   }
 }
 

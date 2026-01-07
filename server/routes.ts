@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertInspectionSchema, insertDefectSchema, insertUserSchema, insertAssetSchema, insertLocationSchema, insertInspectionTypeSchema, insertInspectionTypeFormFieldSchema, insertLayoutSchema, insertLayoutZoneSchema, insertLayoutZoneComponentSchema, insertComponentDefectSchema, type Defect, type InspectionWithDefects } from "@shared/schema";
@@ -537,6 +537,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       return res.status(500).json({ 
         error: "Failed to fetch image",
+        message: errorMessage
+      });
+    }
+  });
+
+  // Device: Upload inspection photo (requires device token in Authorization header)
+  // Receives raw JPEG binary with x-uuid (photo PK) and x-type headers
+  app.post("/api/device/upload_photo", requireDeviceAuth, express.raw({ type: 'image/jpeg', limit: '2mb' }), async (req: AuthRequest, res) => {
+    const photoUuid = req.headers['x-uuid'] as string;
+    const photoType = parseInt(req.headers['x-type'] as string, 10);
+    
+    console.log(`📸 [Routes] POST /api/device/upload_photo - UUID: ${photoUuid}, Type: ${photoType}`);
+    
+    if (!req.auth) {
+      console.log(`❌ [Routes] Upload photo - No auth`);
+      return res.status(401).json({ error: "Device token required" });
+    }
+    
+    const companyId = req.auth.companyId;
+    if (!companyId) {
+      console.log(`❌ [Routes] Upload photo - No company ID in token`);
+      return res.status(400).json({ error: "Company ID required" });
+    }
+    
+    // Validate x-uuid header
+    if (!photoUuid) {
+      console.log(`❌ [Routes] Upload photo - Missing x-uuid header`);
+      return res.status(400).json({ error: "Missing x-uuid header" });
+    }
+    
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(photoUuid)) {
+      console.log(`❌ [Routes] Upload photo - Invalid UUID format: ${photoUuid}`);
+      return res.status(400).json({ error: "Invalid x-uuid format" });
+    }
+    
+    // Validate x-type header
+    if (isNaN(photoType)) {
+      console.log(`❌ [Routes] Upload photo - Invalid x-type header`);
+      return res.status(400).json({ error: "Invalid x-type header (must be integer)" });
+    }
+    
+    // Validate body is Buffer
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      console.log(`❌ [Routes] Upload photo - Empty or invalid body`);
+      return res.status(400).json({ error: "Missing or empty JPEG body" });
+    }
+    
+    const imageData = req.body as Buffer;
+    
+    // Basic JPEG validation (SOI marker)
+    if (imageData.length < 2 || imageData[0] !== 0xFF || imageData[1] !== 0xD8) {
+      console.log(`❌ [Routes] Upload photo - Invalid JPEG (bad magic bytes)`);
+      return res.status(400).json({ error: "Invalid JPEG data" });
+    }
+    
+    console.log(`📸 [Routes] Received photo: ${photoUuid}, ${imageData.length} bytes, type: ${photoType}, company: ${companyId}`);
+    
+    try {
+      await storage.createInspectionPhoto(photoUuid, photoType, imageData, companyId);
+      
+      console.log(`✅ [Routes] Photo saved: ${photoUuid}`);
+      res.status(200).json({ success: true, id: photoUuid });
+    } catch (error) {
+      console.error(`❌ [Routes] Error saving photo ${photoUuid}:`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check for duplicate key error
+      if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
+        console.log(`⚠️ [Routes] Photo already exists: ${photoUuid}`);
+        return res.status(409).json({ error: "Photo already exists", id: photoUuid });
+      }
+      
+      return res.status(500).json({ 
+        error: "Failed to save photo",
         message: errorMessage
       });
     }
