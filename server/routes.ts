@@ -562,42 +562,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`\n--- NEW UPLOAD ATTEMPT ---`);
       console.log(`📸 UUID: ${photoUuid} | Type: ${photoType}`);
 
-      // Auth validation
-      if (!req.auth) {
-        console.log(`❌ No auth`);
-        res.set("Connection", "close");
-        return res.status(401).json({ error: "Device token required" });
-      }
-
-      const companyId = req.auth.companyId;
-      if (!companyId) {
-        console.log(`❌ No company ID in token`);
-        res.set("Connection", "close");
-        return res.status(400).json({ error: "Company ID required" });
-      }
-
-      console.log(`🏢 Company: ${companyId}`);
-
       // 1. Validation Logic
       if (!photoUuid) {
         console.log(`❌ Missing x-uuid`);
-        res.set("Connection", "close");
         return res.status(400).json({ error: "Missing x-uuid header" });
       }
 
       if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
         console.log(`❌ Empty Body for UUID: ${photoUuid}`);
-        res.set("Connection", "close");
         return res.status(400).json({ error: "Missing or empty JPEG body" });
       }
 
       const imageData = req.body as Buffer;
       console.log(`📸 Bytes Received: ${imageData.length}`);
 
-      // 2. Storage Logic
+      // 2. Storage Logic (NJ Style: Log the DB attempt)
       try {
         console.log(`💾 Attempting DB Write for ${photoUuid}...`);
-        await storage.createInspectionPhoto(photoUuid, photoType, imageData, companyId);
+
+        
+        await storage.createInspectionPhoto(photoUuid, photoType, imageData, req.auth!.companyId!);
 
         console.log(`✅ [SUCCESS] Photo saved to storage: ${photoUuid}`);
 
