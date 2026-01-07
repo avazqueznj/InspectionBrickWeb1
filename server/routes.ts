@@ -600,18 +600,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createInspectionPhoto(photoUuid, photoType, imageData, companyId);
       console.log(`✅ [Routes] Photo saved: ${photoUuid}`);
       
-      const responseBody = JSON.stringify({ success: true, id: photoUuid });
-      
-      // NJ STYLE: Keep connection alive so slow SSL stack can read the response
-      res.writeHead(200, {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(responseBody),
-        'Connection': 'keep-alive',
-        'Keep-Alive': 'timeout=5, max=100'
-      });
-      
-      res.end(responseBody);
-      return;
+      // Simple response - let Express/proxy handle connection management
+      // Don't set Connection/Keep-Alive headers (invalid in HTTP/2, stripped by proxy)
+      return res.status(200).json({ success: true, id: photoUuid });
     } catch (error) {
       console.error(`❌ [Routes] Error saving photo ${photoUuid}:`, error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -619,26 +610,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for duplicate key error
       if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
         console.log(`⚠️ [Routes] Photo already exists: ${photoUuid}`);
-        const dupBody = JSON.stringify({ error: "Photo already exists", id: photoUuid });
-        res.writeHead(409, {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(dupBody),
-          'Connection': 'keep-alive',
-          'Keep-Alive': 'timeout=5, max=100'
-        });
-        res.end(dupBody);
-        return;
+        return res.status(409).json({ error: "Photo already exists", id: photoUuid });
       }
       
-      const errBody = JSON.stringify({ error: "Failed to save photo", message: errorMessage });
-      res.writeHead(500, {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(errBody),
-        'Connection': 'keep-alive',
-        'Keep-Alive': 'timeout=5, max=100'
-      });
-      res.end(errBody);
-      return;
+      return res.status(500).json({ error: "Failed to save photo", message: errorMessage });
     }
   });
 
