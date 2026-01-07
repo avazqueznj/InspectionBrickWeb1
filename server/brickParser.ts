@@ -34,6 +34,8 @@ export interface ParsedInspection {
     inspectedAtUtc: Date;
     notes: string;
   }[];
+  // Optional photo UUIDs from devices with cameras
+  photoIds: string[];
 }
 
 function parseDateTime(dateTimeStr: string): Date {
@@ -307,6 +309,32 @@ export function parseBrickInspection(data: string): ParsedInspection {
   if (currentLine >= lines.length || lines[currentLine] !== "END***") {
     throw new Error(`Expected END*** marker, got: ${lines[currentLine] || 'EOF'}`);
   }
+  currentLine++;
+
+  // Parse optional USERPIC lines (devices with cameras)
+  // Format: USERPIC*<uuid> ... END2***
+  const photoIds: string[] = [];
+  while (currentLine < lines.length && lines[currentLine].startsWith("USERPIC*")) {
+    const picParts = lines[currentLine].split('*');
+    if (picParts.length >= 2 && picParts[1].trim().length > 0) {
+      const photoId = picParts[1].trim();
+      // Validate UUID format
+      try {
+        z.string().uuid().parse(photoId);
+        photoIds.push(photoId);
+      } catch {
+        throw new Error(`Invalid USERPIC UUID format: ${photoId}`);
+      }
+    }
+    currentLine++;
+  }
+
+  // If we have USERPIC lines, we expect END2***
+  if (photoIds.length > 0) {
+    if (currentLine >= lines.length || lines[currentLine] !== "END2***") {
+      throw new Error(`Expected END2*** marker after USERPIC lines, got: ${lines[currentLine] || 'EOF'}`);
+    }
+  }
 
   return {
     inspectionId,
@@ -322,5 +350,6 @@ export function parseBrickInspection(data: string): ParsedInspection {
     formFields,
     checks,
     defects,
+    photoIds,
   };
 }

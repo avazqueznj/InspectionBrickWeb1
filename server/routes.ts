@@ -282,6 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rawData: rawData,
         locationId: locationId,
         locationName: locationName,
+        photoIds: parsed.photoIds.length > 0 ? parsed.photoIds : null,
       };
 
       const existingInspection = await storage.getInspection(parsed.inspectionId);

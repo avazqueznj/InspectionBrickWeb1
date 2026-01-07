@@ -103,6 +103,8 @@ export const inspections = pgTable("inspections", {
   rawData: text("raw_data"),
   locationId: varchar("location_id"),
   locationName: text("location_name"),
+  // Photo UUIDs from device cameras (optional, up to 4)
+  photoIds: text("photo_ids").array(),
 });
 
 // Defects table
