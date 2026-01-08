@@ -604,9 +604,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createInspectionPhoto(photoUuid, photoType, imageData, companyId);
       console.log(`✅ [Routes] Photo saved: ${photoUuid}`);
       
-      // Simple response - let Express/proxy handle connection management
-      // Don't set Connection/Keep-Alive headers (invalid in HTTP/2, stripped by proxy)
-      return res.status(200).json({ success: true, id: photoUuid });
+      // NJ STYLE: Explicit Content-Length for HTTP/1.1 device clients through GFE proxy
+      // The proxy needs to know exact response size to flush to embedded devices
+      const payload = JSON.stringify({ success: true, id: photoUuid });
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Length', Buffer.byteLength(payload).toString());
+      res.setHeader('Connection', 'close');
+      console.log(`📤 [Routes] Sending response: ${payload.length} bytes`);
+      return res.status(200).end(payload);
     } catch (error) {
       console.error(`❌ [Routes] Error saving photo ${photoUuid}:`, error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -614,10 +619,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for duplicate key error
       if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
         console.log(`⚠️ [Routes] Photo already exists: ${photoUuid}`);
-        return res.status(409).json({ error: "Photo already exists", id: photoUuid });
+        const dupPayload = JSON.stringify({ error: "Photo already exists", id: photoUuid });
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Length', Buffer.byteLength(dupPayload).toString());
+        res.setHeader('Connection', 'close');
+        return res.status(409).end(dupPayload);
       }
       
-      return res.status(500).json({ error: "Failed to save photo", message: errorMessage });
+      const errPayload = JSON.stringify({ error: "Failed to save photo", message: errorMessage });
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Length', Buffer.byteLength(errPayload).toString());
+      res.setHeader('Connection', 'close');
+      return res.status(500).end(errPayload);
     }
   });
 
