@@ -1,0 +1,124 @@
+bool POSTRawBinary(
+    String serverURL, String ssid, String pass, String path,
+    const String& uuid, 
+    uint8_t type, 
+    uint8_t* data, 
+    size_t len  
+) {
+    if (data == nullptr || len == 0) {
+        throw std::runtime_error("POST_FATAL: NULL or empty buffer for PK: " + std::string(uuid.c_str()));
+    }
+
+    SSLClient client;
+    
+    try {
+        spinnerContinue();   
+        if (!client.connect(serverURL, ssid, pass)) {
+            throw std::runtime_error("Connection failed to " + std::string(serverURL.c_str()));
+        }
+        spinnerContinue();
+
+        Serial.println("==============================");
+        Serial.println("[UPLOAD] Starting Binary POST");
+        Serial.print("[UPLOAD] PK: "); Serial.println(uuid);
+        Serial.print("[UPLOAD] Size: "); Serial.print(len); Serial.println(" bytes");
+        Serial.println("==============================");
+
+        // 1. Send Request Line
+        client.print("POST " + path + " HTTP/1.1\r\n");
+        
+        // 2. Send Headers (NJ STYLE: Strict framing for Google Proxy)
+        client.print("Host: " + serverURL + "\r\n");
+        client.print("Authorization: Bearer " + BEARER_TOKEN + "\r\n");
+        client.print("x-uuid: " + uuid + "\r\n");
+        client.print("x-type: " + String(type) + "\r\n");
+        client.print("Content-Type: image/jpeg\r\n");
+        client.print("Content-Length: " + String(len) + "\r\n");
+        client.print("Connection: close\r\n"); // Signal "End of Stream" after bytes
+        client.print("\r\n"); // THE CRITICAL GAP
+
+        // 3. Send Payload (4KB CHUNKING)
+        size_t totalWritten = 0;
+        int attempts = 0;
+
+        while (totalWritten < len) {
+            size_t remaining = len - totalWritten;
+            size_t chunkSize = (remaining > 4096) ? 4096 : remaining;
+            
+            size_t written = client.client.write(data + totalWritten, chunkSize);
+            
+            if (written > 0) {
+                totalWritten += written;
+                if (totalWritten % 16384 == 0 || totalWritten == len) {
+                    Serial.print("[WRITE] Progress: "); 
+                    Serial.print(totalWritten); Serial.print("/"); Serial.println(len);
+                }
+                attempts = 0; 
+            } else {
+                attempts++;
+                delay(100); 
+                yield();    
+                Serial.print("!"); 
+                if (attempts > 100) {
+                    throw std::runtime_error("Stalled at " + std::to_string(totalWritten));
+                }
+            }
+            spinnerContinue();   
+        }
+
+        // NJ STYLE: The proxy needs to know we are done. 
+        // We do not send extra newlines here as they would exceed Content-Length.
+        Serial.println("[UPLOAD] Body sent. Waiting for response...");
+
+        // 4. Wait for Response
+        unsigned long timeout = millis();
+        bool foundData = false;
+        while (client.available() == 0) {
+            if (millis() - timeout > BRICK_HTTP_READ_TIMEOUT) {
+                throw std::runtime_error("Proxy timeout - no response bytes");
+            }
+            Serial.print(".");
+            delay(100);
+            spinnerContinue();
+            
+            // If the server closes the connection before we read anything
+            if (!client.connected() && client.available() == 0) {
+                throw std::runtime_error("Server hung up prematurely");
+            }
+        }
+
+        // 5. Read Response
+        String response = "";
+        response.reserve(1024);
+        while (client.available() || client.connected()) {
+            if (client.available()) {
+                String line = client.readStringUntil('\n');
+                response += line + "\n";
+                Serial.print(line); 
+            } else {
+                // No bytes available but still "connected" - small wait for buffer
+                delay(10); 
+                if (millis() - timeout > BRICK_HTTP_READ_TIMEOUT + 2000) break;
+            }
+            spinnerContinue();
+        }
+
+        // 6. Final Validation
+        if (response.indexOf("200 OK") != -1 || response.indexOf("409 Conflict") != -1) {
+            Serial.println("\n[SUCCESS] Response received.");
+            return true;
+        }
+        
+        if (response.length() > 0) {
+            throw std::runtime_error("Server rejected: " + std::string(response.substring(0, 50).c_str()));
+        }
+            
+        throw std::runtime_error("Empty or invalid response from proxy");
+
+    } catch (const std::exception& e) {
+        String err = "SYNC_FAIL [" + uuid + "] -> " + String(e.what());
+        Serial.print("[CRITICAL] "); Serial.println(err);
+        client.stop(); // Clean up socket
+        throw std::runtime_error(err.c_str());
+    }
+}
