@@ -545,7 +545,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Device: Upload inspection photo (requires device token in Authorization header)
   // Receives raw JPEG binary with x-uuid (photo PK) and x-type headers
-  app.post("/api/device/upload_photo", requireDeviceAuth, express.raw({ type: 'image/jpeg', limit: '2mb' }), async (req: AuthRequest, res) => {
+  // Early logging middleware to detect if request arrives before body parsing
+  app.post("/api/device/upload_photo", (req, res, next) => {
+    console.log(`📸 [EARLY] Request arrived - Content-Length: ${req.headers['content-length']}, x-uuid: ${req.headers['x-uuid']}`);
+    next();
+  }, requireDeviceAuth, express.raw({ type: 'image/jpeg', limit: '2mb' }), async (req: AuthRequest, res) => {
     const photoUuid = req.headers['x-uuid'] as string;
     const photoType = parseInt(req.headers['x-type'] as string, 10);
     
