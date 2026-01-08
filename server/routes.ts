@@ -252,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let locationName: string | null = null;
       
       try {
-        const driver = await storage.getUserById(parsed.driverId);
+        const driver = await storage.getUserById(parsed.driverId, parsed.companyId);
         if (driver && driver.locationId) {
           locationId = driver.locationId;
           const location = await storage.getLocationById(driver.locationId);

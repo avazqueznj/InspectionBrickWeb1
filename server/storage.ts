@@ -163,7 +163,7 @@ export interface IStorage {
   getCompanies(): Promise<Company[]>;
   
   // Users & Auth
-  getUserById(userId: string, companyId: string): Promise<User | undefined>;
+  getUserById(userId: string, companyId?: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(userId: string, user: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(userId: string): Promise<boolean>;
@@ -287,15 +287,20 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getUserById(userId: string, companyId: string): Promise<User | undefined> {
-    console.log(`🔍 [Storage] Fetching user by ID: ${userId}, companyId: ${companyId}`);
-    const [user] = await db.select().from(users).where(
-      and(eq(users.userId, userId), eq(users.companyId, companyId))
-    );
+  async getUserById(userId: string, companyId?: string): Promise<User | undefined> {
+    console.log(`🔍 [Storage] Fetching user by ID: ${userId}${companyId ? `, companyId: ${companyId}` : ' (no company filter)'}`);
+    
+    // When companyId is provided, filter by both userId AND companyId (secure for device uploads)
+    // When companyId is not provided, filter by userId only (for admin operations that validate after)
+    const conditions = companyId 
+      ? and(eq(users.userId, userId), eq(users.companyId, companyId))
+      : eq(users.userId, userId);
+    
+    const [user] = await db.select().from(users).where(conditions);
     if (user) {
-      console.log(`✅ [Storage] User found: ${userId}, companyId: ${user.companyId}`);
+      console.log(`✅ [Storage] User found: ${userId}, companyId: ${user.companyId || 'null (superuser)'}`);
     } else {
-      console.log(`❌ [Storage] User not found: ${userId} in company ${companyId}`);
+      console.log(`❌ [Storage] User not found: ${userId}${companyId ? ` in company ${companyId}` : ''}`);
     }
     return user;
   }
