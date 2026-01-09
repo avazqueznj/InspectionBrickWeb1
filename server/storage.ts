@@ -2429,16 +2429,22 @@ export class DatabaseStorage implements IStorage {
 
   // Inspection Photos methods
   async createInspectionPhoto(id: string, type: number, imageData: Buffer, companyId: string): Promise<void> {
-    console.log(`📸 [Storage] Saving inspection photo: ${id}, type: ${type}, size: ${imageData.length} bytes, company: ${companyId}`);
+    console.log(`📸 [Storage] Saving photo: ${id}, ${imageData.length} bytes`);
     
-    await db.insert(inspectionPhotos).values({
+    // 10 second timeout for DB insert
+    const insertPromise = db.insert(inspectionPhotos).values({
       id,
       type,
       imageData,
       companyId,
     });
     
-    console.log(`✅ [Storage] Inspection photo saved: ${id}`);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('DB timeout 10s')), 10000);
+    });
+    
+    await Promise.race([insertPromise, timeoutPromise]);
+    console.log(`✅ [Storage] Photo saved: ${id}`);
   }
 
   async getInspectionPhoto(id: string, companyId?: string): Promise<InspectionPhoto | undefined> {
