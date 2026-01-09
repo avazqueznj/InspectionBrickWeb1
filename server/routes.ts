@@ -10,6 +10,25 @@ import { runSeed } from "./services/seedService";
 import { generateBrickConfig } from "./services/brickConfigService";
 import { AUTH_COOKIE_NAME, AUTH_COOKIE_OPTIONS } from "./auth/config";
 import sharp from "sharp";
+import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
+
+// Helper to get photo storage path with normalization
+function getPhotoStoragePath(uuid: string): { bucketName: string; objectName: string } {
+  const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
+  if (!privateDir) {
+    throw new Error("PRIVATE_OBJECT_DIR not set");
+  }
+  // Normalize: remove leading/trailing slashes, then parse
+  const cleanPath = privateDir.replace(/^\/+|\/+$/g, '');
+  const parts = cleanPath.split("/").filter(p => p.length > 0);
+  if (parts.length === 0) {
+    throw new Error("PRIVATE_OBJECT_DIR is invalid");
+  }
+  const bucketName = parts[0];
+  const basePath = parts.slice(1).join("/");
+  const objectName = basePath ? `${basePath}/photos/${uuid}.jpg` : `photos/${uuid}.jpg`;
+  return { bucketName, objectName };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Query params validation schema
@@ -543,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Device: Upload inspection photo - SIMPLE SEQUENTIAL: receive -> save to DB -> respond
+  // Device: Upload inspection photo - save to App Storage (object storage)
   app.post("/api/device/upload_photo", 
     requireDeviceAuth, 
     express.raw({ type: 'image/jpeg', limit: '2mb' }), 
@@ -562,29 +581,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!Buffer.isBuffer(data) || data.length < 2) return res.status(400).json({ error: "No data" });
       if (data[0] !== 0xFF || data[1] !== 0xD8) return res.status(400).json({ error: "Not JPEG" });
       
-      // STEP 1: Save to DB (waits for completion)
+      // Save to App Storage (object storage) - fast and efficient for binary data
       try {
-        await storage.createInspectionPhoto(uuid, type, data, companyId);
-        console.log(`📸 PHOTO SAVED: ${uuid}`);
-      } catch (err: any) {
-        console.log(`📸 PHOTO ERROR: ${uuid} - ${err.message}`);
-        if (err.message?.includes('duplicate')) {
+        const { bucketName, objectName } = getPhotoStoragePath(uuid);
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        
+        // Check if already exists (duplicate detection)
+        const [exists] = await file.exists();
+        if (exists) {
+          console.log(`📸 PHOTO DUPLICATE: ${uuid}`);
           return res.status(409).json({ error: "Duplicate", id: uuid });
         }
-        return res.status(500).json({ error: "DB error" });
+        
+        // Save with metadata
+        await file.save(data, {
+          contentType: 'image/jpeg',
+          metadata: {
+            photoType: String(type),
+            companyId: companyId,
+            uploadedAt: new Date().toISOString(),
+          }
+        });
+        
+        console.log(`📸 PHOTO SAVED TO STORAGE: ${uuid}`);
+        res.status(200).json({ ok: true, id: uuid });
+      } catch (err: any) {
+        console.log(`📸 PHOTO ERROR: ${uuid} - ${err.message}`);
+        return res.status(500).json({ error: "Storage error" });
       }
-      
-      // STEP 2: Send response (after DB success)
-      console.log(`📸 SENDING 200: ${uuid}`);
-      res.status(200).json({ ok: true, id: uuid });
-      console.log(`📸 RESPONSE SENT: ${uuid}`);
     }
   );
 
-  // Serve inspection photo by UUID (protected for web, also works for devices)
+  // Serve inspection photo by UUID from App Storage (protected for web, also works for devices)
   app.get("/api/photos/:uuid", requireAuth, async (req: AuthRequest, res) => {
     const { uuid } = req.params;
-    console.log(`📸 [Routes] GET /api/photos/${uuid} - Fetching inspection photo`);
+    console.log(`📸 [Routes] GET /api/photos/${uuid} - Fetching inspection photo from storage`);
     
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -594,19 +626,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      // Get photo - company scoping optional (photos can be viewed if you have the UUID)
-      const photo = await storage.getInspectionPhoto(uuid, req.auth?.companyId || undefined);
+      // Get photo from App Storage
+      const { bucketName, objectName } = getPhotoStoragePath(uuid);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
       
-      if (!photo) {
-        console.log(`❌ [Routes] Photo not found: ${uuid}`);
+      const [exists] = await file.exists();
+      if (!exists) {
+        console.log(`❌ [Routes] Photo not found in storage: ${uuid}`);
         return res.status(404).json({ error: "Photo not found" });
       }
       
-      // Serve the JPEG image
+      // Verify company isolation via stored metadata
+      const [metadata] = await file.getMetadata();
+      const storedCompanyId = metadata?.metadata?.companyId;
+      const requestCompanyId = req.auth?.companyId;
+      
+      // Enforce company isolation - only same company or superuser can access
+      if (storedCompanyId && requestCompanyId && storedCompanyId !== requestCompanyId) {
+        console.log(`❌ [Routes] Company mismatch for photo ${uuid}: stored=${storedCompanyId}, request=${requestCompanyId}`);
+        return res.status(404).json({ error: "Photo not found" }); // Return 404 to avoid revealing existence
+      }
+      
+      // Stream the file to response
       res.setHeader('Content-Type', 'image/jpeg');
-      res.setHeader('Content-Length', photo.imageData.length.toString());
+      if (metadata.size) {
+        res.setHeader('Content-Length', String(metadata.size));
+      }
       res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year (immutable)
-      res.send(photo.imageData);
+      
+      file.createReadStream()
+        .on('error', (err) => {
+          console.error(`❌ [Routes] Stream error for photo ${uuid}:`, err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: "Failed to stream photo" });
+          }
+        })
+        .pipe(res);
     } catch (error) {
       console.error(`❌ [Routes] Error fetching photo ${uuid}:`, error);
       res.status(500).json({ error: "Failed to fetch photo" });

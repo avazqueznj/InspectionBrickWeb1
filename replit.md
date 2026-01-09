@@ -81,11 +81,12 @@ The UI features a dark industrial theme with orange (#FF5722) accents. Key eleme
 **Inspection Photos:**
 - `POST /api/device/upload_photo` endpoint receives raw JPEG binary from devices
 - Headers: `x-uuid` (photo PK provided by device), `x-type` (integer photo type), `Authorization: Bearer <token>`
-- Photos stored independently in `inspection_photos` table with device-provided UUID as primary key
+- **Photos stored in Replit App Storage** (object storage) - NOT in database (avoids Neon serverless binary data limitations)
+- Storage path: `{PRIVATE_OBJECT_DIR}/photos/{uuid}.jpg` with metadata (photoType, companyId, uploadedAt)
+- `GET /api/photos/:uuid` streams photos directly from App Storage
 - **Photo UUIDs in inspections**: Inspections table has `photoIds` column (text array, up to 4 UUIDs)
 - **BRICKINSPECTION format extended**: After `END***`, devices with cameras can append `USERPIC*<uuid>` lines followed by `END2***`
 - Old devices without cameras still end at `END***` (backward compatible)
-- Photo queries only by PK for efficiency - no scanning on every inspection list
 - Constraints: 640x480 baseline JPEG, no progressive, standard Huffman coding, YCbCr color space
 - Duplicate uploads return 409 Conflict
 
