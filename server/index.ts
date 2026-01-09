@@ -25,6 +25,14 @@ app.use(cookieParser());
 import { isProduction, AUTH_COOKIE_NAME, AUTH_COOKIE_OPTIONS } from "./auth/config";
 console.log(`🍪 Cookie auth configured - secure: ${isProduction}, sameSite: ${isProduction ? 'none' : 'lax'}, maxAge: 24h`);
 
+// EARLY REQUEST LOGGING - before any body parsers
+app.use((req, res, next) => {
+  if (req.path.includes('upload_photo') || req.path.includes('device')) {
+    console.log(`🚨 EARLY: ${req.method} ${req.path} Content-Type: ${req.headers['content-type']} Content-Length: ${req.headers['content-length']}`);
+  }
+  next();
+});
+
 app.use(express.text({ type: 'text/plain', limit: '10mb' }));
 app.use(express.json({
   limit: '10mb',
