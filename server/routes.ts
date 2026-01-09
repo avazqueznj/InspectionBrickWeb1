@@ -613,58 +613,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  // Serve inspection photo by UUID from App Storage (protected for web, also works for devices)
+  // Serve inspection photo by UUID from App Storage (requires valid token, no company filtering)
   app.get("/api/photos/:uuid", requireAuth, async (req: AuthRequest, res) => {
     const { uuid } = req.params;
-    console.log(`📸 [Routes] GET /api/photos/${uuid} - Fetching inspection photo from storage`);
     
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(uuid)) {
-      console.log(`❌ [Routes] Invalid UUID format: ${uuid}`);
       return res.status(400).json({ error: "Invalid UUID format" });
     }
     
     try {
-      // Get photo from App Storage
       const { bucketName, objectName } = getPhotoStoragePath(uuid);
       const bucket = objectStorageClient.bucket(bucketName);
       const file = bucket.file(objectName);
       
       const [exists] = await file.exists();
       if (!exists) {
-        console.log(`❌ [Routes] Photo not found in storage: ${uuid}`);
         return res.status(404).json({ error: "Photo not found" });
       }
       
-      // Verify company isolation via stored metadata
+      // Stream directly - UUIDs are unique, just need valid token
       const [metadata] = await file.getMetadata();
-      const storedCompanyId = metadata?.metadata?.companyId;
-      const requestCompanyId = req.auth?.companyId;
-      
-      // Enforce company isolation - only same company or superuser can access
-      if (storedCompanyId && requestCompanyId && storedCompanyId !== requestCompanyId) {
-        console.log(`❌ [Routes] Company mismatch for photo ${uuid}: stored=${storedCompanyId}, request=${requestCompanyId}`);
-        return res.status(404).json({ error: "Photo not found" }); // Return 404 to avoid revealing existence
-      }
-      
-      // Stream the file to response
       res.setHeader('Content-Type', 'image/jpeg');
       if (metadata.size) {
         res.setHeader('Content-Length', String(metadata.size));
       }
-      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year (immutable)
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
       
       file.createReadStream()
         .on('error', (err) => {
-          console.error(`❌ [Routes] Stream error for photo ${uuid}:`, err);
           if (!res.headersSent) {
             res.status(500).json({ error: "Failed to stream photo" });
           }
         })
         .pipe(res);
     } catch (error) {
-      console.error(`❌ [Routes] Error fetching photo ${uuid}:`, error);
       res.status(500).json({ error: "Failed to fetch photo" });
     }
   });
