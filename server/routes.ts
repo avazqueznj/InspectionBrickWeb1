@@ -572,29 +572,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companyId = req.auth?.companyId;
       const data = req.body as Buffer;
       
-      console.log(`📸 PHOTO UPLOAD START: ${uuid}, ${data?.length || 0} bytes`);
+      console.log(`📸 [UPLOAD] ========== START ==========`);
+      console.log(`📸 [UPLOAD] UUID: ${uuid}`);
+      console.log(`📸 [UPLOAD] Type: ${type}`);
+      console.log(`📸 [UPLOAD] Company: ${companyId}`);
+      console.log(`📸 [UPLOAD] Data size: ${data?.length || 0} bytes`);
+      console.log(`📸 [UPLOAD] Is Buffer: ${Buffer.isBuffer(data)}`);
       
-      // Validate
-      if (!companyId) return res.status(401).json({ error: "No company" });
-      if (!uuid || !/^[0-9a-f-]{36}$/i.test(uuid)) return res.status(400).json({ error: "Bad UUID" });
-      if (isNaN(type)) return res.status(400).json({ error: "Bad type" });
-      if (!Buffer.isBuffer(data) || data.length < 2) return res.status(400).json({ error: "No data" });
-      if (data[0] !== 0xFF || data[1] !== 0xD8) return res.status(400).json({ error: "Not JPEG" });
+      // Validate step by step
+      if (!companyId) {
+        console.log(`📸 [UPLOAD] ❌ FAIL: No company ID in token`);
+        return res.status(401).json({ error: "No company" });
+      }
+      console.log(`📸 [UPLOAD] ✓ Company OK`);
       
-      // Save to App Storage (object storage) - fast and efficient for binary data
+      if (!uuid || !/^[0-9a-f-]{36}$/i.test(uuid)) {
+        console.log(`📸 [UPLOAD] ❌ FAIL: Bad UUID format: "${uuid}"`);
+        return res.status(400).json({ error: "Bad UUID" });
+      }
+      console.log(`📸 [UPLOAD] ✓ UUID format OK`);
+      
+      if (isNaN(type)) {
+        console.log(`📸 [UPLOAD] ❌ FAIL: Bad type (not a number)`);
+        return res.status(400).json({ error: "Bad type" });
+      }
+      console.log(`📸 [UPLOAD] ✓ Type OK`);
+      
+      if (!Buffer.isBuffer(data) || data.length < 2) {
+        console.log(`📸 [UPLOAD] ❌ FAIL: No data or too small`);
+        return res.status(400).json({ error: "No data" });
+      }
+      console.log(`📸 [UPLOAD] ✓ Data buffer OK`);
+      
+      if (data[0] !== 0xFF || data[1] !== 0xD8) {
+        console.log(`📸 [UPLOAD] ❌ FAIL: Not JPEG (first bytes: ${data[0]?.toString(16)}, ${data[1]?.toString(16)})`);
+        return res.status(400).json({ error: "Not JPEG" });
+      }
+      console.log(`📸 [UPLOAD] ✓ JPEG header OK`);
+      
+      // Save to App Storage
       try {
+        console.log(`📸 [UPLOAD] Getting storage path...`);
         const { bucketName, objectName } = getPhotoStoragePath(uuid);
+        console.log(`📸 [UPLOAD] Bucket: ${bucketName}`);
+        console.log(`📸 [UPLOAD] Object: ${objectName}`);
+        
         const bucket = objectStorageClient.bucket(bucketName);
         const file = bucket.file(objectName);
         
-        // Check if already exists (duplicate detection)
+        console.log(`📸 [UPLOAD] Checking if exists...`);
         const [exists] = await file.exists();
         if (exists) {
-          console.log(`📸 PHOTO DUPLICATE: ${uuid}`);
+          console.log(`📸 [UPLOAD] ❌ FAIL: Duplicate - file already exists`);
           return res.status(409).json({ error: "Duplicate", id: uuid });
         }
+        console.log(`📸 [UPLOAD] ✓ No duplicate`);
         
-        // Save with metadata
+        console.log(`📸 [UPLOAD] Saving to storage...`);
+        const startTime = Date.now();
         await file.save(data, {
           contentType: 'image/jpeg',
           metadata: {
@@ -603,11 +638,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             uploadedAt: new Date().toISOString(),
           }
         });
+        const elapsed = Date.now() - startTime;
         
-        console.log(`📸 PHOTO SAVED TO STORAGE: ${uuid}`);
+        console.log(`📸 [UPLOAD] ✓ SAVED in ${elapsed}ms`);
+        console.log(`📸 [UPLOAD] ========== SUCCESS ==========`);
         res.status(200).json({ ok: true, id: uuid });
       } catch (err: any) {
-        console.log(`📸 PHOTO ERROR: ${uuid} - ${err.message}`);
+        console.log(`📸 [UPLOAD] ❌ STORAGE ERROR: ${err.message}`);
+        console.log(`📸 [UPLOAD] Stack: ${err.stack}`);
+        console.log(`📸 [UPLOAD] ========== FAILED ==========`);
         return res.status(500).json({ error: "Storage error" });
       }
     }
@@ -617,38 +656,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/photos/:uuid", requireAuth, async (req: AuthRequest, res) => {
     const { uuid } = req.params;
     
+    console.log(`📸 [DOWNLOAD] ========== START ==========`);
+    console.log(`📸 [DOWNLOAD] UUID: ${uuid}`);
+    console.log(`📸 [DOWNLOAD] User: ${req.auth?.userId}`);
+    
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(uuid)) {
+      console.log(`📸 [DOWNLOAD] ❌ FAIL: Bad UUID format`);
       return res.status(400).json({ error: "Invalid UUID format" });
     }
+    console.log(`📸 [DOWNLOAD] ✓ UUID format OK`);
     
     try {
+      console.log(`📸 [DOWNLOAD] Getting storage path...`);
       const { bucketName, objectName } = getPhotoStoragePath(uuid);
+      console.log(`📸 [DOWNLOAD] Bucket: ${bucketName}`);
+      console.log(`📸 [DOWNLOAD] Object: ${objectName}`);
+      
       const bucket = objectStorageClient.bucket(bucketName);
       const file = bucket.file(objectName);
       
+      console.log(`📸 [DOWNLOAD] Checking if exists...`);
       const [exists] = await file.exists();
       if (!exists) {
+        console.log(`📸 [DOWNLOAD] ❌ FAIL: File not found in storage`);
         return res.status(404).json({ error: "Photo not found" });
       }
+      console.log(`📸 [DOWNLOAD] ✓ File exists`);
       
-      // Stream directly - UUIDs are unique, just need valid token
+      console.log(`📸 [DOWNLOAD] Getting metadata...`);
       const [metadata] = await file.getMetadata();
+      console.log(`📸 [DOWNLOAD] Size: ${metadata.size} bytes`);
+      console.log(`📸 [DOWNLOAD] Content-Type: ${metadata.contentType}`);
+      
       res.setHeader('Content-Type', 'image/jpeg');
       if (metadata.size) {
         res.setHeader('Content-Length', String(metadata.size));
       }
       res.setHeader('Cache-Control', 'public, max-age=31536000');
       
+      console.log(`📸 [DOWNLOAD] Starting stream...`);
+      const startTime = Date.now();
+      
       file.createReadStream()
-        .on('error', (err) => {
+        .on('error', (err: any) => {
+          console.log(`📸 [DOWNLOAD] ❌ STREAM ERROR: ${err.message}`);
           if (!res.headersSent) {
             res.status(500).json({ error: "Failed to stream photo" });
           }
         })
+        .on('end', () => {
+          const elapsed = Date.now() - startTime;
+          console.log(`📸 [DOWNLOAD] ✓ STREAMED in ${elapsed}ms`);
+          console.log(`📸 [DOWNLOAD] ========== SUCCESS ==========`);
+        })
         .pipe(res);
-    } catch (error) {
+    } catch (error: any) {
+      console.log(`📸 [DOWNLOAD] ❌ ERROR: ${error.message}`);
+      console.log(`📸 [DOWNLOAD] Stack: ${error.stack}`);
+      console.log(`📸 [DOWNLOAD] ========== FAILED ==========`);
       res.status(500).json({ error: "Failed to fetch photo" });
     }
   });
