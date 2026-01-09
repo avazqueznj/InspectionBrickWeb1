@@ -2749,17 +2749,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `<div class="info-row"><span class="label">Location:</span> ${inspection.locationName}${locationAddress ? ` - ${locationAddress}` : ''}</div>` 
         : '';
       
-      // Fetch photos as base64 for embedding in print view (use allSettled for graceful error handling)
+      // Fetch photos as base64 for embedding in print view from App Storage
       let photosHtml = '';
       if (inspection.photoIds && inspection.photoIds.length > 0) {
         const photoResults = await Promise.allSettled(
           inspection.photoIds.map(async (photoId) => {
-            const photo = await storage.getInspectionPhoto(photoId);
-            if (photo) {
-              const base64 = photo.imageData.toString('base64');
+            try {
+              const { bucketName, objectName } = getPhotoStoragePath(photoId);
+              const bucket = objectStorageClient.bucket(bucketName);
+              const file = bucket.file(objectName);
+              
+              const [exists] = await file.exists();
+              if (!exists) {
+                return null;
+              }
+              
+              const [contents] = await file.download();
+              const base64 = contents.toString('base64');
               return `<div class="photo-item"><img src="data:image/jpeg;base64,${base64}" alt="Inspection photo" /></div>`;
+            } catch (err) {
+              console.log(`📸 [Print] Error fetching photo ${photoId}:`, err);
+              return null;
             }
-            return null; // Photo not found
           })
         );
         

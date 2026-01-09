@@ -1,13 +1,13 @@
 import { db } from "../db";
-import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionTypeLayouts, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects, locations, inspectionPhotos } from "@shared/schema";
+import { companies, inspections, defects, users, assets, inspectionTypes, inspectionTypeFormFields, inspectionTypeLayouts, inspectionAssets, layouts, layoutZones, layoutZoneComponents, componentDefects, locations } from "@shared/schema";
 import { storage } from "../storage";
 import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
 
 export async function runSeed() {
   // Clear existing data (in reverse order due to foreign keys)
+  // NOTE: inspection_photos table removed - photos now in App Storage
   console.log("🗑️  Clearing existing data...");
-  await db.delete(inspectionPhotos);
   await db.delete(defects);
   await db.delete(inspectionAssets);
   await db.delete(inspections);
