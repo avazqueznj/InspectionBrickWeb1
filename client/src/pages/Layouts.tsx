@@ -1036,7 +1036,7 @@ function ComponentManager({ zoneId, components }: { zoneId: string; components: 
         <h4 className="text-sm font-semibold">Components</h4>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline" data-testid={`button-add-component-${zoneId}`}>
+            <Button size="sm" data-testid={`button-add-component-${zoneId}`}>
               <Plus className="h-3 w-3 mr-1" />
               Add Component
             </Button>
@@ -1095,21 +1095,33 @@ function ComponentManager({ zoneId, components }: { zoneId: string; components: 
       {components.length === 0 ? (
         <p className="text-sm text-muted-foreground">No components added yet</p>
       ) : (
-        <div className="space-y-2">
-          {components.map((component) => (
-            <ComponentItem key={component.id} component={component} zoneId={zoneId} />
-          ))}
-        </div>
+        <ComponentList components={components} zoneId={zoneId} />
       )}
     </div>
   );
 }
 
+function ComponentList({ components, zoneId }: { components: LayoutZoneComponent[]; zoneId: string }) {
+  const [expandedComponentId, setExpandedComponentId] = useState<string | null>(null);
+  return (
+    <div className="space-y-2 pl-4">
+      {components.map((component) => (
+        <ComponentItem
+          key={component.id}
+          component={component}
+          zoneId={zoneId}
+          isExpanded={expandedComponentId === component.id}
+          onToggleExpand={() => setExpandedComponentId(expandedComponentId === component.id ? null : component.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
 // Component Item
-function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; zoneId: string }) {
+function ComponentItem({ component, zoneId, isExpanded, onToggleExpand }: { component: LayoutZoneComponent; zoneId: string; isExpanded: boolean; onToggleExpand: () => void }) {
   const { toast } = useToast();
   const [deleteComponentId, setDeleteComponentId] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editComponentName, setEditComponentName] = useState(component.componentName);
   const [editInstructions, setEditInstructions] = useState(component.componentInspectionInstructions || "");
@@ -1198,9 +1210,7 @@ function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; 
                 <span className="font-medium text-sm">{component.componentName}</span>
                 <Button
                   size="sm"
-                  variant="ghost"
-                  className="h-6 text-xs"
-                  onClick={() => setIsExpanded(!isExpanded)}
+                  onClick={onToggleExpand}
                   data-testid={`button-toggle-defects-${component.id}`}
                 >
                   {isExpanded ? "Hide" : "Show"} Defects
@@ -1235,7 +1245,7 @@ function ComponentItem({ component, zoneId }: { component: LayoutZoneComponent; 
           </div>
 
           {isExpanded && (
-            <div className="mt-3 pt-3 border-t">
+            <div className="mt-3 pt-3 border-t pl-4">
               <DefectManager componentId={component.id} defects={defects} />
             </div>
           )}
