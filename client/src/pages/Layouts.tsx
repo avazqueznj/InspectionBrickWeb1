@@ -573,7 +573,7 @@ function ZoneManager({ layoutId, zones }: { layoutId: string; zones: LayoutZone[
           </CardContent>
         </Card>
       ) : (
-        <Accordion type="multiple" className="space-y-2" data-testid="accordion-zones">
+        <Accordion type="single" collapsible className="space-y-2" data-testid="accordion-zones">
           {zones.map((zone) => (
             <ZoneItem key={zone.id} zone={zone} layoutId={layoutId} />
           ))}
