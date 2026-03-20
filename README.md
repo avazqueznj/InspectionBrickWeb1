@@ -1,59 +1,136 @@
-# Brick Web Application
+# Inspection Brick
 
-> Secure, scalable web backend for the Brick inspection ecosystem  
+> End-to-end DOT inspection management — from custom-built field hardware to a cloud-connected operations dashboard  
 > **Author:** Alejandro Vazquez  
-> **First commit:** [Commit ef146a89 (open)by n141az, 10/21/2025 05:09 PM] (see Git log for full provenance)
+> **First commit:** October 21, 2025
 
 ---
 
-## Overview
+## What Is Inspection Brick?
 
-The Brick Web App provides a cloud-connected backend and admin portal for Brick inspection devices.
+Inspection Brick is a full-stack inspection management system built for industrial and transportation operations that require DOT compliance. It connects purpose-built handheld inspection devices to a web platform where supervisors can track defects, manage repairs, and maintain a complete, auditable inspection record.
 
-- Asset registration and management
-- Inspection type and layout configuration
-- User authentication and device provisioning
-- RESTful API for device sync and inspection upload
+The system is designed around two core workflows:
 
-**Stack:** Node.js / TypeScript / React (Replit/Heroku deployable)
+- **In the field** — Drivers and inspectors use ruggedized handheld devices to conduct pre-trip/post-trip and equipment inspections, logging defects with photos and notes. Devices sync inspection data over Wi-Fi when back in range.
+- **In the office** — Supervisors and mechanics use the web dashboard to monitor open defects in real time, assign repairs, track compliance status, and print DOT-compliant inspection reports.
+
+The platform supports multiple companies with strict data isolation, role-based access, and location-aware filtering — designed to scale from a single yard to a distributed fleet operation.
 
 ---
 
-## Features
+## The Hardware
 
-- Fast, responsive React UI
-- Secure endpoints with JWT/SSL
-- Multi-tenant support (company/user/asset)
-- Real-time inspection data dashboard
+Inspection Brick devices are custom-built handheld units built around Arduino hardware, housed in ruggedized enclosures with touchscreens. Each device runs the Inspection Brick firmware and communicates with the cloud backend using a structured EDI format over Wi-Fi.
+
+### Device Family
+
+![Three Inspection Brick devices showing different UI screens](img-devices-overview.jpg)
+
+*Three generations of Inspection Brick devices. From top: the settings/provisioning screen, the inspection history list, and the main menu with Check/Inspect, History, and Sync options.*
+
+---
+
+### Inside the Device
+
+![Open Inspection Brick device showing Arduino internals](img-device-internals.jpg)
+
+*The interior of an Inspection Brick unit. Built around an Arduino MEGA with a Wi-Fi shield, camera module, RTC, CR2032 backup battery, and voltage sensor — all hand-wired into a ruggedized enclosure.*
+
+---
+
+### Charging & Connectivity
+
+![Inspection Brick device charging via USB with status LEDs visible](img-device-charging.jpg)
+
+*A device charging via USB. The status LEDs indicate power and connectivity state. The rear edge exposes the USB port and additional connectors.*
+
+---
+
+### Syncing with the Server
+
+![Device showing successful sync confirmation screen](img-device-sync.jpg)
+
+*A successful sync: the device confirms it received 3 assets, 4 layouts, 5 inspection types, and 2 users from the server, with no pending inspections to upload. Sync downloads the latest configuration and uploads any queued inspections.*
+
+---
+
+### Inspection History on Device
+
+![Device showing inspection history list](img-device-history.jpg)
+
+*The inspection history screen on a device, listing recent inspections by ID, timestamp, and inspector. Inspectors can review past submissions directly on the device before syncing.*
+
+---
+
+## The Web Platform
+
+### Inspections Dashboard
+
+![Inspections list page showing sortable table with filters](img-inspections-list.png)
+
+*The Inspections page — the central record of all uploaded inspections. Supervisors can search and filter by date range, inspection type, asset, driver, and location. Each row links to a full printable report. The orange "Print List" button generates a formatted page for native browser printing — no PDFs required.*
+
+---
+
+### Defects & Repairs Dashboard
+
+![Defects and Repairs page with analytics dashboard showing donut charts and bar charts](img-defects-dashboard.png)
+
+*The Defects/Repairs page gives mechanics and supervisors a real-time view of open defects across the fleet. The analytics panel shows defect counts by status (Open / Pending / Repaired) and severity (Critical / High / Medium / Low), plus top assets and zones by defect volume. Mechanics can batch-mark defects as repaired directly from this view.*
+
+---
+
+## Key Features
+
+**Multi-company support** — Each company's data is fully isolated. A company selector in the nav lets superusers switch between tenants.
+
+**Flexible inspection layouts** — Admins configure inspection forms using a hierarchical Layout Builder: Layout → Zone → Component → Defect. Layouts are activated and pushed to devices on next sync.
+
+**Location-aware filtering** — Users and assets are assigned to locations. Inspections and defects carry location data for site-level reporting and filtering.
+
+**Device token authentication** — Devices authenticate with 10-year JWT tokens issued at provisioning time. Web users authenticate with short-lived httpOnly cookie sessions.
+
+**Photo capture** — Camera-equipped devices can attach JPEG photos to inspections. Photos are stored securely in cloud object storage and accessible through the web UI.
+
+**Native print reports** — Inspection reports and defect lists render as clean, formatted HTML in a new browser tab — optimized for the browser's built-in print dialog.
+
+**Audit trail** — Every inspection check is recorded, including severity-0 (pass) checks, providing a complete audit history for DOT compliance.
+
+---
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, TypeScript, Tailwind CSS, Shadcn UI |
+| Backend | Node.js, Express |
+| Database | PostgreSQL (Neon) via Drizzle ORM |
+| Auth | Pure JWT — RS256, httpOnly cookies (web) / Bearer tokens (devices) |
+| State | TanStack Query v5 |
+| Storage | Replit App Storage (photos) |
+| Routing | Wouter (client), Express (server) |
 
 ---
 
 ## Getting Started
 
-1. Clone repo
-2. `npm install` (for backend and frontend)
-3. Set environment vars (`.env.sample`)
-4. `npm run dev` (dev mode) or deploy to Replit/Heroku
-5. Configure Brick devices to point to `/api` endpoint
+1. Clone the repo
+2. `npm install`
+3. Configure environment variables (JWT keys, database URL, object storage)
+4. `npm run dev`
+5. Provision Brick devices with a device token pointing to the `/api` endpoint
 
 ---
 
 ## Provenance & License
 
-- All code in this repo was written **from scratch** by Alejandro Vazquez.
-- Commit history provides clear proof of authorship and timeline.
-- No prior employer IP or proprietary code is present.
-- License: [Proprietary]
+All code in this repository was written from scratch by Alejandro Vazquez. Commit history provides clear proof of authorship and timeline. No prior employer IP or proprietary code is present.
 
----
-
-## Documentation
-
-- [API Docs](./api.md)
-- [Business Case for Scaling](./Arduino_GIGA_Scaling_Business_Case.pdf)
+**License:** Proprietary
 
 ---
 
 ## Contact
 
-Alejandro Vazquez — [alejandrovazquez@yahoo.com]  
+Alejandro Vazquez — alejandrovazquez@yahoo.com
