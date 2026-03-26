@@ -25,7 +25,7 @@ Inspection Brick devices are custom-built handheld units built around Arduino ha
 
 ### Device Family
 
-![Three Inspection Brick devices showing different UI screens](img-devices-overview.jpg)
+![Three Inspection Brick devices showing different UI screens](client/public/img-devices-overview.jpg)
 
 *Three generations of Inspection Brick devices. From top: the settings/provisioning screen, the inspection history list, and the main menu with Check/Inspect, History, and Sync options.*
 
@@ -33,7 +33,7 @@ Inspection Brick devices are custom-built handheld units built around Arduino ha
 
 ### Inside the Device
 
-![Open Inspection Brick device showing Arduino internals](img-device-internals.jpg)
+![Open Inspection Brick device showing Arduino internals](client/public/img-device-internals.jpg)
 
 *The interior of an Inspection Brick unit. Built around an Arduino MEGA with a Wi-Fi shield, camera module, RTC, CR2032 backup battery, and voltage sensor — all hand-wired into a ruggedized enclosure.*
 
@@ -41,7 +41,7 @@ Inspection Brick devices are custom-built handheld units built around Arduino ha
 
 ### Charging & Connectivity
 
-![Inspection Brick device charging via USB with status LEDs visible](img-device-charging.jpg)
+![Inspection Brick device charging via USB with status LEDs visible](client/public/img-device-charging.jpg)
 
 *A device charging via USB. The status LEDs indicate power and connectivity state. The rear edge exposes the USB port and additional connectors.*
 
@@ -49,7 +49,7 @@ Inspection Brick devices are custom-built handheld units built around Arduino ha
 
 ### Syncing with the Server
 
-![Device showing successful sync confirmation screen](img-device-sync.jpg)
+![Device showing successful sync confirmation screen](client/public/img-device-sync.jpg)
 
 *A successful sync: the device confirms it received 3 assets, 4 layouts, 5 inspection types, and 2 users from the server, with no pending inspections to upload. Sync downloads the latest configuration and uploads any queued inspections.*
 
@@ -57,7 +57,7 @@ Inspection Brick devices are custom-built handheld units built around Arduino ha
 
 ### Inspection History on Device
 
-![Device showing inspection history list](img-device-history.jpg)
+![Device showing inspection history list](client/public/img-device-history.jpg)
 
 *The inspection history screen on a device, listing recent inspections by ID, timestamp, and inspector. Inspectors can review past submissions directly on the device before syncing.*
 
@@ -67,7 +67,7 @@ Inspection Brick devices are custom-built handheld units built around Arduino ha
 
 ### Inspections Dashboard
 
-![Inspections list page showing sortable table with filters](img-inspections-list.png)
+![Inspections list page showing sortable table with filters](client/public/img-inspections-list.png)
 
 *The Inspections page — the central record of all uploaded inspections. Supervisors can search and filter by date range, inspection type, asset, driver, and location. Each row links to a full printable report. The orange "Print List" button generates a formatted page for native browser printing — no PDFs required.*
 
@@ -75,7 +75,7 @@ Inspection Brick devices are custom-built handheld units built around Arduino ha
 
 ### Defects & Repairs Dashboard
 
-![Defects and Repairs page with analytics dashboard showing donut charts and bar charts](img-defects-dashboard.png)
+![Defects and Repairs page with analytics dashboard showing donut charts and bar charts](client/public/img-defects-dashboard.png)
 
 *The Defects/Repairs page gives mechanics and supervisors a real-time view of open defects across the fleet. The analytics panel shows defect counts by status (Open / Pending / Repaired) and severity (Critical / High / Medium / Low), plus top assets and zones by defect volume. Mechanics can batch-mark defects as repaired directly from this view.*
 
@@ -87,7 +87,7 @@ One of the most important parts of the system is the Layout Builder — the tool
 
 Supervisors build inspection layouts in the web app, and those layouts are automatically delivered to devices on their next sync. No firmware updates, no manual configuration on the device — just build the layout in the browser, activate it, and it's live.
 
-![Layout Builder showing the TRAILER layout with Brake System zone expanded](img-layout-builder.png)
+![Layout Builder showing the TRAILER layout with Brake System zone expanded](client/public/img-layout-builder.png)
 
 *The Layout Builder for the TRAILER layout. The left panel lists all configured layouts — active ones (SCHOOL-BUS, TRAILER, TRUCK, VAN) show a green power icon; inactive ones are grayed out. The right panel shows the zone editor for the selected layout. Here, the "Brake System" zone is expanded, showing a reference photo (used to help drivers identify the area on the vehicle), two components (Brake Adjustment and Brake Hoses), and an "Add Component" button. Additional zones — Coupling and Exterior Inspection — are visible below and can be expanded independently.*
 
